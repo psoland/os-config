@@ -1,0 +1,74 @@
+{
+    "organisasjonsnummer": "933375854",
+    "navn": "VALUESYNC AS",
+    "organisasjonsform": {
+        "kode": "AS",
+        "beskrivelse": "Aksjeselskap",
+        "_links": {
+            "self": {
+                "href": "https://data.brreg.no/enhetsregisteret/api/organisasjonsformer/AS"
+            }
+        }
+    },
+    "registreringsdatoEnhetsregisteret": "2024-04-27",
+    "registrertIMvaregisteret": true,
+    "naeringskode1": {
+        "kode": "62.200",
+        "beskrivelse": "Konsulentvirksomhet tilknyttet informasjonsteknologi og forvaltning og drift av it-systemer"
+    },
+    "harRegistrertAntallAnsatte": false,
+    "registreringsdatoMerverdiavgiftsregisteret": "2025-06-17",
+    "registreringsdatoMerverdiavgiftsregisteretEnhetsregisteret": "2025-06-17",
+    "forretningsadresse": {
+        "land": "Norge",
+        "landkode": "NO",
+        "postnummer": "1394",
+        "poststed": "NESBRU",
+        "adresse": [
+            "Breivikveien 33"
+        ],
+        "kommune": "ASKER",
+        "kommunenummer": "3203"
+    },
+    "stiftelsesdato": "2024-03-14",
+    "institusjonellSektorkode": {
+        "kode": "2100",
+        "beskrivelse": "Private aksjeselskaper mv."
+    },
+    "registrertIForetaksregisteret": true,
+    "registrertIStiftelsesregisteret": false,
+    "registrertIFrivillighetsregisteret": false,
+    "sisteInnsendteAarsregnskap": "2024",
+    "konkurs": false,
+    "underAvvikling": false,
+    "underTvangsavviklingEllerTvangsopplosning": false,
+    "maalform": "Bokmål",
+    "vedtektsdato": "2025-05-19",
+    "vedtektsfestetFormaal": [
+        "Drifte og investere i teknologiselskaper."
+    ],
+    "aktivitet": [
+        "Drifte og investere i teknologiselskaper."
+    ],
+    "registreringsdatoForetaksregisteret": "2024-04-27",
+    "registrertIPartiregisteret": false,
+    "paategninger": [],
+    "fravalgRevisjonDato": "2024-04-27",
+    "fravalgRevisjonBeslutningsDato": "2024-03-14",
+    "erIKonsern": false,
+    "kapital": {
+        "belop": 30000.00,
+        "antallAksjer": 30000,
+        "type": "Aksjekapital",
+        "valuta": "NOK",
+        "innbetalt": 30000.00,
+        "fulltInnbetalt": true,
+        "innfortDato": "2024-04-27"
+    },
+    "_links": {
+        "self": {
+            "href": "https://data.brreg.no/enhetsregisteret/api/enheter/933375854"
+        }
+    },
+    "respons_klasse": "Enhet"
+}

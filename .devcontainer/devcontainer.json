@@ -1,0 +1,67 @@
+{
+  "name": "Nix Configuration Dev Container",
+  "dockerFile": "Dockerfile",
+  
+  // Mount the workspace with consistent user permissions
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  
+  // Run as the psoland user (matching the user in the container)
+  "remoteUser": "psoland",
+  
+  // Container settings
+  "runArgs": [
+    "--name=nix-devcontainer"
+  ],
+  
+  // VS Code customization
+  "customizations": {
+    "vscode": {
+      // Extensions to install in the container
+      "extensions": [
+        "jnoortheen.nix-ide",           // Nix language support
+        "bbenoist.nix",                 // Nix syntax highlighting
+        "arrterian.nix-env-selector",   // Nix environment selector
+        "mkhl.direnv",                  // direnv support
+        "eamodio.gitlens",              // Git integration
+        "github.vscode-pull-request-github"  // GitHub PR support
+      ],
+      
+      // Settings for the container environment
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "zsh": {
+            "path": "/bin/zsh"
+          }
+        },
+        "files.watcherExclude": {
+          "**/result": true,
+          "**/result-*": true
+        },
+        "nix.enableLanguageServer": true,
+        "nix.serverPath": "nil",
+        "editor.formatOnSave": false
+      }
+    }
+  },
+  
+  // Lifecycle scripts
+  "postCreateCommand": "echo 'Dev container ready! Run: nix flake check'",
+  "postStartCommand": "sudo /nix/var/nix/profiles/default/bin/nix-daemon &",
+  
+  // Features to add (optional but useful)
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest"
+    }
+  },
+  
+  // Forward any ports you might need
+  "forwardPorts": [],
+  
+  // Environment variables
+  "remoteEnv": {
+    "PATH": "/nix/var/nix/profiles/default/bin:${containerEnv:PATH}"
+  }
+}

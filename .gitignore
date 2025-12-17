@@ -4,3 +4,16 @@ result-*
 
 # Ignore automatically generated direnv output
 .direnv
+
+# macOS
+.DS_Store
+
+# Vim
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Dev container
+.devcontainer/.env

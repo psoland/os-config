@@ -8,11 +8,15 @@
 
 	// Enable privileged mode and other settings required for systemd
 	"runArgs": [
+		"--name", "os_config_devcontainer",
 		"--privileged",
 		"--cgroupns=host",
 		"-v", "/sys/fs/cgroup:/sys/fs/cgroup:rw"
 	],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "curl -fsSL https://install.determinate.systems/nix | sh -s -- install --no-confirm"
+	"postCreateCommand": "curl -fsSL https://install.determinate.systems/nix | sh -s -- install --no-confirm",
+	"features": {
+		"ghcr.io/guiyomh/features/just:0": {}
+	}
 }

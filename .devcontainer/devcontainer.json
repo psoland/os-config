@@ -1,0 +1,23 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/ubuntu
+{
+	"name": "Ubuntu with systemd",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+
+	// Enable privileged mode and other settings required for systemd
+	"runArgs": [
+		"--name", "os_config_devcontainer",
+		"--privileged",
+		"--cgroupns=host",
+		"-v", "/sys/fs/cgroup:/sys/fs/cgroup:rw"
+	],
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+	"postCreateCommand": "curl -fsSL https://install.determinate.systems/nix | sh -s -- install --no-confirm",
+	"features": {
+		"ghcr.io/devcontainers/features/node:1": {},
+		"ghcr.io/guiyomh/features/just:0": {}
+	}
+}

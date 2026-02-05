@@ -110,7 +110,7 @@ chsh -s $(which zsh)
 
 - Syncthing web UI: `http://localhost:8384`
 - SSH is now restricted to Tailscale network only
-- Access via: `ssh username@tailscale-hostname`
+- Access via: `ssh psoland@<tailscale-hostname>`
 
 ## Implementation Plan
 

@@ -1,30 +1,34 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the
-// README at: https://github.com/devcontainers/templates/tree/main/src/ubuntu
 {
-	"name": "Ubuntu with systemd",
-	"build": {
-		"dockerfile": "Dockerfile"
-	},
+  "name": "Ubuntu 24.04 Test Environment",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
 
-	// Enable privileged mode and other settings required for systemd
-	"runArgs": [
-		"--name", "os_config_devcontainer",
-		"--privileged",
-		"--cgroupns=host",
-		"-v", "/sys/fs/cgroup:/sys/fs/cgroup:rw"
-	],
+  // Run as the psoland user (matches your actual server)
+  "remoteUser": "psoland",
 
-	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "curl -fsSL https://install.determinate.systems/nix | sh -s -- install --no-confirm",
-	"features": {
-		"ghcr.io/devcontainers/features/node:1": {},
-		"ghcr.io/guiyomh/features/just:0": {}
-	},
-	"customizations": {
-		"vscode": {
-			"extensions": [
-				"jnoortheen.nix-ide"
-			]
-		}
-	}
+  // Enable privileged mode for systemd (needed for user services like syncthing)
+  "runArgs": [
+    "--name", "os_config_devcontainer",
+    "--privileged",
+    "--cgroupns=host",
+    "-v", "/sys/fs/cgroup:/sys/fs/cgroup:rw"
+  ],
+
+  // Don't install anything automatically - this is a clean Ubuntu environment
+  // Run the bootstrap script manually to test the full setup flow
+  "postCreateCommand": "echo '\\n\\033[1;32m=== Clean Ubuntu 24.04 Environment Ready ===\\033[0m\\n\\nTo test the full setup:\\n\\n  1. Run the bootstrap script:\\n     ./bootstrap/ubuntu-vm.sh\\n\\n  2. Start a new shell (for Nix):\\n     exec bash\\n\\n  3. Apply home-manager:\\n     cd ~/os-config\\n     nix run home-manager/master -- switch --flake .#ubuntu-vm\\n\\n  4. Switch to zsh:\\n     chsh -s $(which zsh)\\n     exec zsh\\n\\nNote: Tailscale will show errors (expected in container)\\n'",
+
+  // VS Code extensions for Nix development
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "jnoortheen.nix-ide"
+      ],
+      "settings": {
+        "nix.enableLanguageServer": true,
+        "nix.serverPath": "nil"
+      }
+    }
+  }
 }

@@ -44,18 +44,16 @@
     in {
       # Home Manager configurations
       homeConfigurations = {
-        # Ubuntu VM configuration
+        # Ubuntu VM configuration (x86_64)
         # Usage: home-manager switch --flake .#ubuntu-vm
         "ubuntu-vm" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgsFor.x86_64-linux;
           modules = [
             ./hosts/ubuntu-vm
             {
-              # Set the home directory and username
-              # These can be overridden per-host
               home = {
-                username = "ubuntu";
-                homeDirectory = "/home/ubuntu";
+                username = "psoland";
+                homeDirectory = "/home/psoland";
               };
             }
           ];
@@ -71,8 +69,8 @@
             ./hosts/ubuntu-vm
             {
               home = {
-                username = "ubuntu";
-                homeDirectory = "/home/ubuntu";
+                username = "psoland";
+                homeDirectory = "/home/psoland";
               };
             }
           ];

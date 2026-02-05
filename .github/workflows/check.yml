@@ -1,0 +1,76 @@
+name: Nix Flake Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    name: Nix Flake Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Setup Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Check flake
+        run: nix flake check
+
+      - name: Check formatting
+        run: |
+          nix fmt -- --check .
+        continue-on-error: true
+
+  build:
+    name: Build Home Manager Configuration
+    runs-on: ubuntu-latest
+    needs: check
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Setup Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Build ubuntu-vm configuration
+        run: |
+          nix build .#homeConfigurations.ubuntu-vm.activationPackage --dry-run
+
+      - name: Build ubuntu-vm-arm configuration
+        run: |
+          nix build .#homeConfigurations.ubuntu-vm-arm.activationPackage --dry-run
+        continue-on-error: true  # ARM builds might not work on x86 runners
+
+  template:
+    name: Test DevShell Template
+    runs-on: ubuntu-latest
+    needs: check
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Setup Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Test devshell template
+        run: |
+          mkdir -p /tmp/test-project
+          cd /tmp/test-project
+          nix flake init -t $GITHUB_WORKSPACE#devshell
+          nix flake check

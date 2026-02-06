@@ -9,7 +9,7 @@
 
   // Enable privileged mode for systemd (needed for user services like syncthing)
   "runArgs": [
-    "--name", "os_config_devcontainer",
+//    "--name", "os_config_devcontainer",
     "--privileged",
     "--cgroupns=host",
     "-v", "/sys/fs/cgroup:/sys/fs/cgroup:rw"

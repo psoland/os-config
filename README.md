@@ -104,13 +104,25 @@ nix run home-manager/master -- switch --flake .#ubuntu-vm
 chsh -s $(which zsh)
 ```
 
-5. **Reboot or log out/in** to apply all changes
+5. **(Optional) Create psoland user:**
+
+If you want to use a dedicated `psoland` user instead of `ubuntu`:
+
+```bash
+~/os-config/bootstrap/create-psoland-user.sh
+sudo su - psoland
+# Then apply home-manager as psoland:
+cd ~/os-config
+nix run home-manager/master -- switch --flake .#psoland-vm
+```
+
+6. **Reboot or log out/in** to apply all changes
 
 ### Post-Install
 
 - Syncthing web UI: `http://localhost:8384`
 - SSH is now restricted to Tailscale network only
-- Access via: `ssh psoland@<tailscale-hostname>`
+- Access via: `ssh ubuntu@<tailscale-hostname>` or `ssh psoland@<tailscale-hostname>`
 
 ## Implementation Plan
 
@@ -213,6 +225,29 @@ chsh -s $(which zsh)
 | Shell config | Fully Nix-managed | Single source of truth, no configuration drift |
 | Syncthing | User service | Simpler permissions, consistent across platforms |
 | SSH access | Tailscale-only | Zero-trust security, no exposed ports |
+
+## Available Configurations
+
+The flake provides multiple home-manager configurations for different scenarios:
+
+| Configuration | User | Platform | Use Case |
+|--------------|------|----------|----------|
+| `ubuntu-vm` | ubuntu | x86_64-linux | Default Oracle Cloud user on AMD64 |
+| `psoland-vm` | psoland | x86_64-linux | Dedicated user on AMD64 |
+| `ubuntu-vm-arm` | ubuntu | aarch64-linux | Default user on ARM64 (Graviton, etc.) |
+| `psoland-vm-arm` | psoland | aarch64-linux | Dedicated user on ARM64 |
+
+### Switching Users
+
+To apply configuration for a specific user:
+
+```bash
+# For ubuntu user (default on Oracle Cloud)
+home-manager switch --flake .#ubuntu-vm
+
+# For psoland user
+home-manager switch --flake .#psoland-vm
+```
 
 ## Usage
 

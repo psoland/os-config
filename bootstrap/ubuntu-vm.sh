@@ -276,6 +276,36 @@ LOCKDOWN_EOF
     log_success "Lockdown script created at $script_path"
 }
 
+# Create psoland user with SSH access
+create_psoland_user() {
+    log_info "Creating psoland user with SSH access..."
+    
+    if id -u psoland &>/dev/null; then
+        log_info "User psoland already exists, skipping creation"
+        return
+    fi
+    
+    # Create user
+    sudo useradd -m -s /bin/bash -u 1001 psoland
+    
+    # Add to sudoers
+    echo "psoland ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/psoland
+    sudo chmod 0440 /etc/sudoers.d/psoland
+    
+    # Enable lingering for user services
+    sudo mkdir -p /var/lib/systemd/linger
+    sudo touch /var/lib/systemd/linger/psoland
+    
+    # Create XDG_RUNTIME_DIR
+    sudo mkdir -p /run/user/1001
+    sudo chown psoland:psoland /run/user/1001
+    sudo chmod 700 /run/user/1001
+    
+    log_success "Created user psoland"
+    log_info "NOTE: Set a password for psoland with: sudo passwd psoland"
+    log_info "Or copy SSH keys from ubuntu user: sudo cp -r /home/ubuntu/.ssh /home/psoland/ && sudo chown -R psoland:psoland /home/psoland/.ssh"
+}
+
 # Print next steps
 print_next_steps() {
     echo ""
@@ -294,17 +324,23 @@ print_next_steps() {
     echo "3. Verify Tailscale connectivity from another device:"
     echo "   ssh $USER@\$(tailscale ip -4)"
     echo ""
-    echo "4. Apply Home Manager configuration:"
+    echo "4. (Optional) Create psoland user for SSH access:"
+    echo "   ~/os-config/bootstrap/create-psoland-user.sh"
+    echo "   sudo passwd psoland  # Set password"
+    echo ""
+    echo "5. Apply Home Manager configuration:"
     echo "   cd ~/os-config"
     echo "   nix run home-manager/master -- switch --flake .#ubuntu-vm"
+    echo "   # OR for psoland user:"
+    echo "   # nix run home-manager/master -- switch --flake .#psoland-vm"
     echo ""
-    echo "5. Set ZSH as default shell:"
+    echo "6. Set ZSH as default shell:"
     echo "   chsh -s \$(which zsh)"
     echo ""
-    echo "6. Lock down SSH to Tailscale only (AFTER verifying Tailscale works):"
+    echo "7. Lock down SSH to Tailscale only (AFTER verifying Tailscale works):"
     echo "   ~/os-config/bootstrap/lockdown-ssh.sh"
     echo ""
-    echo "7. Log out and back in to apply all changes"
+    echo "8. Log out and back in to apply all changes"
     echo ""
     echo -e "${YELLOW}IMPORTANT: Don't run the lockdown script until you've verified${NC}"
     echo -e "${YELLOW}SSH access works via Tailscale IP!${NC}"
@@ -330,6 +366,7 @@ main() {
     install_nix
     clone_repo
     create_lockdown_script
+    create_psoland_user
     print_next_steps
 }
 

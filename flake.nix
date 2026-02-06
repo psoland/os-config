@@ -44,9 +44,27 @@
     in {
       # Home Manager configurations
       homeConfigurations = {
-        # Ubuntu VM configuration (x86_64)
+        # Ubuntu VM configuration for ubuntu user (x86_64)
         # Usage: home-manager switch --flake .#ubuntu-vm
         "ubuntu-vm" = home-manager.lib.homeManagerConfiguration {
+          pkgs = nixpkgsFor.x86_64-linux;
+          modules = [
+            ./hosts/ubuntu-vm
+            {
+              home = {
+                username = "ubuntu";
+                homeDirectory = "/home/ubuntu";
+              };
+            }
+          ];
+          extraSpecialArgs = {
+            inherit self;
+          };
+        };
+
+        # Ubuntu VM configuration for psoland user (x86_64)
+        # Usage: home-manager switch --flake .#psoland-vm
+        "psoland-vm" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgsFor.x86_64-linux;
           modules = [
             ./hosts/ubuntu-vm
@@ -62,8 +80,25 @@
           };
         };
 
-        # ARM64 Ubuntu VM (e.g., AWS Graviton, Oracle Cloud ARM)
+        # ARM64 Ubuntu VM for ubuntu user
         "ubuntu-vm-arm" = home-manager.lib.homeManagerConfiguration {
+          pkgs = nixpkgsFor.aarch64-linux;
+          modules = [
+            ./hosts/ubuntu-vm
+            {
+              home = {
+                username = "ubuntu";
+                homeDirectory = "/home/ubuntu";
+              };
+            }
+          ];
+          extraSpecialArgs = {
+            inherit self;
+          };
+        };
+
+        # ARM64 Ubuntu VM for psoland user
+        "psoland-vm-arm" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgsFor.aarch64-linux;
           modules = [
             ./hosts/ubuntu-vm

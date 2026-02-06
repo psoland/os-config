@@ -1,9 +1,8 @@
-# Ubuntu 24.04 (Noble) - Matches Oracle Cloud Ubuntu VM
-# This container provides a clean Ubuntu environment to test the bootstrap script
+# Ubuntu 24.04 (Noble) - Matches Oracle Cloud Ubuntu VM with psoland user
+# This container provides an Ubuntu environment with both ubuntu and psoland users
 FROM ubuntu:noble
 
-# Install only the absolute minimum needed for a fresh Ubuntu VM
-# This mirrors what you'd have on a fresh cloud VM
+# Install packages needed for bootstrap and SSH testing
 RUN apt-get update && \
     apt-get install -y \
     systemd \
@@ -13,6 +12,8 @@ RUN apt-get update && \
     wget \
     ca-certificates \
     locales \
+    lsb-release \
+    openssh-server \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -22,23 +23,28 @@ ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
 
-# Create user 'psoland' to match your actual server setup
-# UID 1000 is typical for first non-root user on Ubuntu
-RUN useradd -m -s /bin/bash -u 1000 psoland && \
+# Ensure ubuntu user has proper shell and sudo (matches Oracle Cloud default)
+RUN usermod -s /bin/bash ubuntu && \
+    echo "ubuntu ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/ubuntu && \
+    chmod 0440 /etc/sudoers.d/ubuntu
+
+# Create psoland user for SSH access
+RUN useradd -m -s /bin/bash -u 1001 psoland && \
     echo "psoland ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/psoland && \
     chmod 0440 /etc/sudoers.d/psoland
 
 # Create necessary directories for systemd user services
 RUN mkdir -p /run/user/1000 && \
-    chown psoland:psoland /run/user/1000 && \
-    chmod 700 /run/user/1000
+    chown ubuntu:ubuntu /run/user/1000 && \
+    chmod 700 /run/user/1000 && \
+    mkdir -p /run/user/1001 && \
+    chown psoland:psoland /run/user/1001 && \
+    chmod 700 /run/user/1001
 
-# Enable lingering for user services (like syncthing)
+# Enable lingering for user services
 RUN mkdir -p /var/lib/systemd/linger && \
+    touch /var/lib/systemd/linger/ubuntu && \
     touch /var/lib/systemd/linger/psoland
-
-# Set XDG_RUNTIME_DIR for user services
-ENV XDG_RUNTIME_DIR=/run/user/1000
 
 # Set systemd as the entrypoint
 STOPSIGNAL SIGRTMIN+3

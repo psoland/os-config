@@ -4,8 +4,8 @@
     "dockerfile": "Dockerfile"
   },
 
-  // Run as the psoland user (matches your actual server)
-  "remoteUser": "psoland",
+  // Run as the ubuntu user (matches Oracle Cloud default)
+  "remoteUser": "ubuntu",
 
   // Enable privileged mode for systemd (needed for user services like syncthing)
   "runArgs": [
@@ -16,8 +16,7 @@
   ],
 
   // Don't install anything automatically - this is a clean Ubuntu environment
-  // Run the bootstrap script manually to test the full setup flow
-  "postCreateCommand": "echo '\\n\\033[1;32m=== Clean Ubuntu 24.04 Environment Ready ===\\033[0m\\n\\nTo test the full setup:\\n\\n  1. Run the bootstrap script:\\n     ./bootstrap/ubuntu-vm.sh\\n\\n  2. Start a new shell (for Nix):\\n     exec bash\\n\\n  3. Apply home-manager:\\n     cd ~/os-config\\n     nix run home-manager/master -- switch --flake .#ubuntu-vm\\n\\n  4. Switch to zsh:\\n     chsh -s $(which zsh)\\n     exec zsh\\n\\nNote: Tailscale will show errors (expected in container)\\n'",
+  "postCreateCommand": "echo '\\n\\033[1;32m=== Clean Ubuntu 24.04 Environment Ready ===\\033[0m\\n\\nTwo users available:\\n  - ubuntu (default, UID 1000) - matches Oracle Cloud\\n  - psoland (UID 1001) - dedicated user with SSH access\\n\\nTo test the setup:\\n\\n  1. Run the bootstrap script:\\n     ./bootstrap/ubuntu-vm.sh\\n\\n  2. Start a new shell (for Nix):\\n     exec bash\\n\\n  3. Apply home-manager:\\n     cd ~/os-config\\n     nix run home-manager/master -- switch --flake .#ubuntu-vm\\n     # OR for psoland: nix run home-manager/master -- switch --flake .#psoland-vm\\n\\n  4. Switch to zsh:\\n     chsh -s $(which zsh)\\n     exec zsh\\n\\nNote: Tailscale will show errors (expected in container)\\n'",
 
   // VS Code extensions for Nix development
   "customizations": {

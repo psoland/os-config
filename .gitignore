@@ -7,3 +7,5 @@ result-*
 
 # Inspiration repos (keep local only)
 inspiration/
+
+.DS_Store

@@ -28,6 +28,20 @@
     gh
     #code-server
     #lazyvim
+    (writeShellScriptBin "syncapply" ''
+      set -euo pipefail
+      cd "$HOME/.dotfiles"
+      git pull --rebase
+
+      arch="$(uname -m)"
+      case "$arch" in
+        aarch64|arm64) flake="psoland-vm-arm" ;;
+        *) flake="psoland-vm" ;;
+      esac
+
+      nix build ".#homeConfigurations.''${flake}.activationPackage"
+      ./result/activate
+    '')
     (writeShellScriptBin "tdl" (builtins.readFile ./tdl.sh))
   ];
 

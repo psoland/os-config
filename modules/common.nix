@@ -20,6 +20,7 @@
     jq
     lazygit
     lazysql
+    lazydocker
     devpod
     opencode
     syncthing

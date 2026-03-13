@@ -4,6 +4,20 @@ set -e
 echo "Starting ubuntu bootstrap"
 
 USERNAME="psoland"
+ARCH="$(uname -m)"
+
+case "$ARCH" in
+  x86_64)
+    HOME_MANAGER_FLAKE="psoland-vm"
+    ;;
+  aarch64 | arm64)
+    HOME_MANAGER_FLAKE="psoland-vm-arm"
+    ;;
+  *)
+    echo "Warning: Unknown architecture '$ARCH'. Falling back to psoland-vm."
+    HOME_MANAGER_FLAKE="psoland-vm"
+    ;;
+esac
 
 # 1. Update system and install system tools
 apt-get update && apt-get upgrade -y
@@ -73,5 +87,10 @@ else
   echo "Nix is already installed"
 fi
 
+# 8. Apply Home Manager configuration for the created user
+echo "Applying Home Manager config '$HOME_MANAGER_FLAKE' for '$USERNAME'.."
+su - "$USERNAME" -c "HOME_MANAGER_FLAKE=\"$HOME_MANAGER_FLAKE\" DOTFILES_DIR=\"$DOTFILES_DIR\" bash -lc '. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh 2>/dev/null || true; . /etc/profile.d/nix.sh 2>/dev/null || true; export PATH=/nix/var/nix/profiles/default/bin:\$PATH; cd \"\$DOTFILES_DIR\"; nix run home-manager/master -- switch --flake .#\$HOME_MANAGER_FLAKE'"
+
 echo "Ubuntu bootstrap is complete"
-echo "You can now sign out and sign in as '$USERNAME'"
+echo "Next (manual): sudo tailscale up"
+echo "Then sign out and sign in as '$USERNAME'"

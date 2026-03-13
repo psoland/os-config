@@ -43,10 +43,12 @@ os-config/
 7. Adds UFW allow rules for OpenSSH and mosh ports
 8. Clones this repo to `/home/psoland/.dotfiles`
 9. Installs Nix (Determinate Systems installer) if missing
+10. Applies Home Manager automatically (`.#psoland-vm` on x86_64, `.#psoland-vm-arm` on ARM)
 
 Notes:
 - UFW rules are added, but UFW is not enabled automatically.
 - Repo path after bootstrap is `~/.dotfiles` for `psoland`.
+- `tailscale up` is intentionally left as a manual final step because it requires interactive auth.
 
 ## Quick Start
 
@@ -82,20 +84,20 @@ sudo tailscale up
 sudo su - psoland
 ```
 
-3. Apply Home Manager config:
+3. Log out/in (or reboot) to pick up shell/session changes.
+
+Home Manager is already applied by bootstrap. Re-run manually only if needed:
 
 ```bash
 cd ~/.dotfiles
 nix run home-manager/master -- switch --flake .#psoland-vm
 ```
 
-Use this on ARM instances instead:
+On ARM instances:
 
 ```bash
 nix run home-manager/master -- switch --flake .#psoland-vm-arm
 ```
-
-4. Log out/in (or reboot) to pick up shell/session changes.
 
 ## Home Manager Configurations
 

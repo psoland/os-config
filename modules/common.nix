@@ -24,6 +24,8 @@
     devpod
     opencode
     syncthing
+    bitwarden-cli
+    gh
     #code-server
     #lazyvim
     (writeShellScriptBin "tdl" (builtins.readFile ./tdl.sh))

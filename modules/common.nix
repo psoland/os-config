@@ -46,9 +46,9 @@
   # Git setup
   programs.git = {
     enable = true;
-    userName = "Petter Søland";
-    userEmail = "petter.soland@gmail.com";
-    extraConfig = {
+    settings = {
+      user.name = "Petter Søland";
+      user.email = "petter.soland@gmail.com";
       init.defaultBranch = "main";
       pull.rebase = true;
       push.default = "current";

@@ -36,10 +36,12 @@
       grc = "git rebase --continue";
       gra = "git rebase --abort";
       grr = "git restore . && git clean -fd";
+
+      syncapply = "cd ~/.dotfiles && git pull --rebase && FLAKE=$([ \"$(uname -m)\" = \"aarch64\" ] || [ \"$(uname -m)\" = \"arm64\" ] && echo psoland-vm-arm || echo psoland-vm) && nix build .#homeConfigurations.${FLAKE}.activationPackage && ./result/activate";
     };
 
     # Injecting extra configs
-    initExtra = ''
+    initContent = ''
       source ${./zsh_functions.sh}
       source ${./zsh_wt.sh}
     '';

@@ -90,13 +90,15 @@ Home Manager is already applied by bootstrap. Re-run manually only if needed:
 
 ```bash
 cd ~/.dotfiles
-nix run home-manager/master -- switch --flake .#psoland-vm
+nix build .#homeConfigurations.psoland-vm.activationPackage
+./result/activate
 ```
 
 On ARM instances:
 
 ```bash
-nix run home-manager/master -- switch --flake .#psoland-vm-arm
+nix build .#homeConfigurations.psoland-vm-arm.activationPackage
+./result/activate
 ```
 
 ## Home Manager Configurations
@@ -113,13 +115,29 @@ nix run home-manager/master -- switch --flake .#psoland-vm-arm
 ```bash
 cd ~/.dotfiles
 nix flake update
-nix run home-manager/master -- switch --flake .#psoland-vm
+nix build .#homeConfigurations.psoland-vm.activationPackage
+./result/activate
 ```
 
 ### Use the devshell template in another project
 
 ```bash
 nix flake init -t github:psoland/os-config#devshell
+```
+
+### VM sync-and-apply alias
+
+This repo defines a zsh alias named `syncapply` that:
+1. goes to `~/.dotfiles`
+2. pulls latest changes with rebase
+3. auto-detects x86_64 vs ARM
+4. builds the correct Home Manager activation package
+5. activates it
+
+Usage:
+
+```bash
+syncapply
 ```
 
 ## Troubleshooting
@@ -136,7 +154,8 @@ nix --version
 
 ```bash
 cd ~/.dotfiles
-nix run home-manager/master -- switch --flake .#psoland-vm --show-trace
+nix build .#homeConfigurations.psoland-vm.activationPackage --show-trace
+./result/activate
 ```
 
 ### SSH or firewall issues

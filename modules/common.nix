@@ -54,6 +54,7 @@
       init.defaultBranch = "main";
       pull.rebase = true;
       push.default = "current";
+      credential.helper = "!${pkgs.gh}/bin/gh auth git-credential";
     };
   };
 

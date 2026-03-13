@@ -1,7 +1,7 @@
 { ... }:
 
 {
- # Zsh setp
+ # Zsh setup
   programs.zsh = {
     enable = true;
     enableCompletion = true;

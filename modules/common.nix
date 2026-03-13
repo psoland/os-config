@@ -3,14 +3,14 @@
 
 {
   
-  imports =[
+  imports = [
     ./tmux.nix
     ./zsh.nix
     ./starship.nix
   ];
 
   # Packages that should be installed in all systems
-  home.packages = with pkgs;[
+  home.packages = with pkgs; [
     mosh
     htop
     fastfetch

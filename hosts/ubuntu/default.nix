@@ -6,12 +6,10 @@
     ../../modules/common.nix
   ]; 
 
-  home.username = "psoland";
-  home.homeDirectory = "/home/psoland";
-  home.stateVersion= = "25.11"
+  home.stateVersion= "25.11";
 
-  home.packages = with pkgs;[
+  home.packages = with pkgs; [
     dockerCompose
-  ]
+  ];
 
 }

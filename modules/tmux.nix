@@ -9,7 +9,7 @@
     baseIndex = 1;
     clock24 = true;
 
-    plugins = with pkgs.tmuxPlugins;[
+    plugins = with pkgs.tmuxPlugins; [
       vim-tmux-navigator
       cpu
       catppuccin

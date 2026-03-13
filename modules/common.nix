@@ -25,6 +25,7 @@
     syncthing
     #code-server
     #lazyvim
+    (writeShellScriptBin "tdl" (builtins.readFile ./tdl.sh))
   ];
 
   programs.direnv = {

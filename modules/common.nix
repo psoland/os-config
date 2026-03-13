@@ -2,7 +2,7 @@
 { pkgs, ... }:
 
 {
-  # Pakker du ALLTID vil ha, på tvers av alle operativsystemer
+  # Packages that should be installed in all systems
   home.packages = with pkgs;[
     mosh
     htop
@@ -18,7 +18,7 @@
     syncthing
   ];
 
-  # Git-oppsettet ditt er likt overalt
+  # Git setup
   programs.git = {
     enable = true;
     userName = "Petter Søland";
@@ -30,7 +30,7 @@
     };
   };
 
-  # Zsh-oppsettet ditt
+  # Zsh setp
   programs.zsh = {
     enable = true;
     enableCompletion = true;
@@ -48,6 +48,6 @@
     #};
   };
 
-  # Home Manager må alltid kunne oppdatere seg selv
+  # Home Manager needs to be able to update itself
   programs.home-manager.enable = true;
 }

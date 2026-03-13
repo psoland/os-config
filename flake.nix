@@ -49,7 +49,7 @@
         "psoland-vm" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgsFor.x86_64-linux;
           modules = [
-            ./hosts/ubuntu-vm
+            ./hosts/ubuntu
             {
               home = {
                 username = "psoland";
@@ -66,7 +66,7 @@
         "psoland-vm-arm" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgsFor.aarch64-linux;
           modules = [
-            ./hosts/ubuntu-vm
+            ./hosts/ubuntu
             {
               home = {
                 username = "psoland";

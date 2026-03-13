@@ -19,12 +19,12 @@
     fd
     jq
     lazygit
-    #lazyvim
     lazysql
     devpod
     opencode
     syncthing
     #code-server
+    #lazyvim
   ];
 
   programs.direnv = {
@@ -69,7 +69,7 @@
     icons = "auto";
   };
 
-   # Start syncthing
+  # Start syncthing
   services.syncthing = {
     enable = true;
   };

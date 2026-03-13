@@ -44,11 +44,6 @@
       source ${./zsh_wt.sh}
     '';
 
-    #oh-my-zsh = {
-    #  enable = true;
-    #  plugins =[ "git" "docker" "sudo" ];
-    #  theme = "robbyrussell";
-    #};
   };
 
 }

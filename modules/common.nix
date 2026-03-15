@@ -30,6 +30,7 @@
     gh
     sysstat
     bc
+    gawk
     #code-server
     #lazyvim
 

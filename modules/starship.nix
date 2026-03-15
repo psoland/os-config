@@ -7,6 +7,7 @@
     settings = {
       # Use the Catppuccin Mocha palette
       palette = "catppuccin_mocha";
+      add_newline = false;
 
       palettes.catppuccin_mocha = {
         rosewater = "#f5e0dc";

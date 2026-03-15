@@ -45,6 +45,9 @@
       ./result/activate
     '')
     (writeShellScriptBin "tdl" (builtins.readFile ./tdl.sh))
+    (writeShellScriptBin "pi" ''
+    exec ${nodejs}/bin/npx -y @mariozechner/pi-coding-agent@latest "$@"
+    '')
   ];
 
   programs.direnv = {

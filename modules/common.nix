@@ -72,8 +72,7 @@
 
     # Pi-coding-agent
     (writeShellScriptBin "pi" ''
-    export PATH="${pkgs.nodejs}/bin:$PATH"
-    exec npx --loglevel error -y -p @mariozechner/pi-coding-agent@latest pi "$@"
+    exec ${nodejs}/bin/npx -y @mariozechner/pi-coding-agent@latest "$@"
     '')
   ];
 

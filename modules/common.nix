@@ -30,6 +30,8 @@
     gh
     #code-server
     #lazyvim
+
+    # Fetch and apply changes
     (writeShellScriptBin "syncapply" ''
       set -euo pipefail
       cd "$HOME/.dotfiles"
@@ -44,7 +46,28 @@
       nix build ".#homeConfigurations.''${flake}.activationPackage"
       ./result/activate
     '')
+
+    # Apply changes
+    (writeShellScriptBin "apply" ''
+      set -euo pipefail
+      cd "$HOME/.dotfiles"
+
+      git add .
+
+      arch="$(uname -m)"
+      case "$arch" in
+        aarch64|arm64) flake="psoland-vm-arm" ;;
+        *) flake="psoland-vm" ;;
+      esac
+
+      nix build ".#homeConfigurations.''${flake}.activationPackage"
+      ./result/activate
+    '')
+
+    # Tmux developer layout
     (writeShellScriptBin "tdl" (builtins.readFile ./tdl.sh))
+
+    # Pi-coding-agent
     (writeShellScriptBin "pi" ''
     exec ${nodejs}/bin/npx -y @mariozechner/pi-coding-agent@latest "$@"
     '')

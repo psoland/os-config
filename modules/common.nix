@@ -28,6 +28,8 @@
     syncthing
     bitwarden-cli
     gh
+    sysstat
+    bc
     #code-server
     #lazyvim
 

@@ -9,6 +9,8 @@
     ./starship.nix
   ];
 
+  home.file.".terminfo".source = "${pkgs.ghostty.terminfo}/share/terminfo";
+
   # Packages that should be installed in all systems
   home.packages = with pkgs; [
     mosh

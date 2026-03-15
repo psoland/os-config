@@ -9,12 +9,6 @@
     baseIndex = 1;
     clock24 = true;
 
-    plugins = with pkgs.tmuxPlugins; [
-      vim-tmux-navigator
-      cpu
-      catppuccin
-    ];
-
     extraConfig = ''
       # --- Standard settings ---
       set -g set-clipboard on
@@ -46,24 +40,36 @@
       bind-key -r -T prefix S-Right resize-pane -R 5
       bind-key -r -T prefix S-Up resize-pane -U 5
       bind-key -r -T prefix S-Down resize-pane -D 5
+   '';
 
-      # --- Catppuccin Theme Config ---
-      set -g @catppuccin_flavor "mocha"
-      set -g @catppuccin_window_status_style "rounded"
+    plugins = with pkgs.tmuxPlugins; [
+      vim-tmux-navigator
+      {
+        plugin = catppuccin;
+        extraConfig = ''
+          # --- Catppuccin Theme Config ---
+          set -g @catppuccin_flavor "mocha"
+          set -g @catppuccin_window_status_style "rounded"
 
-      set -g @catppuccin_window_default_text "#W"
-      set -g @catppuccin_window_text "#W"
-      set -g @catppuccin_window_current_text "#W"
+          set -g @catppuccin_window_default_text "#W"
+          set -g @catppuccin_window_text "#W"
+          set -g @catppuccin_window_current_text "#W"
+        '';
+      }
+      {
+        plugin = cpu
+        extraConfig = ''
+          # Make the status line pretty
+          set -g status-right-length 100
+          set -g status-left-length 100
+          set -g status-left ""
 
-      # Make the status line pretty
-      set -g status-right-length 100
-      set -g status-left-length 100
-      set -g status-left ""
-      
-      set -g status-right "#{E:@catppuccin_status_directory}"
-      set -agF status-right "#{E:@catppuccin_status_cpu}"
-      set -ag status-right "#{E:@catppuccin_status_session}"
-    '';
+          set -g status-right "#{E:@catppuccin_status_directory}"
+          set -agF status-right "#{E:@catppuccin_status_cpu}"
+          set -ag status-right "#{E:@catppuccin_status_session}"
+        '';
+      }
+    ];
   };
 
 }

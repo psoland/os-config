@@ -57,7 +57,7 @@
         '';
       }
       {
-        plugin = cpu
+        plugin = cpu;
         extraConfig = ''
           # Make the status line pretty
           set -g status-right-length 100

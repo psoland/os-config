@@ -17,6 +17,10 @@
       set-option -g renumber-windows on
       setw -g aggressive-resize on
 
+      # --- Colors ---
+      set -g default-terminal "tmux-256color"
+      set -ag terminal-overrides ",*:RGB"
+
       # --- Keybinds ---
       unbind r
       bind r source-file ~/.tmux.conf

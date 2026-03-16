@@ -1,0 +1,57 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "theme": "catppuccin",
+  // "small_model": "azure/gpt-5-mini",
+  // "permission": {
+  //   "bash": {
+  //     "alembic *": "deny",
+  //     "just *": "deny",
+  //     "uv run alembic *": "deny",
+  //     "python * alembic *": "deny",
+  //     "python -c *alembic*": "deny",
+  //     "docker exec * alembic *": "deny",
+  //     "docker run * alembic *": "deny",
+  //     "*alembic*": "deny",
+  //     "*": "allow"
+  //   },
+  //   "edit": "allow"
+  // },
+  // "provider": {
+  //   "azure": {
+  //   }
+  // },
+  //  "agent": {
+  //      "code-reviewer": {
+  //        "description": "Reviews code for best practices and potential issues",
+  //        "model": "azure/gpt-5.2-codex",
+  //        "prompt": "{file:./prompts/review.md}",
+  //        "tools": {
+  //          "write": false,
+  //          "edit": false
+  //      }
+  //  }
+  //},
+  "permission": {
+    "skill": {
+      "*": "allow",
+      "better-auth-*": "allow",
+      "experimental-*": "ask",
+      // "web-design-guidlines": "deny"
+    }
+  },
+  "mcp": {
+    "playwright": {
+      "type": "local",
+      "command": [
+        "npx",
+        "@playwright/mcp@latest"
+      ],
+      "enabled": false
+    },
+    "shadcn": {
+      "type": "local",
+      "command": ["npx", "shadcn@latest", "mcp"],
+      "enabled": false
+    }
+  }
+}

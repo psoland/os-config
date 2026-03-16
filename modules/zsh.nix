@@ -21,6 +21,11 @@
       ll = "eza -la --icons";
       cx = "claude --dangerously-skip-permissions";
 
+      # Tmux
+      t = "tmux a";
+      tn = "tmux";
+      tl = "tmux ls";
+
       # Git
       gco = "git checkout";
       gb  = "git branch";

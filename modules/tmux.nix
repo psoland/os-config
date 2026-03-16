@@ -15,6 +15,7 @@
       set -g allow-passthrough on
       set-option -g status-position top
       set-option -g renumber-windows on
+      setw -g aggressive-resize on
 
       # --- Keybinds ---
       unbind r

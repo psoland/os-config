@@ -79,7 +79,7 @@
   ];
 
   # Configs from config folder
-  xdg.configFile."opencode/config.yml".source = ../config/opencode/config.yml;
+  xdg.configFile."opencode/opencode.jsonc".source = ../config/opencode/opencode.jsonc;
   
   # Other configs
   programs.direnv = {

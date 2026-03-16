@@ -25,6 +25,7 @@
     lazydocker
     devpod
     opencode
+    claude-code
     syncthing
     bitwarden-cli
     gh

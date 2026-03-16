@@ -7,6 +7,7 @@
     ./tmux.nix
     ./zsh.nix
     ./starship.nix
+    ./nvim.nix
   ];
 
   home.file.".terminfo".source = "${pkgs.ghostty.terminfo}/share/terminfo";
@@ -29,6 +30,8 @@
     syncthing
     bitwarden-cli
     gh
+
+    nodejs
 
     #code-server
     #lazyvim
@@ -75,6 +78,10 @@
     '')
   ];
 
+  # Configs from config folder
+  xdg.configFile."opencode/config.yml".source = ../config/opencode/config.yml;
+  
+  # Other configs
   programs.direnv = {
     enable = true;
     enableZshIntegration = true;
@@ -82,12 +89,12 @@
   };
 
   # Neovim setup (You can install LazyVim normally in ~/.config/nvim)
-  programs.neovim = {
-    enable = true;
-    defaultEditor = true;
-    viAlias = true;
-    vimAlias = true;
-  };
+#  programs.neovim = {
+#    enable = true;
+#    defaultEditor = true;
+#    viAlias = true;
+#    vimAlias = true;
+#  };
 
   # Git setup
   programs.git = {

@@ -1,9 +1,5 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "theme": "catppuccin",
-  "keybinds": {
-    "app_exit": "<leader>q"
-  },
   // "small_model": "azure/gpt-5-mini",
   // "permission": {
   //   "bash": {

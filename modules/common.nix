@@ -80,6 +80,7 @@
 
   # Configs from config folder
   xdg.configFile."opencode/opencode.json".source = ../config/opencode/opencode.json;
+  xdg.configFile."opencode/tui.json".source = ../config/opencode/tui.json;
   
   # Other configs
   programs.direnv = {

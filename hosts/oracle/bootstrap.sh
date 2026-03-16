@@ -1,22 +1,27 @@
 #!/bin/bash
 set -e
 
+if [ "$(uname -s)" != "Linux" ]; then
+  echo "Error: This script is only meant for Linux."
+  exit 1
+
+fi
 echo "Starting ubuntu bootstrap"
 
 USERNAME="psoland"
 ARCH="$(uname -m)"
 
 case "$ARCH" in
-  x86_64)
-    HOME_MANAGER_FLAKE="psoland-vm"
-    ;;
-  aarch64 | arm64)
-    HOME_MANAGER_FLAKE="psoland-vm-arm"
-    ;;
-  *)
-    echo "Warning: Unknown architecture '$ARCH'. Falling back to psoland-vm."
-    HOME_MANAGER_FLAKE="psoland-vm"
-    ;;
+x86_64)
+  HOME_MANAGER_FLAKE="psoland-vm"
+  ;;
+aarch64 | arm64)
+  HOME_MANAGER_FLAKE="psoland-vm-arm"
+  ;;
+*)
+  echo "Warning: Unknown architecture '$ARCH'. Falling back to psoland-vm."
+  HOME_MANAGER_FLAKE="psoland-vm"
+  ;;
 esac
 
 # 1. Update system and install system tools

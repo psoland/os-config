@@ -19,6 +19,7 @@
 
     shellAliases = {
       ll = "eza -la --icons";
+      cx = "claude --dangerously-skip-permissions";
 
       # Git
       gco = "git checkout";

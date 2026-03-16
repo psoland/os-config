@@ -22,7 +22,7 @@
       cx = "claude --dangerously-skip-permissions";
 
       # Tmux
-      t = "tmux a";
+      t = "tmux a || tmux new";
       tn = "tmux";
       tl = "tmux ls";
 

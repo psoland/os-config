@@ -31,8 +31,8 @@ function git_clone() {
   if [ -z "$1" ]; then
     echo "Error: You are missing the url"
     echo "Use: git_clone <url>"
+    return 1
   fi
-  return 1
 
   echo "Cloning $1 as a bare repo..."
   git clone --bare "$1" .bare

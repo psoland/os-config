@@ -23,8 +23,17 @@ function git_log() {
   git --no-pager log --reverse -n 10
 }
 
-# Override Oh-My-Zsh 'gl' alias with a custom function
-# unalias gl 2>/dev/null
 function gl() {
   git log --oneline --reverse -n "${1:-20}"
+}
+
+function git_clone() {
+  if [ -z "$1" ]; then
+    echo "Error: You are missing the url"
+    echo "Use: git_clone <url>"
+  fi
+  return 1
+
+  echo "Cloning $1 as a bare repo..."
+  git clone --bare "$1" .bare
 }

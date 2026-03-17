@@ -6,44 +6,48 @@ Declarative Ubuntu VM setup with:
 
 ## Current Scope
 
-- Primary target: Ubuntu (Oracle Cloud works fine)
-- User created/configured by bootstrap: `psoland`
-- Home Manager targets in this repo: `psoland-vm` and `psoland-vm-arm`
+- Primary targets: Oracle Ubuntu VMs and Spark DGX Ubuntu
+- User configured by bootstrap: `psoland`
+- Home Manager targets in this repo: `psoland-vm`, `psoland-vm-arm`, and `spark`
 
 ## Repository Layout
 
 ```
 os-config/
-├── bootstrap.sh                  # OS detector, dispatches Ubuntu bootstrap
 ├── flake.nix                     # Home Manager configs + template output
 ├── hosts/
-│   └── ubuntu/
-│       ├── bootstrap.sh          # Ubuntu system bootstrap (runs as root)
+│   ├── oracle/
+│   │   ├── bootstrap.sh          # Oracle Ubuntu bootstrap (runs as root)
+│   │   └── default.nix           # Host-specific HM module wiring
+│   └── spark/
+│       ├── bootstrap.sh          # Spark DGX bootstrap (runs as root)
 │       └── default.nix           # Host-specific HM module wiring
 ├── modules/
 │   ├── common.nix                # Shared packages and programs
 │   ├── zsh.nix
 │   ├── tmux.nix
-│   └── starship.nix
+│   ├── starship.nix
+│   └── nvim.nix
 └── templates/
     └── devshell/
         └── flake.nix
 ```
 
-## What Bootstrap Currently Does
+## Bootstrap Scripts
 
-`hosts/ubuntu/bootstrap.sh` performs these actions:
+Both bootstrap scripts follow the same core flow:
 
 1. Updates apt packages (`apt-get update && apt-get upgrade -y`)
-2. Installs `ufw`, `zsh`, and `git`
+2. Installs core tools (`ufw`, `zsh`, `git`)
 3. Installs Tailscale
 4. Installs Docker (official convenience script)
-5. Creates/configures `psoland` user with zsh + sudo + docker group
-6. Copies `/home/ubuntu/.ssh/authorized_keys` to `/home/psoland/.ssh/` (if present)
+5. Configures `psoland` user for zsh + docker (Oracle bootstrap creates user; Spark expects it to already exist)
+6. Oracle bootstrap copies `/home/ubuntu/.ssh/authorized_keys` to `/home/psoland/.ssh/` when present
 7. Adds UFW allow rules for OpenSSH and mosh ports
 8. Clones this repo to `/home/psoland/.dotfiles`
 9. Installs Nix (Determinate Systems installer) if missing
-10. Applies Home Manager automatically (`.#psoland-vm` on x86_64, `.#psoland-vm-arm` on ARM)
+10. Writes selected flake target to `~/.dotfiles/.hm-flake`
+11. Applies Home Manager automatically for that target
 
 Notes:
 - UFW rules are added, but UFW is not enabled automatically.
@@ -52,22 +56,26 @@ Notes:
 
 ## Quick Start
 
-Prerequisite:
-- You need at least one way to fetch the bootstrap: `curl` (for one-liner) or `git` (for clone workflow).
-- Most Ubuntu cloud images already include both, but minimal images may not.
+Run as root on the target machine.
 
-### Option A: One-liner from GitHub
+### Oracle Ubuntu VM
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/psoland/os-config/main/bootstrap.sh | bash
+curl -fsSL https://raw.githubusercontent.com/psoland/os-config/main/hosts/oracle/bootstrap.sh | sudo bash
 ```
 
-### Option B: Clone and run locally
+### Spark DGX Ubuntu
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/psoland/os-config/main/hosts/spark/bootstrap.sh | sudo bash
+```
+
+### Clone and run locally
 
 ```bash
 git clone https://github.com/psoland/os-config.git
 cd os-config
-bash bootstrap.sh
+sudo bash hosts/oracle/bootstrap.sh
 ```
 
 ## After Bootstrap
@@ -90,14 +98,16 @@ Home Manager is already applied by bootstrap. Re-run manually only if needed:
 
 ```bash
 cd ~/.dotfiles
-nix build .#homeConfigurations.psoland-vm.activationPackage
+nix build .#homeConfigurations.$(tr -d '\n' < ~/.dotfiles/.hm-flake).activationPackage
 ./result/activate
 ```
 
-On ARM instances:
+If `~/.dotfiles/.hm-flake` does not exist, use one of these explicitly:
 
 ```bash
+nix build .#homeConfigurations.psoland-vm.activationPackage
 nix build .#homeConfigurations.psoland-vm-arm.activationPackage
+nix build .#homeConfigurations.spark.activationPackage
 ./result/activate
 ```
 
@@ -107,6 +117,7 @@ nix build .#homeConfigurations.psoland-vm-arm.activationPackage
 |------|------|--------|
 | `psoland-vm` | `psoland` | `x86_64-linux` |
 | `psoland-vm-arm` | `psoland` | `aarch64-linux` |
+| `spark` | `psoland` | `aarch64-linux` |
 
 ## Common Operations
 
@@ -115,7 +126,7 @@ nix build .#homeConfigurations.psoland-vm-arm.activationPackage
 ```bash
 cd ~/.dotfiles
 nix flake update
-nix build .#homeConfigurations.psoland-vm.activationPackage
+nix build .#homeConfigurations.$(tr -d '\n' < ~/.dotfiles/.hm-flake).activationPackage
 ./result/activate
 ```
 
@@ -127,11 +138,11 @@ nix flake init -t github:psoland/os-config#devshell
 
 ### VM sync-and-apply alias
 
-This repo defines a zsh alias named `syncapply` that:
+This repo provides a `syncapply` command that:
 1. goes to `~/.dotfiles`
 2. pulls latest changes with rebase
-3. auto-detects x86_64 vs ARM
-4. builds the correct Home Manager activation package
+3. selects target in this order: `HOME_MANAGER_FLAKE` env var -> `~/.dotfiles/.hm-flake` -> architecture fallback
+4. builds the selected Home Manager activation package
 5. activates it
 
 Usage:
@@ -154,7 +165,7 @@ nix --version
 
 ```bash
 cd ~/.dotfiles
-nix build .#homeConfigurations.psoland-vm.activationPackage --show-trace
+nix build .#homeConfigurations.$(tr -d '\n' < ~/.dotfiles/.hm-flake).activationPackage --show-trace
 ./result/activate
 ```
 

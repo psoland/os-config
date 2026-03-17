@@ -44,12 +44,12 @@
     in {
       # Home Manager configurations
       homeConfigurations = {
-        # Ubuntu VM configuration for psoland user (x86_64)
+        # Oracle Ubuntu VM configuration for psoland user (x86_64)
         # Usage: home-manager switch --flake .#psoland-vm
         "psoland-vm" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgsFor.x86_64-linux;
           modules = [
-            ./hosts/ubuntu
+            ./hosts/oracle
             {
               home = {
                 username = "psoland";
@@ -62,11 +62,28 @@
           };
         };
 
-       # ARM64 Ubuntu VM for psoland user
+        # ARM64 Oracle Ubuntu VM for psoland user
         "psoland-vm-arm" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgsFor.aarch64-linux;
           modules = [
-            ./hosts/ubuntu
+            ./hosts/oracle
+            {
+              home = {
+                username = "psoland";
+                homeDirectory = "/home/psoland";
+              };
+            }
+          ];
+          extraSpecialArgs = {
+            inherit self;
+          };
+        };
+
+        # Spark DGX Ubuntu configuration for psoland user (aarch64)
+        "spark" = home-manager.lib.homeManagerConfiguration {
+          pkgs = nixpkgsFor.aarch64-linux;
+          modules = [
+            ./hosts/spark
             {
               home = {
                 username = "psoland";

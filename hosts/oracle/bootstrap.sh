@@ -68,8 +68,8 @@ fi
 
 # 6. Set up firewall (UFW)
 echo "Configuring firewall.."
-ufw allow OpenSSH
 ufw allow 60000:61000/udp #For Mosh
+ufw allow in on tailscale0 to any port 22
 # ufw --force enable #Uncomment this when you are certain SSH works
 
 # 7. Clone the dotfiles-repo for the user
@@ -84,6 +84,10 @@ else
   echo "Dotfiles-repo is already cloned"
 fi
 
+echo "$HOME_MANAGER_FLAKE" >"$DOTFILES_DIR/.hm-flake"
+chown "$USERNAME":"$USERNAME" "$DOTFILES_DIR/.hm-flake"
+
+# 8. Install Nix
 if ! command -v nix &>/dev/null; then
   echo "Installing Nix.."
   curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix |
@@ -92,7 +96,7 @@ else
   echo "Nix is already installed"
 fi
 
-# 8. Apply Home Manager configuration for the created user (pinned by flake.lock)
+# 9. Apply Home Manager configuration for the created user (pinned by flake.lock)
 echo "Applying Home Manager config '$HOME_MANAGER_FLAKE' for '$USERNAME'.."
 su - "$USERNAME" -c "HOME_MANAGER_FLAKE=\"$HOME_MANAGER_FLAKE\" DOTFILES_DIR=\"$DOTFILES_DIR\" bash -lc '. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh 2>/dev/null || true; . /etc/profile.d/nix.sh 2>/dev/null || true; export PATH=/nix/var/nix/profiles/default/bin:\$PATH; cd \"\$DOTFILES_DIR\"; nix build .#homeConfigurations.\$HOME_MANAGER_FLAKE.activationPackage; ./result/activate'"
 

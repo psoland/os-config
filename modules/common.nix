@@ -42,11 +42,17 @@
       cd "$HOME/.dotfiles"
       git pull --rebase
 
-      arch="$(uname -m)"
-      case "$arch" in
-        aarch64|arm64) flake="psoland-vm-arm" ;;
-        *) flake="psoland-vm" ;;
-      esac
+      flake="''${HOME_MANAGER_FLAKE:-}"
+      if [ -z "$flake" ] && [ -f "$HOME/.dotfiles/.hm-flake" ]; then
+        flake="$(tr -d '\n' < "$HOME/.dotfiles/.hm-flake")"
+      fi
+      if [ -z "$flake" ]; then
+        arch="$(uname -m)"
+        case "$arch" in
+          aarch64|arm64) flake="psoland-vm-arm" ;;
+          *) flake="psoland-vm" ;;
+        esac
+      fi
 
       nix build ".#homeConfigurations.''${flake}.activationPackage"
       ./result/activate
@@ -59,11 +65,17 @@
 
       git add .
 
-      arch="$(uname -m)"
-      case "$arch" in
-        aarch64|arm64) flake="psoland-vm-arm" ;;
-        *) flake="psoland-vm" ;;
-      esac
+      flake="''${HOME_MANAGER_FLAKE:-}"
+      if [ -z "$flake" ] && [ -f "$HOME/.dotfiles/.hm-flake" ]; then
+        flake="$(tr -d '\n' < "$HOME/.dotfiles/.hm-flake")"
+      fi
+      if [ -z "$flake" ]; then
+        arch="$(uname -m)"
+        case "$arch" in
+          aarch64|arm64) flake="psoland-vm-arm" ;;
+          *) flake="psoland-vm" ;;
+        esac
+      fi
 
       nix build ".#homeConfigurations.''${flake}.activationPackage"
       ./result/activate
@@ -88,14 +100,6 @@
     enableZshIntegration = true;
     nix-direnv.enable = true;
   };
-
-  # Neovim setup (You can install LazyVim normally in ~/.config/nvim)
-#  programs.neovim = {
-#    enable = true;
-#    defaultEditor = true;
-#    viAlias = true;
-#    vimAlias = true;
-#  };
 
   # Git setup
   programs.git = {

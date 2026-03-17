@@ -45,8 +45,8 @@ fi
 
 # 5. Set up firewall (UFW)
 echo "Configuring firewall.."
-ufw allow OpenSSH
 ufw allow 60000:61000/udp #For Mosh
+ufw allow in on tailscale0 to any port 22
 # ufw --force enable #Uncomment this when you are certain SSH works
 
 # 6. Clone the dotfiles-repo for the user
@@ -60,6 +60,9 @@ if [ ! -d "$DOTFILES_DIR" ]; then
 else
   echo "Dotfiles-repo is already cloned"
 fi
+
+echo "$HOME_MANAGER_FLAKE" >"$DOTFILES_DIR/.hm-flake"
+chown "$USERNAME":"$USERNAME" "$DOTFILES_DIR/.hm-flake"
 
 # 7. Install Nix
 if ! command -v nix &>/dev/null; then

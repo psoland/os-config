@@ -131,10 +131,7 @@
             ];
 
             shellHook = ''
-              echo "os-config development shell"
-              echo "Available commands:"
-              echo "  nix flake check     - Validate the flake"
-              echo "  nixpkgs-fmt .       - Format Nix files"
+              echo "direnv: loading..."
             '';
           };
         }

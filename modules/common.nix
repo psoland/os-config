@@ -107,6 +107,11 @@
       };
   };
 
+  # Hiding logs in direnv
+  home.sessionVariables = {
+      DIRENV_LOG_FORMAT = "";
+    };
+
   # Git setup
   programs.git = {
     enable = true;

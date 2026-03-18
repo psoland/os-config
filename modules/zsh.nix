@@ -21,6 +21,9 @@
       ll = "eza -la --icons";
       cx = "claude --dangerously-skip-permissions";
 
+      # Nix
+      init-dev = "nix flake init -t ~/.dotfiles#devshell";
+
       # Tmux
       t = "tmux a || tmux new";
       tn = "tmux";

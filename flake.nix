@@ -127,7 +127,8 @@
           default = pkgs.mkShell {
             buildInputs = with pkgs; [
               nixpkgs-fmt
-              nil # Nix LSP
+              nil
+              statix
             ];
 
             shellHook = ''

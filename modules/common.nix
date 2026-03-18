@@ -122,6 +122,12 @@
       pull.rebase = true;
       push.default = "current";
       credential.helper = "!${pkgs.gh}/bin/gh auth git-credential";
+      
+      url = {
+        "git@github.com:" = {
+          insteadOf = "https://github.com/";
+        };
+      };
     };
   };
 

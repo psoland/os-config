@@ -24,6 +24,9 @@
       # Nix
       init-dev = "nix flake init -t ~/.dotfiles#devshell";
 
+      # Neovim in current folder
+      v = "nvim .";
+
       # Tmux
       t = "tmux a || tmux new";
       tn = "tmux";

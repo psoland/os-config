@@ -8,6 +8,7 @@
     mouse = true;
     baseIndex = 1;
     clock24 = true;
+    escapeTime = 0;
 
     extraConfig = ''
       # --- Standard settings ---

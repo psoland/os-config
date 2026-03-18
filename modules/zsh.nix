@@ -27,6 +27,12 @@
       # Neovim in current folder
       v = "nvim .";
 
+      # Opencode server in Tmux
+      oc-start = "tmux has-session -t oc-serve 2>/dev/null || tmux new-session -d -s oc-serve 'opencode serve --hostname 0.0.0.0 --port 4090'";
+      oc-log = "tmux attach-session -t oc-serve";
+      oc-stop = "tmux kill-session -t oc-serve";
+
+
       # Tmux
       t = "tmux a || tmux new";
       tn = "tmux";

@@ -6,3 +6,4 @@ result-*
 .direnv
 .DS_Store
 inspiration/
+/repomix-output.xml

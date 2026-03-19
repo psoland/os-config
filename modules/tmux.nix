@@ -3,7 +3,7 @@
 {
   programs.tmux = {
     enable = true;
-    
+
     shortcut = "s"; # Prefix to Ctrl+S
     mouse = true;
     baseIndex = 1;
@@ -41,17 +41,17 @@
       bind-key R rename-window "#{b:pane_current_path}"
 
       # Pane resizing med Ctrl+arrow
-      bind-key -r -T prefix C-Left resize-pane -L
-      bind-key -r -T prefix C-Right resize-pane -R
-      bind-key -r -T prefix C-Up resize-pane -U
-      bind-key -r -T prefix C-Down resize-pane -D
+      bind-key -r -T prefix C-Left resize-pane -L 5
+      bind-key -r -T prefix C-Right resize-pane -R 5
+      bind-key -r -T prefix C-Up resize-pane -U 5
+      bind-key -r -T prefix C-Down resize-pane -D 5
 
       # Pane resizing med Shift+arrow
-      bind-key -r -T prefix S-Left resize-pane -L 5
-      bind-key -r -T prefix S-Right resize-pane -R 5
-      bind-key -r -T prefix S-Up resize-pane -U 5
-      bind-key -r -T prefix S-Down resize-pane -D 5
-   '';
+      bind-key -r -T prefix S-Left resize-pane -L
+      bind-key -r -T prefix S-Right resize-pane -R
+      bind-key -r -T prefix S-Up resize-pane -U
+      bind-key -r -T prefix S-Down resize-pane -D
+    '';
 
     plugins = with pkgs.tmuxPlugins; [
       vim-tmux-navigator

@@ -62,6 +62,18 @@
     initContent = ''
       source ${./zsh_functions.sh}
       source ${./zsh_wt.sh}
+
+      # Word navigation: opt+arrow (works locally and over SSH)
+      # xterm-style sequences (\e[1;3C/D) and meta/emacs-style (\ef/\eb)
+      bindkey '\e[1;3C' forward-word   # alt+right (xterm)
+      bindkey '\e[1;3D' backward-word  # alt+left  (xterm)
+      bindkey '\ef'     forward-word   # alt+right (meta/emacs)
+      bindkey '\eb'     backward-word  # alt+left  (meta/emacs)
+
+      # Word deletion: opt+backspace and opt+delete
+      bindkey '\e^?'    backward-kill-word  # alt+backspace
+      bindkey '\e[3;3~' kill-word           # alt+delete (xterm)
+      bindkey '\ed'     kill-word           # alt+delete (meta/emacs)
     '';
 
   };

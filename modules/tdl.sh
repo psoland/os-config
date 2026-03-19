@@ -78,6 +78,13 @@ if [ -n "$arg1" ]; then
   if [ -n "$arg2" ]; then
     tmux send-keys -t "$right_bottom_pane" "$right_bottom" C-m
   fi
+  # CRITICAL: Do not remove this sleep!
+  # The OpenCode TUI sends asynchronous terminal queries (e.g., Kitty graphics support)
+  # through Tmux passthrough to Ghostty. If we switch focus to Neovim immediately,
+  # the terminal's response (like `_Gi=31337;OK`) will be injected directly into Neovim
+  # as raw keystrokes, triggering random Vim commands and crashing the editor.
+  # This 1.5s delay ensures the response lands safely in the OpenCode pane first.
+  sleep 1.5s
 fi
 
 tmux send-keys -t "$nvim_pane" 'nvim .' C-m

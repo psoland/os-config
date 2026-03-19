@@ -24,7 +24,7 @@
 
       # --- Keybinds ---
       unbind r
-      bind r source-file ~/.tmux.conf
+      bind r source-file ~/.config/tmux/tmux.conf
 
       # Vim navigation
       bind-key h select-pane -L
@@ -32,10 +32,10 @@
       bind-key k select-pane -U
       bind-key l select-pane -R
 
-      bind-key -n C-h select-pane -L
-      bind-key -n C-j select-pane -D
-      bind-key -n C-k select-pane -U
-      bind-key -n C-l select-pane -R
+      bind-key -r -T prefix C-h select-pane -L
+      bind-key -r -T prefix C-j select-pane -D
+      bind-key -r -T prefix C-k select-pane -U
+      bind-key -r -T prefix C-l select-pane -R
 
       # Rename window to folder name
       bind-key R rename-window "#{b:pane_current_path}"

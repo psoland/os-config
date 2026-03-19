@@ -129,6 +129,7 @@
               nixpkgs-fmt
               nil
               statix
+              repomix
             ];
 
             shellHook = ''

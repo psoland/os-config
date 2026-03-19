@@ -3,13 +3,13 @@
 -- so we tell Mason not to install them
 return {
   {
-    "williamboman/mason-lspconfig.nvim",
+    "neovim/nvim-lspconfig",
     opts = function(_, opts)
-      opts.ensure_installed = opts.ensure_installed or {}
-      -- Remove nil_ls from ensure_installed since it's provided via Nix
-      opts.ensure_installed = vim.tbl_filter(function(name)
-        return name ~= "nil_ls"
-      end, opts.ensure_installed)
+      opts.servers = opts.servers or {}
+      opts.servers.nil_ls = opts.servers.nil_ls or {}
+      -- mason = false tells LazyVim's LSP setup not to install nil_ls via Mason
+      -- since it is provided by Nix via programs.neovim.extraPackages
+      opts.servers.nil_ls.mason = false
     end,
   },
 }

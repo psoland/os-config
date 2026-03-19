@@ -30,11 +30,9 @@
     syncthing
     bitwarden-cli
     gh
-
     nodejs
 
     #code-server
-    #lazyvim
 
     # Fetch and apply changes
     (writeShellScriptBin "syncapply" ''

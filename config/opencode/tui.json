@@ -3,6 +3,7 @@
   "theme": "catppuccin",
   "keybinds": {
     "leader": "ctrl+x",
-    "app_exit": "ctrl+q"
+    "app_exit": "ctrl+q",
+    "input_newline": "shift+return,ctrl+return,alt+return",
   },
 }

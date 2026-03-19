@@ -12,6 +12,8 @@
           unzip
           wget
           statix
+          nil
+          nixpkgs-fmt
         ];
       };
 

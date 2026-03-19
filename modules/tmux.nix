@@ -32,6 +32,11 @@
       bind-key k select-pane -U
       bind-key l select-pane -R
 
+      bind-key -n C-h select-pane -L
+      bind-key -n C-j select-pane -D
+      bind-key -n C-k select-pane -U
+      bind-key -n C-l select-pane -R
+
       # Rename window to folder name
       bind-key R rename-window "#{b:pane_current_path}"
 

@@ -1,7 +1,7 @@
 { ... }:
 
 {
- # Zsh setup
+  # Zsh setup
   programs.zsh = {
     enable = true;
     enableCompletion = true;
@@ -33,6 +33,7 @@
       oc-stop = "tmux kill-session -t oc-serve";
       oc-serve = "opencode --port 4091";
 
+      zombiehunt = "ps -eo pid,ppid,stat,cmd,user | awk '\$3~\"Z\"' | awk '\$5~\"$USER\"'";
 
       # Tmux
       t = "tmux a || tmux new";
@@ -41,15 +42,15 @@
 
       # Git
       gco = "git checkout";
-      gb  = "git branch";
-      gs  = "git status";
+      gb = "git branch";
+      gs = "git status";
       gpl = "git pull";
       gps = "git push";
       gpf = "git push --force";
       gbl = "git branch --list";
-      gd  = "git diff";
-      ga  = "git add .";
-      gc  = "git commit -m";
+      gd = "git diff";
+      ga = "git add .";
+      gc = "git commit -m";
       gbd = "git branch -D";
       gca = "git commit --amend --no-edit";
       grc = "git rebase --continue";

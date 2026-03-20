@@ -5,25 +5,62 @@
     enable = true;
     documents = ../openclaw-documents;
 
-    config = {
-      gateway = {
-        mode = "local";
-        auth = {
-          token = "CHANGE_ME_OPENCLAW_GATEWAY_TOKEN";
+    instances.default = {
+      enable = true;
+      logPath = "/home/psoland/.openclaw/logs/openclaw-gateway.log";
+      config = {
+        secrets.providers.local = {
+          source = "env";
+          allowlist = [
+            "OPENCLAW_GATEWAY_TOKEN"
+            "COPILOT_GITHUB_TOKEN"
+          ];
         };
-      };
 
-      channels.telegram = {
-        tokenFile = "/home/psoland/.secrets/openclaw-telegram-token";
-        allowFrom = [ 0 ];
-        groups = {
-          "*" = {
-            requireMention = true;
+        gateway = {
+          mode = "local";
+          auth = {
+            token = {
+              source = "env";
+              provider = "local";
+              id = "OPENCLAW_GATEWAY_TOKEN";
+            };
           };
+        };
+
+        channels.whatsapp = {
+          enabled = true;
+          defaultAccount = "main";
+          groupPolicy = "open";
+          accounts.main = {
+            enabled = true;
+            authDir = "/home/psoland/.openclaw/whatsapp";
+            dmPolicy = "pairing";
+            groupPolicy = "open";
+            groups = {
+              "*" = {
+                requireMention = true;
+              };
+            };
+          };
+        };
+
+        models.providers.github-copilot = {
+          api = "github-copilot";
+          auth = "token";
+          baseUrl = "https://api.individual.githubcopilot.com";
+          apiKey = {
+            source = "env";
+            provider = "local";
+            id = "COPILOT_GITHUB_TOKEN";
+          };
+          models = [ ];
         };
       };
     };
-
-    instances.default.enable = true;
   };
+
+  systemd.user.services.openclaw-gateway.Service.EnvironmentFile = [
+    "/home/psoland/.secrets/openclaw.env"
+  ];
 }

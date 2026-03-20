@@ -1,5 +1,5 @@
 # modules/common.nix
-{ pkgs, ... }:
+{ pkgs, lib, isOpenclaw ? false, ... }:
 
 {
   
@@ -13,7 +13,8 @@
   home.file.".terminfo".source = "${pkgs.ghostty.terminfo}/share/terminfo";
 
   # Packages that should be installed in all systems
-  home.packages = with pkgs; [
+  home.packages = with pkgs;
+    [
     mosh
     htop
     fastfetch
@@ -30,7 +31,9 @@
     syncthing
     bitwarden-cli
     gh
-    nodejs
+    ]
+    ++ lib.optionals (!isOpenclaw) [ nodejs ]
+    ++ [
 
     #code-server
 
@@ -86,7 +89,7 @@
     (writeShellScriptBin "pi" ''
     exec ${nodejs}/bin/npx -y @mariozechner/pi-coding-agent@latest "$@"
     '')
-  ];
+    ];
 
   # Configs from config folder
   xdg.configFile."opencode/opencode.json".source = ../config/opencode/opencode.json;

@@ -104,6 +104,7 @@
           extraSpecialArgs = {
             inherit self;
             openclawModule = nix-openclaw.homeManagerModules.openclaw;
+            isOpenclaw = true;
           };
         };
 
@@ -122,6 +123,7 @@
           extraSpecialArgs = {
             inherit self;
             openclawModule = nix-openclaw.homeManagerModules.openclaw;
+            isOpenclaw = true;
           };
         };
 

@@ -24,7 +24,7 @@
     # };
   };
 
-  outputs = inputs@{ self, nixpkgs, home-manager, flake-utils, ... }:
+  outputs = { self, nixpkgs, home-manager, flake-utils, nix-openclaw, ... }:
     let
       # Supported systems
       supportedSystems = [
@@ -41,7 +41,13 @@
       # Nixpkgs instantiated for each system
       nixpkgsFor = forAllSystems (system: import nixpkgs {
         inherit system;
-        overlays = [ inputs.nix-openclaw.overlays.default ];
+        config.allowUnfree = true;
+      });
+
+      # Nixpkgs with OpenClaw overlay, used only by OpenClaw profiles
+      nixpkgsForOpenclaw = forAllSystems (system: import nixpkgs {
+        inherit system;
+        overlays = [ nix-openclaw.overlays.default ];
         config.allowUnfree = true;
       });
 
@@ -63,7 +69,6 @@
           ];
           extraSpecialArgs = {
             inherit self;
-            inherit inputs;
           };
         };
 
@@ -81,13 +86,12 @@
           ];
           extraSpecialArgs = {
             inherit self;
-            inherit inputs;
           };
         };
 
         # Oracle Ubuntu VM with OpenClaw enabled (x86_64)
         "psoland-vm-openclaw" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgsFor.x86_64-linux;
+          pkgs = nixpkgsForOpenclaw.x86_64-linux;
           modules = [
             ./hosts/oracle/openclaw.nix
             {
@@ -99,13 +103,13 @@
           ];
           extraSpecialArgs = {
             inherit self;
-            inherit inputs;
+            openclawModule = nix-openclaw.homeManagerModules.openclaw;
           };
         };
 
         # ARM64 Oracle Ubuntu VM with OpenClaw enabled
         "psoland-vm-arm-openclaw" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgsFor.aarch64-linux;
+          pkgs = nixpkgsForOpenclaw.aarch64-linux;
           modules = [
             ./hosts/oracle/openclaw.nix
             {
@@ -117,7 +121,7 @@
           ];
           extraSpecialArgs = {
             inherit self;
-            inherit inputs;
+            openclawModule = nix-openclaw.homeManagerModules.openclaw;
           };
         };
 
@@ -135,7 +139,6 @@
           ];
           extraSpecialArgs = {
             inherit self;
-            inherit inputs;
           };
         };
 

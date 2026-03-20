@@ -1,9 +1,9 @@
-{ inputs, ... }:
+{ openclawModule, ... }:
 
 {
   imports = [
     ./default.nix
-    inputs.nix-openclaw.homeManagerModules.openclaw
+    openclawModule
     ../../modules/openclaw.nix
   ];
 }

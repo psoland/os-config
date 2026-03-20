@@ -14,6 +14,9 @@
     # Flake utils for multi-system support
     flake-utils.url = "github:numtide/flake-utils";
 
+    # OpenClaw Home Manager module and packages
+    nix-openclaw.url = "github:openclaw/nix-openclaw";
+
     # Future: nix-darwin for macOS
     # darwin = {
     #   url = "github:lnl7/nix-darwin";
@@ -21,7 +24,7 @@
     # };
   };
 
-  outputs = { self, nixpkgs, home-manager, flake-utils, ... }:
+  outputs = inputs@{ self, nixpkgs, home-manager, flake-utils, ... }:
     let
       # Supported systems
       supportedSystems = [
@@ -38,6 +41,7 @@
       # Nixpkgs instantiated for each system
       nixpkgsFor = forAllSystems (system: import nixpkgs {
         inherit system;
+        overlays = [ inputs.nix-openclaw.overlays.default ];
         config.allowUnfree = true;
       });
 
@@ -59,6 +63,7 @@
           ];
           extraSpecialArgs = {
             inherit self;
+            inherit inputs;
           };
         };
 
@@ -76,6 +81,43 @@
           ];
           extraSpecialArgs = {
             inherit self;
+            inherit inputs;
+          };
+        };
+
+        # Oracle Ubuntu VM with OpenClaw enabled (x86_64)
+        "psoland-vm-openclaw" = home-manager.lib.homeManagerConfiguration {
+          pkgs = nixpkgsFor.x86_64-linux;
+          modules = [
+            ./hosts/oracle/openclaw.nix
+            {
+              home = {
+                username = "psoland";
+                homeDirectory = "/home/psoland";
+              };
+            }
+          ];
+          extraSpecialArgs = {
+            inherit self;
+            inherit inputs;
+          };
+        };
+
+        # ARM64 Oracle Ubuntu VM with OpenClaw enabled
+        "psoland-vm-arm-openclaw" = home-manager.lib.homeManagerConfiguration {
+          pkgs = nixpkgsFor.aarch64-linux;
+          modules = [
+            ./hosts/oracle/openclaw.nix
+            {
+              home = {
+                username = "psoland";
+                homeDirectory = "/home/psoland";
+              };
+            }
+          ];
+          extraSpecialArgs = {
+            inherit self;
+            inherit inputs;
           };
         };
 
@@ -93,6 +135,7 @@
           ];
           extraSpecialArgs = {
             inherit self;
+            inherit inputs;
           };
         };
 

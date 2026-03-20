@@ -8,7 +8,7 @@ Declarative Ubuntu VM setup with:
 
 - Primary targets: Oracle Ubuntu VMs and Spark DGX Ubuntu
 - User configured by bootstrap: `psoland`
-- Home Manager targets in this repo: `psoland-vm`, `psoland-vm-arm`, and `spark`
+- Home Manager targets in this repo: `psoland-vm`, `psoland-vm-arm`, `psoland-vm-openclaw`, `psoland-vm-arm-openclaw`, and `spark`
 
 ## Repository Layout
 
@@ -18,16 +18,22 @@ os-config/
 ├── hosts/
 │   ├── oracle/
 │   │   ├── bootstrap.sh          # Oracle Ubuntu bootstrap (runs as root)
-│   │   └── default.nix           # Host-specific HM module wiring
+│   │   ├── default.nix           # Host-specific HM module wiring
+│   │   └── openclaw.nix          # Oracle host variant with OpenClaw enabled
 │   └── spark/
 │       ├── bootstrap.sh          # Spark DGX bootstrap (runs as root)
 │       └── default.nix           # Host-specific HM module wiring
 ├── modules/
 │   ├── common.nix                # Shared packages and programs
+│   ├── openclaw.nix              # OpenClaw Home Manager module config
 │   ├── zsh.nix
 │   ├── tmux.nix
 │   ├── starship.nix
 │   └── nvim.nix
+├── openclaw-documents/           # Managed OpenClaw document directory
+│   ├── AGENTS.md
+│   ├── SOUL.md
+│   └── TOOLS.md
 └── templates/
     └── devshell/
         └── flake.nix
@@ -62,6 +68,14 @@ Run as root on the target machine.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/psoland/os-config/main/hosts/oracle/bootstrap.sh | sudo bash
+```
+
+If you want OpenClaw on Oracle, run normal bootstrap first, then switch target:
+
+```bash
+printf '%s\n' psoland-vm-openclaw > ~/.dotfiles/.hm-flake
+cd ~/.dotfiles
+apply
 ```
 
 ### Spark DGX Ubuntu
@@ -107,6 +121,8 @@ If `~/.dotfiles/.hm-flake` does not exist, use one of these explicitly:
 ```bash
 nix build .#homeConfigurations.psoland-vm.activationPackage
 nix build .#homeConfigurations.psoland-vm-arm.activationPackage
+nix build .#homeConfigurations.psoland-vm-openclaw.activationPackage
+nix build .#homeConfigurations.psoland-vm-arm-openclaw.activationPackage
 nix build .#homeConfigurations.spark.activationPackage
 ./result/activate
 ```
@@ -117,7 +133,20 @@ nix build .#homeConfigurations.spark.activationPackage
 |------|------|--------|
 | `psoland-vm` | `psoland` | `x86_64-linux` |
 | `psoland-vm-arm` | `psoland` | `aarch64-linux` |
+| `psoland-vm-openclaw` | `psoland` | `x86_64-linux` |
+| `psoland-vm-arm-openclaw` | `psoland` | `aarch64-linux` |
 | `spark` | `psoland` | `aarch64-linux` |
+
+### Oracle OpenClaw target
+
+- Run standard Oracle bootstrap (`psoland-vm` or `psoland-vm-arm`)
+- To enable OpenClaw on one machine, set `~/.dotfiles/.hm-flake` to an OpenClaw target and apply
+
+```bash
+printf '%s\n' psoland-vm-arm-openclaw > ~/.dotfiles/.hm-flake
+cd ~/.dotfiles
+apply
+```
 
 ## Common Operations
 

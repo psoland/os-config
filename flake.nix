@@ -24,7 +24,15 @@
     # };
   };
 
-  outputs = { self, nixpkgs, home-manager, flake-utils, nix-openclaw, ... }:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      home-manager,
+      flake-utils,
+      nix-openclaw,
+      ...
+    }:
     let
       # Supported systems
       supportedSystems = [
@@ -39,19 +47,26 @@
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
 
       # Nixpkgs instantiated for each system
-      nixpkgsFor = forAllSystems (system: import nixpkgs {
-        inherit system;
-        config.allowUnfree = true;
-      });
+      nixpkgsFor = forAllSystems (
+        system:
+        import nixpkgs {
+          inherit system;
+          config.allowUnfree = true;
+        }
+      );
 
       # Nixpkgs with OpenClaw overlay, used only by OpenClaw profiles
-      nixpkgsForOpenclaw = forAllSystems (system: import nixpkgs {
-        inherit system;
-        overlays = [ nix-openclaw.overlays.default ];
-        config.allowUnfree = true;
-      });
+      nixpkgsForOpenclaw = forAllSystems (
+        system:
+        import nixpkgs {
+          inherit system;
+          overlays = [ nix-openclaw.overlays.default ];
+          config.allowUnfree = true;
+        }
+      );
 
-    in {
+    in
+    {
       # Home Manager configurations
       homeConfigurations = {
         # Oracle Ubuntu VM configuration for psoland user (x86_64)
@@ -69,6 +84,7 @@
           ];
           extraSpecialArgs = {
             inherit self;
+            isOpenclaw = false;
           };
         };
 
@@ -86,6 +102,7 @@
           ];
           extraSpecialArgs = {
             inherit self;
+            isOpenclaw = false;
           };
         };
 
@@ -141,6 +158,7 @@
           ];
           extraSpecialArgs = {
             inherit self;
+            isOpenclaw = false;
           };
         };
 
@@ -168,10 +186,12 @@
       };
 
       # Development shells for this repository
-      devShells = forAllSystems (system:
+      devShells = forAllSystems (
+        system:
         let
           pkgs = nixpkgsFor.${system};
-        in {
+        in
+        {
           default = pkgs.mkShell {
             buildInputs = with pkgs; [
               nixpkgs-fmt

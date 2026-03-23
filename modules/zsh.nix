@@ -25,7 +25,7 @@
       init-dev = "nix flake init -t ~/.dotfiles#devshell";
 
       # Neovim in current folder
-      v = "nvim .";
+      v = "nvim";
 
       # Opencode server in Tmux
       oc-start = "tmux has-session -t oc-serve 2>/dev/null || tmux new-session -d -s oc-serve 'opencode serve --hostname 0.0.0.0 --port 4090'";

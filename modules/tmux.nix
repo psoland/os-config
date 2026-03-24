@@ -17,6 +17,7 @@
       set-option -g status-position top
       set-option -g renumber-windows on
       setw -g aggressive-resize on
+      setw -g mode-keys vi
 
       # --- Colors ---
       set -g default-terminal "tmux-256color"
@@ -36,6 +37,11 @@
       bind-key -r -T prefix C-j select-pane -D
       bind-key -r -T prefix C-k select-pane -U
       bind-key -r -T prefix C-l select-pane -R
+
+      # Vim-like copy mode
+      bind-key -T copy-mode-vi v send-keys -X begin-selection
+      bind-key -T copy-mode-vi y send-keys -X copy-selection-and-cancel
+      bind-key -T copy-mode-vi Enter send-keys -X copy-selection-and-cancel
 
       # Rename window to folder name
       bind-key R rename-window "#{b:pane_current_path}"

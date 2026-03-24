@@ -64,8 +64,8 @@
       source ${./zsh_functions.sh}
       source ${./zsh_wt.sh}
 
-      # Requires 3 ctrl+d presses to close window
-      export IGNOREEOF=3
+      # In zsh, IGNOREEOF env var is ignored; use shell option instead
+      setopt IGNORE_EOF
 
       # Word navigation: opt+arrow (works locally and over SSH)
       # xterm-style sequences (\e[1;3C/D) and meta/emacs-style (\ef/\eb)
@@ -78,6 +78,15 @@
       bindkey '\e^?'    backward-kill-word  # alt+backspace
       bindkey '\e[3;3~' kill-word           # alt+delete (xterm)
       bindkey '\ed'     kill-word           # alt+delete (meta/emacs)
+
+      # Home/End behavior when terminal maps Cmd+Arrows to Ctrl+A/Ctrl+E
+      bindkey '^A' beginning-of-line
+      bindkey '^E' end-of-line
+      bindkey -M viins '^A' beginning-of-line
+      bindkey -M viins '^E' end-of-line
+
+      # Ctrl+D: accept zsh-autosuggestions instead of EOF/listing
+      bindkey '^D' autosuggest-accept
     '';
 
   };

@@ -88,5 +88,5 @@ if [ -n "$arg1" ]; then
   sleep 1.5s
 fi
 
-tmux send-keys -t "$nvim_pane" 'nvim .' C-m
+tmux send-keys -t "$nvim_pane" 'nvim' C-m
 tmux select-pane -t "$nvim_pane"

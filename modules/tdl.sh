@@ -27,6 +27,7 @@ map_cmd() {
   case "${1:-}" in
   c) printf '%s' "opencode --port" ;;
   cx) printf '%s' "claude --dangerously-skip-permissions" ;;
+  p) printf '%s' "pi" ;;
   "") printf '%s' "" ;;
   *) printf '%s' "$1" ;;
   esac

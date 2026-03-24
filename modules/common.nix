@@ -1,8 +1,13 @@
 # modules/common.nix
-{ pkgs, lib, isOpenclaw ? false, ... }:
+{
+  pkgs,
+  lib,
+  isOpenclaw ? false,
+  ...
+}:
 
 {
-  
+
   imports = [
     ./tmux.nix
     ./zsh.nix
@@ -13,88 +18,90 @@
   home.file.".terminfo".source = "${pkgs.ghostty.terminfo}/share/terminfo";
 
   # Packages that should be installed in all systems
-  home.packages = with pkgs;
+  home.packages =
+    with pkgs;
     [
-    mosh
-    htop
-    fastfetch
-    ripgrep
-    gcc
-    fd
-    jq
-    lazygit
-    lazysql
-    lazydocker
-    devpod
-    opencode
-    claude-code
-    syncthing
-    bitwarden-cli
-    gh
+      mosh
+      htop
+      fastfetch
+      ripgrep
+      gcc
+      fd
+      jq
+      lazygit
+      lazysql
+      lazydocker
+      devpod
+      opencode
+      claude-code
+      syncthing
+      bitwarden-cli
+      gh
+      lsof
     ]
     ++ lib.optionals (!isOpenclaw) [ nodejs ]
     ++ [
 
-    #code-server
+      #code-server
 
-    # Fetch and apply changes
-    (writeShellScriptBin "syncapply" ''
-      set -euo pipefail
-      cd "$HOME/.dotfiles"
-      git pull --rebase
+      # Fetch and apply changes
+      (writeShellScriptBin "syncapply" ''
+        set -euo pipefail
+        cd "$HOME/.dotfiles"
+        git pull --rebase
 
-      flake="''${HOME_MANAGER_FLAKE:-}"
-      if [ -z "$flake" ] && [ -f "$HOME/.dotfiles/.hm-flake" ]; then
-        flake="$(tr -d '\n' < "$HOME/.dotfiles/.hm-flake")"
-      fi
-      if [ -z "$flake" ]; then
-        arch="$(uname -m)"
-        case "$arch" in
-          aarch64|arm64) flake="psoland-vm-arm" ;;
-          *) flake="psoland-vm" ;;
-        esac
-      fi
+        flake="''${HOME_MANAGER_FLAKE:-}"
+        if [ -z "$flake" ] && [ -f "$HOME/.dotfiles/.hm-flake" ]; then
+          flake="$(tr -d '\n' < "$HOME/.dotfiles/.hm-flake")"
+        fi
+        if [ -z "$flake" ]; then
+          arch="$(uname -m)"
+          case "$arch" in
+            aarch64|arm64) flake="psoland-vm-arm" ;;
+            *) flake="psoland-vm" ;;
+          esac
+        fi
 
-      nix build ".#homeConfigurations.''${flake}.activationPackage"
-      ./result/activate
-    '')
+        nix build ".#homeConfigurations.''${flake}.activationPackage"
+        ./result/activate
+      '')
 
-    # Apply changes
-    (writeShellScriptBin "apply" ''
-      set -euo pipefail
-      cd "$HOME/.dotfiles"
+      # Apply changes
+      (writeShellScriptBin "apply" ''
+        set -euo pipefail
+        cd "$HOME/.dotfiles"
 
-      git add .
+        git add .
 
-      flake="''${HOME_MANAGER_FLAKE:-}"
-      if [ -z "$flake" ] && [ -f "$HOME/.dotfiles/.hm-flake" ]; then
-        flake="$(tr -d '\n' < "$HOME/.dotfiles/.hm-flake")"
-      fi
-      if [ -z "$flake" ]; then
-        arch="$(uname -m)"
-        case "$arch" in
-          aarch64|arm64) flake="psoland-vm-arm" ;;
-          *) flake="psoland-vm" ;;
-        esac
-      fi
+        flake="''${HOME_MANAGER_FLAKE:-}"
+        if [ -z "$flake" ] && [ -f "$HOME/.dotfiles/.hm-flake" ]; then
+          flake="$(tr -d '\n' < "$HOME/.dotfiles/.hm-flake")"
+        fi
+        if [ -z "$flake" ]; then
+          arch="$(uname -m)"
+          case "$arch" in
+            aarch64|arm64) flake="psoland-vm-arm" ;;
+            *) flake="psoland-vm" ;;
+          esac
+        fi
 
-      nix build ".#homeConfigurations.''${flake}.activationPackage"
-      ./result/activate
-    '')
+        nix build ".#homeConfigurations.''${flake}.activationPackage"
+        ./result/activate
+      '')
 
-    # Tmux developer layout
-    (writeShellScriptBin "tdl" (builtins.readFile ./tdl.sh))
+      # Tmux developer layout
+      (writeShellScriptBin "tdl" (builtins.readFile ./tdl.sh))
 
-    # Pi-coding-agent
-    (writeShellScriptBin "pi" ''
-    exec ${nodejs}/bin/npx -y @mariozechner/pi-coding-agent@latest "$@"
-    '')
+      # Pi-coding-agent
+      (writeShellScriptBin "pi" ''
+        exec ${nodejs}/bin/npx -y @mariozechner/pi-coding-agent@latest "$@"
+      '')
     ];
 
   # Configs from config folder
   xdg.configFile."opencode/opencode.json".source = ../config/opencode/opencode.json;
   xdg.configFile."opencode/tui.json".source = ../config/opencode/tui.json;
-  
+
   # Other configs
   programs.direnv = {
     enable = true;
@@ -102,16 +109,16 @@
     nix-direnv.enable = true;
 
     config = {
-        global = {
-            hide_env_diff = true;
-          };
+      global = {
+        hide_env_diff = true;
       };
+    };
   };
 
   # Hiding logs in direnv
   home.sessionVariables = {
-      DIRENV_LOG_FORMAT = "";
-    };
+    DIRENV_LOG_FORMAT = "";
+  };
 
   # Git setup
   programs.git = {
@@ -123,7 +130,7 @@
       pull.rebase = true;
       push.default = "current";
       credential.helper = "!${pkgs.gh}/bin/gh auth git-credential";
-      
+
       url = {
         "git@github.com:" = {
           insteadOf = "https://github.com/";

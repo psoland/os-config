@@ -125,24 +125,8 @@
           };
         };
 
-        # ARM64 Oracle Ubuntu VM with OpenClaw enabled
-        "psoland-vm-arm-openclaw" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgsForOpenclaw.aarch64-linux;
-          modules = [
-            ./hosts/oracle/openclaw.nix
-            {
-              home = {
-                username = "psoland";
-                homeDirectory = "/home/psoland";
-              };
-            }
-          ];
-          extraSpecialArgs = {
-            inherit self;
-            openclawModule = nix-openclaw.homeManagerModules.openclaw;
-            isOpenclaw = true;
-          };
-        };
+        # NOTE: nix-openclaw currently supports Linux on x86_64 only.
+        # Keep ARM hosts on non-OpenClaw profiles until upstream adds aarch64-linux support.
 
         # Spark DGX Ubuntu configuration for psoland user (aarch64)
         "spark" = home-manager.lib.homeManagerConfiguration {

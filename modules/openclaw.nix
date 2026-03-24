@@ -8,12 +8,12 @@
     instances.default = {
       enable = true;
       logPath = "/home/psoland/.openclaw/logs/openclaw-gateway.log";
+
       config = {
         secrets.providers.local = {
           source = "env";
           allowlist = [
             "OPENCLAW_GATEWAY_TOKEN"
-            "COPILOT_GITHUB_TOKEN"
           ];
         };
 
@@ -30,9 +30,8 @@
 
         channels.whatsapp = {
           enabled = true;
-          defaultAccount = "main";
-          groupPolicy = "open";
-          accounts.main = {
+          defaultAccount = "default";
+          accounts.default = {
             enabled = true;
             authDir = "/home/psoland/.openclaw/whatsapp";
             dmPolicy = "pairing";
@@ -45,17 +44,17 @@
           };
         };
 
-        models.providers.github-copilot = {
-          api = "github-copilot";
-          auth = "token";
-          baseUrl = "https://api.individual.githubcopilot.com";
-          apiKey = {
-            source = "env";
-            provider = "local";
-            id = "COPILOT_GITHUB_TOKEN";
-          };
-          models = [ ];
-        };
+        # models.providers.github-copilot = {
+        #   api = "github-copilot";
+        #   auth = "token";
+        #   baseUrl = "https://api.individual.githubcopilot.com";
+        #   apiKey = {
+        #     source = "env";
+        #     provider = "local";
+        #     id = "COPILOT_GITHUB_TOKEN";
+        #   };
+        #   models = [ ];
+        # };
       };
     };
   };

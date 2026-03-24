@@ -67,6 +67,9 @@
       # In zsh, IGNOREEOF env var is ignored; use shell option instead
       setopt IGNORE_EOF
 
+      # Let tmux use Ctrl+S as prefix (disable XON/XOFF flow control)
+      stty -ixon
+
       # Word navigation: opt+arrow (works locally and over SSH)
       # xterm-style sequences (\e[1;3C/D) and meta/emacs-style (\ef/\eb)
       bindkey '\e[1;3C' forward-word   # alt+right (xterm)

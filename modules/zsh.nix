@@ -64,6 +64,9 @@
       source ${./zsh_functions.sh}
       source ${./zsh_wt.sh}
 
+      # Requires 3 ctrl+d presses to close window
+      export IGNOREEOF=3
+
       # Word navigation: opt+arrow (works locally and over SSH)
       # xterm-style sequences (\e[1;3C/D) and meta/emacs-style (\ef/\eb)
       bindkey '\e[1;3C' forward-word   # alt+right (xterm)

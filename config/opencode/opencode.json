@@ -31,6 +31,12 @@
   //  }
   //},
   "permission": {
+    "read": {
+      "*": "allow",
+      "*.env": "deny",
+      "*.env.*": "deny",
+      "*.env.example": "allow"
+    },
     "skill": {
       "*": "allow",
       "better-auth-*": "allow",
@@ -49,7 +55,11 @@
     },
     "shadcn": {
       "type": "local",
-      "command": ["npx", "shadcn@latest", "mcp"],
+      "command": [
+        "npx",
+        "shadcn@latest",
+        "mcp"
+      ],
       "enabled": false
     }
   }

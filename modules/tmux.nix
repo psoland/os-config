@@ -1,5 +1,17 @@
 { pkgs, ... }:
 
+let
+  tmux-floax = pkgs.tmuxPlugins.mkTmuxPlugin {
+    pluginName = "floax";
+    version = "unstable-2024-01-01";
+    src = pkgs.fetchFromGitHub {
+      owner = "omerxx";
+      repo = "tmux-floax";
+      rev = "133f526793d90d2caa323c47687dd5544a2c704b";
+      hash = "sha256-9Hb9dn2qHF6KcIhtogvycX3Z0MoQrLPLCzZXtjGlPHw=";
+    };
+  };
+in
 {
   programs.tmux = {
     enable = true;
@@ -18,6 +30,8 @@
       set-option -g renumber-windows on
       setw -g aggressive-resize on
       setw -g mode-keys vi
+      set -g status-interval 10
+      # set -g repeat-time 1000
 
       # --- Colors ---
       set -g default-terminal "tmux-256color"
@@ -37,6 +51,9 @@
       bind-key -r -T prefix C-j select-pane -D
       bind-key -r -T prefix C-k select-pane -U
       bind-key -r -T prefix C-l select-pane -R
+
+      bind -r C-p previous-window
+      bind -r C-n next-window
 
       # Vim-like copy mode
       bind-key -T copy-mode-vi v send-keys -X begin-selection
@@ -84,6 +101,16 @@
           set -g status-right "#{E:@catppuccin_status_directory}"
           set -agF status-right "#{E:@catppuccin_status_cpu}"
           set -ag status-right "#{E:@catppuccin_status_session}"
+        '';
+      }
+      {
+        plugin = tmux-floax;
+        extraConfig = ''
+          set -g @floax-width '80%'
+          set -g @floax-height '80%'
+          set -g @floax-border-color 'magenta'
+          set -g @floax-text-color 'blue'
+          set -g @floax-change-path 'true'
         '';
       }
     ];

@@ -37,6 +37,10 @@
       "*.env.*": "deny",
       "*.env.example": "allow"
     },
+    "external_directory": {
+      "~/.dotfiles/**": "allow",
+      "~/.config/**": "allow",
+    },
     "skill": {
       "*": "allow",
       "better-auth-*": "allow",

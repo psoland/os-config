@@ -22,7 +22,7 @@
       cx = "claude --dangerously-skip-permissions";
 
       # Nix
-      init-dev = "nix flake init -t ~/.dotfiles#devshell";
+      init-flake = "nix flake init -t ~/.dotfiles#devshell";
 
       # Neovim in current folder
       v = "nvim";

@@ -6,15 +6,22 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = import nixpkgs {
           inherit system;
           # Uncomment if you need unfree packages
           # config.allowUnfree = true;
         };
-      in {
+      in
+      {
         devShells = {
           # Default development shell
           default = pkgs.mkShell {
@@ -32,6 +39,9 @@
               # python312Packages.pip
               # python312Packages.virtualenv
               # pyright
+              # uv
+              # ruff
+              # ty
 
               # Example: Go project
               # go
@@ -47,7 +57,7 @@
               # clippy
 
               # Common tools
-              just      # Command runner
+              just # Command runner
               watchexec # File watcher
             ];
 
@@ -101,11 +111,13 @@
           python = pkgs.mkShell {
             buildInputs = with pkgs; [
               python312
-              python312Packages.pip
-              python312Packages.virtualenv
-              pyright
               ruff
-              black
+              uv
+              ty
+              # python312Packages.pip
+              # python312Packages.virtualenv
+              # pyright
+              # black
             ];
 
             shellHook = ''
@@ -174,5 +186,6 @@
 
         # Packages can also be defined if needed
         # packages.default = ...
-      });
+      }
+    );
 }

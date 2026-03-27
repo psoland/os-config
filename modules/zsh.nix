@@ -23,6 +23,9 @@
 
       # Nix
       init-flake = "nix flake init -t ~/.dotfiles#devshell";
+      init-flake-py = "nix flake init -t ~/.dotfiles#python";
+      init-flake-cuda = "nix flake init -t ~/.dotfiles#python-cuda";
+      init-flake-ts = "nix flake init -t ~/.dotfiles#typescript";
 
       # Neovim in current folder
       v = "nvim";

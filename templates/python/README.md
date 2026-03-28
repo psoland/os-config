@@ -1,6 +1,6 @@
 # Python Template
 
-Python + `uv` development shell template.
+Python + `uv` development shell template, with optional CUDA shell.
 
 ## Quick Start
 
@@ -9,6 +9,18 @@ nix flake init -t github:psoland/os-config#python
 echo "use flake" > .envrc
 direnv allow
 ```
+
+Use CUDA shell:
+
+```bash
+echo "use flake .#cuda" > .envrc
+direnv allow
+```
+
+## Available Shells
+
+- `default` - Python + `uv` + lint/type tools
+- `cuda` - Same as default, plus runtime linker setup for CUDA-enabled PyTorch wheels on Linux
 
 ## Included Tools
 

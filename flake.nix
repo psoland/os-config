@@ -171,10 +171,6 @@
           path = ./templates/python;
           description = "Python + uv development shell template";
         };
-        python-cuda = {
-          path = ./templates/python-cuda;
-          description = "Python + uv GPU template with CUDA torch linker runtime setup";
-        };
         typescript = {
           path = ./templates/typescript;
           description = "TypeScript development shell template";

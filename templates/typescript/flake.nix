@@ -17,6 +17,8 @@
       let
         pkgs = import nixpkgs {
           inherit system;
+          # Uncomment if you need unfree packages
+          # config.allowUnfree = true;
         };
       in
       {

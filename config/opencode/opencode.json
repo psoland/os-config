@@ -40,6 +40,7 @@
     "external_directory": {
       "~/.dotfiles/**": "allow",
       "~/.config/**": "allow",
+      "~/.local/**": "allow",
     },
     "skill": {
       "*": "allow",

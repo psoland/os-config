@@ -15,5 +15,26 @@ return {
         },
       },
     },
+    keys = {
+      {
+        "<leader><space>",
+        LazyVim.pick("files", { root = false }),
+        desc = "Find Files (cwd)",
+      },
+      {
+        "<leader>e",
+        function()
+          Snacks.explorer()
+        end,
+        desc = "Explorer Snacks (cwd)",
+      },
+      {
+        "<leader>E",
+        function()
+          Snacks.explorer({ cwd = LazyVim.root() })
+        end,
+        desc = "Explorer Snacks (root dir)",
+      },
+    },
   },
 }

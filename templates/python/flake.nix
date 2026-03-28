@@ -53,44 +53,33 @@
             buildInputs = pythonBaseInputs ++ torchRuntimeLibs;
 
             shellHook = ''
-              export LD_LIBRARY_PATH="${lib.makeLibraryPath torchRuntimeLibs}:''${LD_LIBRARY_PATH:-}"
-
               if [ "$(uname -s)" = "Linux" ]; then
+                __torch_runtime_lib_path="${lib.makeLibraryPath torchRuntimeLibs}"
                 __cuda_driver_path=""
 
-                for __ldconfig in /sbin/ldconfig.real /usr/sbin/ldconfig.real /sbin/ldconfig /usr/sbin/ldconfig; do
-                  if [ -x "$__ldconfig" ]; then
-                    __cuda_driver_path="$($__ldconfig -p 2>/dev/null | awk '/libcuda\.so\.1/ { print $NF; exit }')"
-                    if [ -n "$__cuda_driver_path" ]; then
-                      break
-                    fi
+                if [ -n "$__torch_runtime_lib_path" ]; then
+                  if [ -n "''${LD_LIBRARY_PATH:-}" ]; then
+                    export LD_LIBRARY_PATH="$__torch_runtime_lib_path:''${LD_LIBRARY_PATH}"
+                  else
+                    export LD_LIBRARY_PATH="$__torch_runtime_lib_path"
+                  fi
+                fi
+
+                for __candidate in \
+                  /usr/lib/aarch64-linux-gnu/libcuda.so.1 \
+                  /lib/aarch64-linux-gnu/libcuda.so.1 \
+                  /usr/lib/x86_64-linux-gnu/libcuda.so.1 \
+                  /lib/x86_64-linux-gnu/libcuda.so.1 \
+                  /usr/lib64/libcuda.so.1 \
+                  /lib64/libcuda.so.1
+                do
+                  if [ -r "$__candidate" ]; then
+                    __cuda_driver_path="$__candidate"
+                    break
                   fi
                 done
 
-                if [ -z "$__cuda_driver_path" ] && command -v ldconfig >/dev/null 2>&1; then
-                  __cuda_driver_path="$(ldconfig -p 2>/dev/null | awk '/libcuda\.so\.1/ { print $NF; exit }')"
-                fi
-
-                if [ -z "$__cuda_driver_path" ]; then
-                  for __candidate in \
-                    /usr/lib/aarch64-linux-gnu/libcuda.so.1 \
-                    /lib/aarch64-linux-gnu/libcuda.so.1 \
-                    /usr/lib/x86_64-linux-gnu/libcuda.so.1 \
-                    /lib/x86_64-linux-gnu/libcuda.so.1 \
-                    /usr/lib64/libcuda.so.1 \
-                    /lib64/libcuda.so.1 \
-                    /run/opengl-driver/lib/libcuda.so.1 \
-                    /usr/lib/wsl/lib/libcuda.so.1 \
-                    /usr/local/nvidia/lib64/libcuda.so.1
-                  do
-                    if [ -r "$__candidate" ]; then
-                      __cuda_driver_path="$__candidate"
-                      break
-                    fi
-                  done
-                fi
-
-                if [ -n "$__cuda_driver_path" ] && [ -r "$__cuda_driver_path" ]; then
+                if [ -n "$__cuda_driver_path" ]; then
                   case ":''${LD_PRELOAD:-}:" in
                     *:"$__cuda_driver_path":*)
                       ;;
@@ -106,7 +95,7 @@
                   echo "warning: libcuda.so.1 not found; torch.cuda.is_available() may remain False"
                 fi
 
-                unset __cuda_driver_path __candidate __ldconfig
+                unset __torch_runtime_lib_path __cuda_driver_path __candidate
               fi
 
               echo "Python CUDA development shell"

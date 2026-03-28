@@ -20,7 +20,7 @@ direnv allow
 ## Available Shells
 
 - `default` - Python + `uv` + lint/type tools
-- `cuda` - Same as default, plus Linux-only runtime setup that preloads host `libcuda.so.1` for CUDA-enabled PyTorch wheels
+- `cuda` - Same as default, plus Linux-only runtime setup (Ubuntu-friendly paths) that preloads host `libcuda.so.1` for CUDA-enabled PyTorch wheels
 
 ## Included Tools
 

@@ -134,11 +134,11 @@ wt() {
   rm | remove)
     local target_dir="$1"
     if [[ -z "$target_dir" ]]; then
-      echo "Usage: wt rm <branch-name>"
+      echo "Usage: wt rm <worktree-path> [--force]"
       return 1
     fi
 
-    ${gitcmd[@]} worktree remove "$target_dir"
+    ${gitcmd[@]} worktree remove "$@"
     ;;
 
   *)

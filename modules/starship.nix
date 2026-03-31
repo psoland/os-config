@@ -43,6 +43,22 @@
         style = "bold lavender";
       };
       
+      # Disable noisy modules
+      username.disabled = true;
+      git_status.disabled = true;
+      package.disabled = true;
+      nix_shell.disabled = true;
+
+      # Disable python module (replaced by custom.venv below)
+      python.disabled = true;
+
+      # Show "(venv)" when a Python virtualenv is active
+      custom.venv = {
+        command = "echo '(venv)'";
+        when = "test -n \"$VIRTUAL_ENV\"";
+        format = "[$output ]($style)";
+      };
+
       # Optional: Catppuccin colored prompt characters
       character = {
         success_symbol = "[❯](bold green)";

@@ -204,3 +204,38 @@ nix build .#homeConfigurations.$(tr -d '\n' < ~/.dotfiles/.hm-flake).activationP
 sudo ufw status
 tailscale status
 ```
+
+## code-server over Tailscale
+
+This repo enables `code-server` for the Spark host only.
+
+Spark config uses:
+- `bindAddr = 127.0.0.1:8080`
+- `auth = none`
+
+This is designed for Blink + SSH tunnel usage over Tailscale.
+
+Apply config:
+
+```bash
+cd ~/.dotfiles
+apply
+```
+
+Connect from iPad/Blink (or any Tailnet device):
+
+1. Start tunnel from Blink:
+
+```bash
+ssh -N -L 8080:127.0.0.1:8080 spark
+```
+
+2. In another Blink tab, open Code against localhost:
+
+```bash
+code http://localhost:8080
+```
+
+Notes:
+- This avoids exposing `code-server` on LAN/public interfaces.
+- `code-server` is not enabled for Oracle unless you add it there.

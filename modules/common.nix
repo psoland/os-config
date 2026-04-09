@@ -42,8 +42,6 @@
     ++ lib.optionals (!isOpenclaw) [ nodejs ]
     ++ [
 
-      #code-server
-
       # Fetch and apply changes
       (writeShellScriptBin "syncapply" ''
         set -euo pipefail

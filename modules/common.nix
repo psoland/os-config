@@ -87,7 +87,8 @@
         ./result/activate
       '')
 
-      # Tmux developer layout
+      # Tmux developer layouts
+      (writeShellScriptBin "td" (builtins.readFile ./td.sh))
       (writeShellScriptBin "tdl" (builtins.readFile ./tdl.sh))
 
       # Pi-coding-agent

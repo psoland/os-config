@@ -6,7 +6,7 @@
 #   Right col:  Optional AI assistant(s) (~25% width)
 #
 # Usage:
-#   td              # nvim only
+#   td              # nvim + Pi on the right
 #   td c            # + OpenCode on the right
 #   td cx           # + Claude Code (danger mode) on the right
 #   td c p          # + OpenCode top-right, Pi bottom-right
@@ -15,7 +15,7 @@
 #
 set -euo pipefail
 
-arg1="${1:-}"
+arg1="${1:-p}"
 arg2="${2:-}"
 
 # Layout percentages

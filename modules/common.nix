@@ -15,7 +15,11 @@
     ./nvim.nix
   ];
 
-  home.file.".terminfo".source = "${pkgs.ghostty.terminfo}/share/terminfo";
+  # Ghostty terminfo: ghostty itself is Linux-only in nixpkgs; on macOS the
+  # Ghostty.app bundle ships its own terminfo, so we only need this on Linux.
+  home.file.".terminfo" = lib.mkIf pkgs.stdenv.isLinux {
+    source = "${pkgs.ghostty.terminfo}/share/terminfo";
+  };
 
   # Packages that should be installed in all systems
   home.packages =
@@ -25,21 +29,26 @@
       htop
       fastfetch
       ripgrep
-      gcc
       fd
       jq
       lazygit
-      lazysql
       lazydocker
-      devpod
       opencode
       claude-code
-      syncthing
       bitwarden-cli
       gh
+      git-lfs
       lsof
     ]
     ++ lib.optionals (!isOpenclaw) [ nodejs ]
+    # Linux-only: gcc (use Apple clang from Xcode CLT on macOS),
+    # syncthing (use the GUI app on macOS), lazysql/devpod (pull in Linux deps).
+    ++ lib.optionals pkgs.stdenv.isLinux [
+      gcc
+      lazysql
+      devpod
+      syncthing
+    ]
     ++ [
 
       # Fetch and apply changes
@@ -53,10 +62,10 @@
           flake="$(tr -d '\n' < "$HOME/.dotfiles/.hm-flake")"
         fi
         if [ -z "$flake" ]; then
-          arch="$(uname -m)"
-          case "$arch" in
-            aarch64|arm64) flake="psoland-vm-arm" ;;
-            *) flake="psoland-vm" ;;
+          case "$(uname -s)-$(uname -m)" in
+            Darwin-arm64|Darwin-aarch64) flake="psoland-mac" ;;
+            *-aarch64|*-arm64)           flake="psoland-vm-arm" ;;
+            *)                           flake="psoland-vm" ;;
           esac
         fi
 
@@ -76,10 +85,10 @@
           flake="$(tr -d '\n' < "$HOME/.dotfiles/.hm-flake")"
         fi
         if [ -z "$flake" ]; then
-          arch="$(uname -m)"
-          case "$arch" in
-            aarch64|arm64) flake="psoland-vm-arm" ;;
-            *) flake="psoland-vm" ;;
+          case "$(uname -s)-$(uname -m)" in
+            Darwin-arm64|Darwin-aarch64) flake="psoland-mac" ;;
+            *-aarch64|*-arm64)           flake="psoland-vm-arm" ;;
+            *)                           flake="psoland-vm" ;;
           esac
         fi
 
@@ -136,6 +145,7 @@
         };
       };
     };
+    lfs.enable = true;
   };
 
   programs.zoxide = {
@@ -154,8 +164,8 @@
     icons = "auto";
   };
 
-  # Start syncthing
-  services.syncthing = {
+  # Start syncthing (Linux only; on macOS use the Syncthing.app GUI)
+  services.syncthing = lib.mkIf pkgs.stdenv.isLinux {
     enable = true;
   };
 

@@ -38,9 +38,8 @@
       supportedSystems = [
         "x86_64-linux"
         "aarch64-linux"
-        # Future macOS support:
-        # "x86_64-darwin"
-        # "aarch64-darwin"
+        "x86_64-darwin"
+        "aarch64-darwin"
       ];
 
       # Helper to generate attributes for each system
@@ -146,19 +145,24 @@
           };
         };
 
-        # Future: macOS configuration
-        # "macbook" = home-manager.lib.homeManagerConfiguration {
-        #   pkgs = nixpkgsFor.aarch64-darwin;
-        #   modules = [
-        #     ./hosts/macbook
-        #     {
-        #       home = {
-        #         username = "your-username";
-        #         homeDirectory = "/Users/your-username";
-        #       };
-        #     }
-        #   ];
-        # };
+        # MacBook (Apple Silicon) Home Manager configuration for psoland user
+        # Usage: home-manager switch --flake .#psoland-mac
+        "psoland-mac" = home-manager.lib.homeManagerConfiguration {
+          pkgs = nixpkgsFor.aarch64-darwin;
+          modules = [
+            ./hosts/macbook
+            {
+              home = {
+                username = "psoland";
+                homeDirectory = "/Users/psoland";
+              };
+            }
+          ];
+          extraSpecialArgs = {
+            inherit self;
+            isOpenclaw = false;
+          };
+        };
       };
 
       # Templates for new projects

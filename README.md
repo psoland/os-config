@@ -6,9 +6,9 @@ Declarative Ubuntu VM setup with:
 
 ## Current Scope
 
-- Primary targets: Oracle Ubuntu VMs and Spark DGX Ubuntu
+- Primary targets: Oracle Ubuntu VMs, Spark DGX Ubuntu, and a personal MacBook (Apple Silicon)
 - User configured by bootstrap: `psoland`
-- Home Manager targets in this repo: `psoland-vm`, `psoland-vm-arm`, `psoland-vm-openclaw`, `psoland-vm-arm-openclaw`, and `spark`
+- Home Manager targets in this repo: `psoland-vm`, `psoland-vm-arm`, `psoland-vm-openclaw`, `psoland-vm-arm-openclaw`, `spark`, and `psoland-mac`
 
 ## Repository Layout
 
@@ -20,11 +20,15 @@ os-config/
 │   │   ├── bootstrap.sh          # Oracle Ubuntu bootstrap (runs as root)
 │   │   ├── default.nix           # Host-specific HM module wiring
 │   │   └── openclaw.nix          # Oracle host variant with OpenClaw enabled
-│   └── spark/
-│       ├── bootstrap.sh          # Spark DGX bootstrap (runs as root)
+│   ├── spark/
+│   │   ├── bootstrap.sh          # Spark DGX bootstrap (runs as root)
+│   │   └── default.nix           # Host-specific HM module wiring
+│   └── macbook/
+│       ├── bootstrap.sh          # macOS bootstrap (runs as your user, not root)
 │       └── default.nix           # Host-specific HM module wiring
 ├── modules/
 │   ├── common.nix                # Shared packages and programs
+│   ├── darwin.nix                # macOS-only HM bits (brew shellenv, etc.)
 │   ├── openclaw.nix              # OpenClaw Home Manager module config
 │   ├── zsh.nix
 │   ├── tmux.nix
@@ -84,6 +88,26 @@ apply
 curl -fsSL https://raw.githubusercontent.com/psoland/os-config/main/hosts/spark/bootstrap.sh | sudo bash
 ```
 
+### MacBook (Apple Silicon)
+
+Run as your normal user (NOT root). The script installs Xcode CLT, Homebrew,
+Nix, clones this repo to `~/.dotfiles`, backs up any conflicting dotfiles to
+`~/.dotfiles-backup/<timestamp>/`, then builds and activates Home Manager.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/psoland/os-config/main/hosts/macbook/bootstrap.sh | bash
+```
+
+Notes:
+- `nix-darwin` is intentionally not used yet. System-level macOS settings
+  (Dock, Finder, key repeat, casks, etc.) are still managed manually or via
+  Homebrew. Home Manager covers shell, nvim, tmux, starship, git, and CLI
+  tooling — same as on the Linux hosts.
+- After bootstrap, open a new terminal so the new `~/.zshrc` and `~/.zprofile`
+  are loaded.
+- Homebrew stays on `PATH` via `~/.zprofile` (set from `modules/darwin.nix`),
+  so brew-installed CLIs and casks still work.
+
 ### Clone and run locally
 
 ```bash
@@ -136,6 +160,7 @@ nix build .#homeConfigurations.spark.activationPackage
 | `psoland-vm-openclaw` | `psoland` | `x86_64-linux` |
 | `psoland-vm-arm-openclaw` | `psoland` | `aarch64-linux` |
 | `spark` | `psoland` | `aarch64-linux` |
+| `psoland-mac` | `psoland` | `aarch64-darwin` |
 
 ### Oracle OpenClaw target
 

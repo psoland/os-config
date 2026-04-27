@@ -1,14 +1,14 @@
 # OS Config
 
-Declarative Ubuntu VM setup with:
-- system bootstrap via shell scripts
+Declarative machine setup with:
+- Linux/macOS bootstrap via shell scripts
 - user environment via Home Manager + flakes
 
 ## Current Scope
 
 - Primary targets: Oracle Ubuntu VMs, Spark DGX Ubuntu, and a personal MacBook (Apple Silicon)
 - User configured by bootstrap: `psoland`
-- Home Manager targets in this repo: `psoland-vm`, `psoland-vm-arm`, `psoland-vm-openclaw`, `psoland-vm-arm-openclaw`, `spark`, and `psoland-mac`
+- Home Manager targets in this repo: `psoland-vm`, `psoland-vm-arm`, `psoland-vm-openclaw`, `spark`, and `psoland-mac`
 
 ## Repository Layout
 
@@ -45,7 +45,9 @@ os-config/
 
 ## Bootstrap Scripts
 
-Both bootstrap scripts follow the same core flow:
+### Linux bootstrap scripts (Oracle + Spark)
+
+The Linux scripts run as root and follow this core flow:
 
 1. Updates apt packages (`apt-get update && apt-get upgrade -y`)
 2. Installs core tools (`ufw`, `zsh`, `git`)
@@ -64,9 +66,26 @@ Notes:
 - Repo path after bootstrap is `~/.dotfiles` for `psoland`.
 - `tailscale up` is intentionally left as a manual final step because it requires interactive auth.
 
+### macOS bootstrap script (Apple Silicon)
+
+The macOS script runs as the normal user (`psoland`, not root) and:
+
+1. Verifies macOS + Apple Silicon (`arm64`) + expected user/home
+2. Ensures Xcode Command Line Tools are installed (opens installer prompt if missing)
+3. Installs Homebrew (if missing)
+4. Installs Nix (if missing)
+5. Clones this repo to `~/.dotfiles` and writes `~/.dotfiles/.hm-flake`
+6. Backs up conflicting dotfiles/configs to `~/.dotfiles-backup/<timestamp>/`
+7. Builds and activates `homeConfigurations.psoland-mac`
+
+Notes:
+- If Xcode CLT is not installed, the script triggers installation and exits; rerun it after CLT completes.
+- `nix-darwin` is intentionally not used yet. System-level macOS settings remain manual or Homebrew-managed.
+
 ## Quick Start
 
-Run as root on the target machine.
+Linux scripts: run as root (`sudo`).
+MacBook script: run as `psoland` (non-root) on Apple Silicon.
 
 ### Oracle Ubuntu VM
 
@@ -90,9 +109,9 @@ curl -fsSL https://raw.githubusercontent.com/psoland/os-config/main/hosts/spark/
 
 ### MacBook (Apple Silicon)
 
-Run as your normal user (NOT root). The script installs Xcode CLT, Homebrew,
-Nix, clones this repo to `~/.dotfiles`, backs up any conflicting dotfiles to
-`~/.dotfiles-backup/<timestamp>/`, then builds and activates Home Manager.
+Run as your normal user `psoland` (NOT root) on Apple Silicon. The script
+fails fast if the machine is not `arm64` or if the user/home does not match
+`psoland` / `/Users/psoland`.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/psoland/os-config/main/hosts/macbook/bootstrap.sh | bash
@@ -118,6 +137,8 @@ sudo bash hosts/oracle/bootstrap.sh
 
 ## After Bootstrap
 
+### Linux hosts (Oracle/Spark)
+
 1. Authenticate Tailscale:
 
 ```bash
@@ -131,6 +152,17 @@ sudo su - psoland
 ```
 
 3. Log out/in (or reboot) to pick up shell/session changes.
+
+### MacBook
+
+1. Open a new terminal window so the new `~/.zshrc`/`~/.zprofile` load.
+2. Verify key tools resolve as expected:
+
+```bash
+which nvim tmux starship git
+```
+
+3. If dotfiles were moved, review backups in `~/.dotfiles-backup/<timestamp>/`.
 
 Home Manager is already applied by bootstrap. Re-run manually only if needed:
 
@@ -146,8 +178,8 @@ If `~/.dotfiles/.hm-flake` does not exist, use one of these explicitly:
 nix build .#homeConfigurations.psoland-vm.activationPackage
 nix build .#homeConfigurations.psoland-vm-arm.activationPackage
 nix build .#homeConfigurations.psoland-vm-openclaw.activationPackage
-nix build .#homeConfigurations.psoland-vm-arm-openclaw.activationPackage
 nix build .#homeConfigurations.spark.activationPackage
+nix build .#homeConfigurations.psoland-mac.activationPackage
 ./result/activate
 ```
 
@@ -158,17 +190,16 @@ nix build .#homeConfigurations.spark.activationPackage
 | `psoland-vm` | `psoland` | `x86_64-linux` |
 | `psoland-vm-arm` | `psoland` | `aarch64-linux` |
 | `psoland-vm-openclaw` | `psoland` | `x86_64-linux` |
-| `psoland-vm-arm-openclaw` | `psoland` | `aarch64-linux` |
 | `spark` | `psoland` | `aarch64-linux` |
 | `psoland-mac` | `psoland` | `aarch64-darwin` |
 
 ### Oracle OpenClaw target
 
-- Run standard Oracle bootstrap (`psoland-vm` or `psoland-vm-arm`)
-- To enable OpenClaw on one machine, set `~/.dotfiles/.hm-flake` to an OpenClaw target and apply
+- OpenClaw is currently supported only on `x86_64-linux` in this repo.
+- To enable OpenClaw on an Oracle machine, set `~/.dotfiles/.hm-flake` to `psoland-vm-openclaw` and apply:
 
 ```bash
-printf '%s\n' psoland-vm-arm-openclaw > ~/.dotfiles/.hm-flake
+printf '%s\n' psoland-vm-openclaw > ~/.dotfiles/.hm-flake
 cd ~/.dotfiles
 apply
 ```
@@ -190,12 +221,12 @@ nix build .#homeConfigurations.$(tr -d '\n' < ~/.dotfiles/.hm-flake).activationP
 nix flake init -t github:psoland/os-config#devshell
 ```
 
-### VM sync-and-apply alias
+### sync-and-apply alias
 
 This repo provides a `syncapply` command that:
 1. goes to `~/.dotfiles`
 2. pulls latest changes with rebase
-3. selects target in this order: `HOME_MANAGER_FLAKE` env var -> `~/.dotfiles/.hm-flake` -> architecture fallback
+3. selects target in this order: `HOME_MANAGER_FLAKE` env var -> `~/.dotfiles/.hm-flake` -> fail if still unset
 4. builds the selected Home Manager activation package
 5. activates it
 

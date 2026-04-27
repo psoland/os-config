@@ -62,11 +62,8 @@
           flake="$(tr -d '\n' < "$HOME/.dotfiles/.hm-flake")"
         fi
         if [ -z "$flake" ]; then
-          case "$(uname -s)-$(uname -m)" in
-            Darwin-arm64|Darwin-aarch64) flake="psoland-mac" ;;
-            *-aarch64|*-arm64)           flake="psoland-vm-arm" ;;
-            *)                           flake="psoland-vm" ;;
-          esac
+          echo "No Home Manager target selected. Set HOME_MANAGER_FLAKE or create ~/.dotfiles/.hm-flake." >&2
+          exit 1
         fi
 
         nix build ".#homeConfigurations.''${flake}.activationPackage"
@@ -85,11 +82,8 @@
           flake="$(tr -d '\n' < "$HOME/.dotfiles/.hm-flake")"
         fi
         if [ -z "$flake" ]; then
-          case "$(uname -s)-$(uname -m)" in
-            Darwin-arm64|Darwin-aarch64) flake="psoland-mac" ;;
-            *-aarch64|*-arm64)           flake="psoland-vm-arm" ;;
-            *)                           flake="psoland-vm" ;;
-          esac
+          echo "No Home Manager target selected. Set HOME_MANAGER_FLAKE or create ~/.dotfiles/.hm-flake." >&2
+          exit 1
         fi
 
         nix build ".#homeConfigurations.''${flake}.activationPackage"

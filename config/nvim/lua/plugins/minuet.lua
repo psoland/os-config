@@ -39,11 +39,29 @@ return {
     "Saghen/blink.cmp",
     optional = true,
     opts = function(_, opts)
+      opts.keymap = opts.keymap or {}
+      if opts.keymap["<A-y>"] == nil then
+        opts.keymap["<A-y>"] = require("minuet").make_blink_map()
+      end
+
       opts.sources = opts.sources or {}
       opts.sources.default = opts.sources.default or {}
       if not vim.tbl_contains(opts.sources.default, "minuet") then
         table.insert(opts.sources.default, "minuet")
       end
+
+      opts.sources.providers = opts.sources.providers or {}
+      opts.sources.providers.minuet = vim.tbl_deep_extend("force", opts.sources.providers.minuet or {}, {
+        name = "minuet",
+        module = "minuet.blink",
+        async = true,
+        timeout_ms = 3000,
+        score_offset = 50,
+      })
+
+      opts.completion = opts.completion or {}
+      opts.completion.trigger = opts.completion.trigger or {}
+      opts.completion.trigger.prefetch_on_insert = false
     end,
   },
 }

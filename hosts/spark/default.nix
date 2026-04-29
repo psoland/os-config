@@ -6,7 +6,10 @@
     ../../modules/common.nix
   ];
 
-  home.packages = [ pkgs.code-server ];
+  home.packages = with pkgs; [
+    code-server
+    llama-cpp
+  ];
 
   systemd.user.services.code-server = {
     Unit = {

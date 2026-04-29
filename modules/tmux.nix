@@ -65,9 +65,8 @@ in
       bind-key -T copy-mode-vi y send-keys -X copy-selection-and-cancel
       bind-key -T copy-mode-vi Enter send-keys -X copy-selection-and-cancel
 
-      # Rename window to "<parent>/<current>" so bare-repo worktrees
-      # like ~/projects/foo/main show as "foo/main" instead of just "main".
-      bind-key R rename-window "#{b:#{d:pane_current_path}}/#{b:pane_current_path}"
+      # Rename window to folder name
+      bind-key R rename-window "#{b:pane_current_path}"
 
       # Pane resizing med Ctrl+arrow
       bind-key -r -T prefix C-Left resize-pane -L 5
@@ -94,10 +93,6 @@ in
           set -g @catppuccin_window_default_text "#W"
           set -g @catppuccin_window_text "#W"
           set -g @catppuccin_window_current_text "#W"
-
-          # Show "<parent>/<current>" in the directory module so bare-repo
-          # worktrees (foo/main, foo/feature-x) are distinguishable.
-          set -g @catppuccin_directory_text "#{b:#{d:pane_current_path}}/#{b:pane_current_path}"
         '';
       }
       {
@@ -108,10 +103,11 @@ in
           set -g status-left-length 100
           set -g status-left ""
 
+          set -g @catppuccin_directory_text '#(echo "#{pane_current_path}" | sed -E "s|.*/([^/]+/[^/]+)$|\1|")'
+
           set -g status-right "#{E:@catppuccin_status_directory}"
           set -agF status-right "#{E:@catppuccin_status_cpu}"
           set -ag status-right "#{E:@catppuccin_status_session}"
-          # Hostname on the right so it's obvious which machine you're on.
           set -ag status-right "#{E:@catppuccin_status_host}"
         '';
       }

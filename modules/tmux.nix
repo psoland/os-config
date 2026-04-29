@@ -41,6 +41,11 @@ in
       unbind r
       bind r source-file ~/.config/tmux/tmux.conf
 
+      # Open new windows/splits in the current pane's working directory
+      bind c new-window -c "#{pane_current_path}"
+      bind '"' split-window -v -c "#{pane_current_path}"
+      bind %   split-window -h -c "#{pane_current_path}"
+
       # Vim navigation
       bind-key h select-pane -L
       bind-key j select-pane -D
@@ -88,6 +93,10 @@ in
           set -g @catppuccin_window_default_text "#W"
           set -g @catppuccin_window_text "#W"
           set -g @catppuccin_window_current_text "#W"
+
+          # Show "<parent>/<current>" in the directory module so bare-repo
+          # worktrees (foo/main, foo/feature-x) are distinguishable.
+          set -g @catppuccin_directory_text "#{b:#{d:pane_current_path}}/#{b:pane_current_path}"
         '';
       }
       {
@@ -96,7 +105,8 @@ in
           # Make the status line pretty
           set -g status-right-length 100
           set -g status-left-length 100
-          set -g status-left ""
+          # Hostname on the left so it's obvious which machine you're on.
+          set -g status-left "#{E:@catppuccin_status_host}"
 
           set -g status-right "#{E:@catppuccin_status_directory}"
           set -agF status-right "#{E:@catppuccin_status_cpu}"

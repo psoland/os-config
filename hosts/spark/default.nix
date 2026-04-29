@@ -9,7 +9,12 @@
   home.packages = with pkgs; [
     code-server
     llama-cpp
+    python313Packages.huggingface-hub
   ];
+
+  home.sessionVariables = {
+    NVIM_ENABLE_MINUET = "1";
+  };
 
   systemd.user.services.code-server = {
     Unit = {

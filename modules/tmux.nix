@@ -104,14 +104,15 @@ in
         plugin = cpu;
         extraConfig = ''
           # Make the status line pretty
-          set -g status-right-length 100
+          set -g status-right-length 200
           set -g status-left-length 100
-          # Hostname on the left so it's obvious which machine you're on.
-          set -g status-left "#{E:@catppuccin_status_host}"
+          set -g status-left ""
 
           set -g status-right "#{E:@catppuccin_status_directory}"
           set -agF status-right "#{E:@catppuccin_status_cpu}"
           set -ag status-right "#{E:@catppuccin_status_session}"
+          # Hostname on the right so it's obvious which machine you're on.
+          set -ag status-right "#{E:@catppuccin_status_host}"
         '';
       }
       {

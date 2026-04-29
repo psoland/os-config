@@ -65,8 +65,9 @@ in
       bind-key -T copy-mode-vi y send-keys -X copy-selection-and-cancel
       bind-key -T copy-mode-vi Enter send-keys -X copy-selection-and-cancel
 
-      # Rename window to folder name
-      bind-key R rename-window "#{b:pane_current_path}"
+      # Rename window to "<parent>/<current>" so bare-repo worktrees
+      # like ~/projects/foo/main show as "foo/main" instead of just "main".
+      bind-key R rename-window "#{b:#{d:pane_current_path}}/#{b:pane_current_path}"
 
       # Pane resizing med Ctrl+arrow
       bind-key -r -T prefix C-Left resize-pane -L 5

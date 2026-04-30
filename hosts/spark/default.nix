@@ -62,10 +62,44 @@
 
       exec llama-server "$@"
     '')
+
+    (writeShellScriptBin "fim" ''
+      set -euo pipefail
+
+      MODEL="''${FIM_MODEL:-ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF}"
+      HOST="''${FIM_HOST:-127.0.0.1}"
+      PORT="''${FIM_PORT:-8012}"
+      NGL="''${FIM_NGL:-99}"
+      FLASH_ATTN="''${FIM_FLASH_ATTN:-on}"
+      UBATCH="''${FIM_UBATCH:-1024}"
+      BATCH="''${FIM_BATCH:-1024}"
+      CTX_SIZE="''${FIM_CTX_SIZE:-0}"
+      CACHE_REUSE="''${FIM_CACHE_REUSE:-256}"
+
+      exec llama-server-cuda \
+        -hf "$MODEL" \
+        --host "$HOST" \
+        --port "$PORT" \
+        -ngl "$NGL" \
+        --flash-attn "$FLASH_ATTN" \
+        -ub "$UBATCH" -b "$BATCH" \
+        --ctx-size "$CTX_SIZE" \
+        --cache-reuse "$CACHE_REUSE" \
+        "$@"
+    '')
   ];
 
   home.sessionVariables = {
     NVIM_ENABLE_MINUET = "1";
+  };
+
+  programs.zsh.shellAliases = {
+    # llama.cpp helpers (Spark-only)
+    lls = "llama-server-cuda";
+    fim-start = "tmux has-session -t fim-serve 2>/dev/null || tmux new-session -d -s fim-serve 'fim'";
+    fim-start-debug = "tmux has-session -t fim-serve 2>/dev/null || tmux new-session -d -s fim-serve 'fim --log-timestamps --log-prefix --log-verbosity 4'";
+    fim-log = "tmux attach-session -t fim-serve";
+    fim-stop = "tmux kill-session -t fim-serve";
   };
 
   systemd.user.services.code-server = {

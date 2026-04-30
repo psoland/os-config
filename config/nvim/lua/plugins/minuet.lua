@@ -40,8 +40,8 @@ return {
     optional = true,
     opts = function(_, opts)
       opts.keymap = opts.keymap or {}
-      if opts.keymap["<A-y>"] == nil then
-        opts.keymap["<A-y>"] = require("minuet").make_blink_map()
+      if opts.keymap["<C-y>"] == nil then
+        opts.keymap["<C-y>"] = require("minuet").make_blink_map()
       end
 
       opts.sources = opts.sources or {}

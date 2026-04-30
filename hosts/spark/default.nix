@@ -8,7 +8,8 @@
 
   home.packages = with pkgs; [
     code-server
-    llama-cpp
+    (llama-cpp.override { cudaSupport = true; })
+    # llama-cpp
     python313Packages.huggingface-hub
   ];
 

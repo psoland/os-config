@@ -1,21 +1,22 @@
 { config, pkgs, ... }:
 
 {
-  programs.neovim = {
-    enable = true;
-    defaultEditor = true;
-    viAlias = true;
-    vimAlias = true;
+  home.packages = with pkgs; [
+    neovim
 
-    extraPackages = with pkgs; [
-      nodejs_22
-      unzip
-      wget
-      statix
-      nil
-      nixpkgs-fmt
-      xdg-utils
-    ];
+    unzip
+    wget
+    statix
+    nil
+    nixpkgs-fmt
+    xdg-utils
+  ];
+
+  home.sessionVariables.EDITOR = "nvim";
+
+  programs.zsh.shellAliases = {
+    vi = "nvim";
+    vim = "nvim";
   };
 
   xdg.configFile."nvim".source =

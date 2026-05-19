@@ -21,3 +21,6 @@ vim.g.clipboard = {
 -- LazyVim disables this when $SSH_TTY is set, but our OSC 52 provider
 -- handles clipboard correctly through SSH + tmux.
 vim.opt.clipboard = "unnamedplus"
+
+-- Disable inlay hints by default (toggle: <leader>uh)
+vim.g.lazyvim_inlay_hints = false

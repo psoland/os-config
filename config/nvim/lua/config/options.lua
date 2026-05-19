@@ -22,5 +22,3 @@ vim.g.clipboard = {
 -- handles clipboard correctly through SSH + tmux.
 vim.opt.clipboard = "unnamedplus"
 
--- Disable inlay hints by default (toggle: <leader>uh)
-vim.g.lazyvim_inlay_hints = false

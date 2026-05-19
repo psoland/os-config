@@ -7,5 +7,10 @@
 -- Or remove existing autocmds by their group name (which is prefixed with `lazyvim_` for the defaults)
 -- e.g. vim.api.nvim_del_augroup_by_name("lazyvim_wrap_spell")
 
--- Disable diagnostics by default (toggle: <leader>ud)
-vim.diagnostic.enable(false)
+-- Disable diagnostics for specific filetypes (toggle: <leader>ud)
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = { "markdown", "text" },
+  callback = function()
+    vim.diagnostic.enable(false, { bufnr = 0 })
+  end,
+})

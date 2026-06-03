@@ -23,6 +23,7 @@
         lib = pkgs.lib;
         pythonRuntimeLibs = lib.optionals pkgs.stdenv.isLinux [
           pkgs.stdenv.cc.cc.lib
+          pkgs.zlib
         ];
         pythonRuntimeShellHook = lib.optionalString pkgs.stdenv.isLinux ''
           __python_runtime_lib_path="${lib.makeLibraryPath pythonRuntimeLibs}"

@@ -122,7 +122,7 @@ direnv allow
 
 ### Python native wheels fail to import
 
-The default and Python shells expose Nix's C++ runtime library on Linux so PyPI wheels with native extensions, such as `numpy` and `torch`, can find `libstdc++.so.6`.
+The default and Python shells expose Nix runtime libraries on Linux so PyPI wheels with native extensions, such as `numpy` and `torch`, can find libraries like `libstdc++.so.6` and `libz.so.1`.
 
 ### Package not found
 Make sure you're using nixpkgs unstable for latest packages:

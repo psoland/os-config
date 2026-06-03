@@ -32,6 +32,6 @@ direnv allow
 
 ## Native Wheels on Linux
 
-The Linux shells expose Nix's C++ runtime library so packages installed with `uv` from PyPI, such as `numpy` and `torch`, can load native extensions that need `libstdc++.so.6`.
+The Linux shells expose Nix runtime libraries so packages installed with `uv` from PyPI, such as `numpy` and `torch`, can load native extensions that need libraries like `libstdc++.so.6` and `libz.so.1`.
 
 This is intentionally scoped to the dev shell instead of setting a global `LD_LIBRARY_PATH`.

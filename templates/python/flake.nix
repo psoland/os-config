@@ -7,10 +7,10 @@
   };
 
   outputs =
-    {
-      self,
-      nixpkgs,
-      flake-utils,
+    { self
+    , nixpkgs
+    , flake-utils
+    ,
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
@@ -28,16 +28,31 @@
           ty
           just
         ];
-        torchRuntimeLibs = lib.optionals pkgs.stdenv.isLinux [
+        pythonRuntimeLibs = lib.optionals pkgs.stdenv.isLinux [
           pkgs.stdenv.cc.cc.lib
         ];
+        pythonRuntimeShellHook = lib.optionalString pkgs.stdenv.isLinux ''
+          __python_runtime_lib_path="${lib.makeLibraryPath pythonRuntimeLibs}"
+
+          if [ -n "$__python_runtime_lib_path" ]; then
+            if [ -n "''${LD_LIBRARY_PATH:-}" ]; then
+              export LD_LIBRARY_PATH="$__python_runtime_lib_path:''${LD_LIBRARY_PATH}"
+            else
+              export LD_LIBRARY_PATH="$__python_runtime_lib_path"
+            fi
+          fi
+
+          unset __python_runtime_lib_path
+        '';
       in
       {
         devShells = {
           default = pkgs.mkShell {
-            buildInputs = pythonBaseInputs;
+            buildInputs = pythonBaseInputs ++ pythonRuntimeLibs;
 
             shellHook = ''
+              ${pythonRuntimeShellHook}
+
               echo "Python development shell"
               python --version
 
@@ -50,20 +65,13 @@
           };
 
           cuda = pkgs.mkShell {
-            buildInputs = pythonBaseInputs ++ torchRuntimeLibs;
+            buildInputs = pythonBaseInputs ++ pythonRuntimeLibs;
 
             shellHook = ''
-              if [ "$(uname -s)" = "Linux" ]; then
-                __torch_runtime_lib_path="${lib.makeLibraryPath torchRuntimeLibs}"
-                __cuda_driver_path=""
+              ${pythonRuntimeShellHook}
 
-                if [ -n "$__torch_runtime_lib_path" ]; then
-                  if [ -n "''${LD_LIBRARY_PATH:-}" ]; then
-                    export LD_LIBRARY_PATH="$__torch_runtime_lib_path:''${LD_LIBRARY_PATH}"
-                  else
-                    export LD_LIBRARY_PATH="$__torch_runtime_lib_path"
-                  fi
-                fi
+              if [ "$(uname -s)" = "Linux" ]; then
+                __cuda_driver_path=""
 
                 for __candidate in \
                   /usr/lib/aarch64-linux-gnu/libcuda.so.1 \
@@ -95,7 +103,7 @@
                   echo "warning: libcuda.so.1 not found; torch.cuda.is_available() may remain False"
                 fi
 
-                unset __torch_runtime_lib_path __cuda_driver_path __candidate
+                unset __cuda_driver_path __candidate
               fi
 
               echo "Python CUDA development shell"

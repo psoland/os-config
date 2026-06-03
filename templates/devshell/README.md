@@ -120,6 +120,10 @@ Configure the Nix SDK in Project Structure settings.
 direnv allow
 ```
 
+### Python native wheels fail to import
+
+The default and Python shells expose Nix's C++ runtime library on Linux so PyPI wheels with native extensions, such as `numpy` and `torch`, can find `libstdc++.so.6`.
+
 ### Package not found
 Make sure you're using nixpkgs unstable for latest packages:
 ```nix

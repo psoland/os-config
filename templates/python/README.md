@@ -19,7 +19,7 @@ direnv allow
 
 ## Available Shells
 
-- `default` - Python + `uv` + lint/type tools
+- `default` - Python + `uv` + lint/type tools, with Linux runtime libraries for native PyPI wheels
 - `cuda` - Same as default, plus Linux-only runtime setup (Ubuntu-friendly paths) that preloads host `libcuda.so.1` for CUDA-enabled PyTorch wheels
 
 ## Included Tools
@@ -29,3 +29,9 @@ direnv allow
 - `ruff`
 - `ty`
 - `just`
+
+## Native Wheels on Linux
+
+The Linux shells expose Nix's C++ runtime library so packages installed with `uv` from PyPI, such as `numpy` and `torch`, can load native extensions that need `libstdc++.so.6`.
+
+This is intentionally scoped to the dev shell instead of setting a global `LD_LIBRARY_PATH`.

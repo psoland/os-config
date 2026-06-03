@@ -158,8 +158,8 @@
               gopls
 
               # Frontend
-              nodejs_20
-              nodePackages.pnpm
+              nodejs_22
+              pnpm
 
               # Database
               postgresql_16
@@ -173,10 +173,6 @@
 
             shellHook = ''
               echo "Full-stack development shell"
-              echo ""
-              echo "Available services:"
-              echo "  process-compose up  # Start all services"
-              echo ""
             '';
           };
         };

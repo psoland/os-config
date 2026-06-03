@@ -29,19 +29,20 @@
               # Add your project dependencies here
 
               # Example: Node.js project
-              # nodejs_20
-              # nodePackages.pnpm
-              # nodePackages.typescript
-              # nodePackages.typescript-language-server
+              nodejs_22
+              pnpm
+              typescript
+              typescript-language-server
 
               # Example: Python project
-              # python312
+              python312
+              uv
+              ruff
+              ty
+
               # python312Packages.pip
               # python312Packages.virtualenv
               # pyright
-              # uv
-              # ruff
-              # ty
 
               # Example: Go project
               # go
@@ -66,10 +67,6 @@
 
             shellHook = ''
               echo "Development shell activated!"
-              echo ""
-              echo "Available tools:"
-              echo "  just --list   # Show available commands"
-              echo ""
 
               # Example: Set up project-specific environment
               # export PROJECT_ROOT="$(pwd)"
@@ -92,12 +89,12 @@
           # Node.js development shell
           node = pkgs.mkShell {
             buildInputs = with pkgs; [
-              nodejs_20
-              nodePackages.pnpm
-              nodePackages.typescript
-              nodePackages.typescript-language-server
-              nodePackages.prettier
-              nodePackages.eslint
+              nodejs_22
+              pnpm
+              typescript
+              typescript-language-server
+              prettier
+              eslint
             ];
 
             shellHook = ''

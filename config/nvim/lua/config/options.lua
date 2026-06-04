@@ -2,6 +2,10 @@
 -- Default options that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/options.lua
 -- Add any additional options here
 
+-- Language server choices (read by LazyVim lang extras enabled in lazyvim.json)
+vim.g.lazyvim_python_lsp = "ty"
+vim.g.lazyvim_python_ruff = "ruff"
+
 -- Use OSC 52 clipboard provider for remote/SSH/tmux compatibility.
 -- This ensures yanks reach the system clipboard through tmux and over SSH
 -- without needing xclip/xsel on the remote machine.

@@ -9,6 +9,13 @@
     statix
     nil
     nixpkgs-fmt
+    ruff
+    ty
+    typescript
+    vtsls
+    vscode-langservers-extracted
+    eslint
+    prettier
     xdg-utils
   ];
 

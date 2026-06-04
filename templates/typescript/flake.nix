@@ -25,11 +25,10 @@
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             nodejs_20
-            nodePackages.pnpm
-            nodePackages.typescript
-            nodePackages.typescript-language-server
-            nodePackages.prettier
-            nodePackages.eslint
+            pnpm
+            typescript
+            vtsls
+            prettier
             just
           ];
 

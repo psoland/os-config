@@ -51,7 +51,7 @@
                 nodejs_22
                 pnpm
                 typescript
-                typescript-language-server
+                vtsls
 
                 # Example: Python project
                 python312
@@ -114,7 +114,7 @@
               nodejs_22
               pnpm
               typescript
-              typescript-language-server
+              vtsls
               prettier
               eslint
             ];

@@ -15,7 +15,6 @@ direnv allow
 - `nodejs_20`
 - `pnpm`
 - `typescript`
-- `typescript-language-server`
+- `vtsls`
 - `prettier`
-- `eslint`
 - `just`

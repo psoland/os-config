@@ -14,7 +14,6 @@
     typescript
     vtsls
     vscode-langservers-extracted
-    eslint
     prettier
     xdg-utils
   ];

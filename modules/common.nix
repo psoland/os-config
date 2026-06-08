@@ -96,8 +96,14 @@
 
       # Pi-coding-agent
       (writeShellScriptBin "pi" ''
-        exec ${nodejs}/bin/npx -y @mariozechner/pi-coding-agent@latest "$@"
+        exec ${nodejs}/bin/npx -y @earendil-works/pi-coding-agent@latest "$@"
       '')
+
+      # Hunk diff
+      (writeShellScriptBin "hunk" ''
+        exec ${nodejs}/bin/npx -y hunkdiff "$@"
+      '')
+
     ];
 
   # Configs from config folder

@@ -128,11 +128,10 @@ if [ -e "$HOME/.config/nvim" ] || [ -L "$HOME/.config/nvim" ]; then
   fi
 fi
 
-# 6. Build and activate Home Manager
-info "Building Home Manager configuration '$HOME_MANAGER_FLAKE'..."
+# 6. Build and activate via nix-darwin
+info "Building and activating nix-darwin configuration '$HOME_MANAGER_FLAKE'..."
 cd "$DOTFILES_DIR"
-nix build ".#homeConfigurations.${HOME_MANAGER_FLAKE}.activationPackage"
-./result/activate
+nix run nix-darwin -- switch --flake ".#${HOME_MANAGER_FLAKE}"
 
 echo
 echo "macOS bootstrap complete."

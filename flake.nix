@@ -17,11 +17,11 @@
     # OpenClaw Home Manager module and packages
     nix-openclaw.url = "github:openclaw/nix-openclaw";
 
-    # Future: nix-darwin for macOS
-    # darwin = {
-    #   url = "github:lnl7/nix-darwin";
-    #   inputs.nixpkgs.follows = "nixpkgs";
-    # };
+    # nix-darwin for macOS system management (master tracks nixos-unstable)
+    darwin = {
+      url = "github:nix-darwin/nix-darwin/master";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -31,6 +31,7 @@
       home-manager,
       flake-utils,
       nix-openclaw,
+      darwin,
       ...
     }:
     let
@@ -63,6 +64,32 @@
         }
       );
 
+    in
+    let
+      mkDarwinConfig = { username }:
+        darwin.lib.darwinSystem {
+          system = "aarch64-darwin";
+          specialArgs = {
+            inherit self username;
+          };
+          modules = [
+            ./modules/darwin.nix
+            home-manager.darwinModules.home-manager
+            {
+              home-manager = {
+                useGlobalPkgs = true;
+                useUserPackages = true;
+                users.${username} = {
+                  imports = [ ./hosts/macbook ];
+                };
+                extraSpecialArgs = {
+                  inherit self username;
+                  isOpenclaw = false;
+                };
+              };
+            }
+          ];
+        };
     in
     {
       # Home Manager configurations
@@ -144,24 +171,14 @@
           };
         };
 
-        # MacBook (Apple Silicon) Home Manager configuration for psoland user
-        # Usage: home-manager switch --flake .#psoland-mac
-        "psoland-mac" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgsFor.aarch64-darwin;
-          modules = [
-            ./hosts/macbook
-            {
-              home = {
-                username = "psoland";
-                homeDirectory = "/Users/psoland";
-              };
-            }
-          ];
-          extraSpecialArgs = {
-            inherit self;
-            isOpenclaw = false;
-          };
-        };
+      };
+
+      # MacBook (Apple Silicon) nix-darwin + Home Manager configurations
+      # Usage: darwin-rebuild switch --flake .#psoland-mac
+      #        darwin-rebuild switch --flake .#pettersoland-mac
+      darwinConfigurations = {
+        "psoland-mac" = mkDarwinConfig { username = "psoland"; };
+        "pettersoland-mac" = mkDarwinConfig { username = "pettersoland"; };
       };
 
       # Templates for new projects

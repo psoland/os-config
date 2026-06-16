@@ -6,9 +6,9 @@ Declarative machine setup with:
 
 ## Current Scope
 
-- Primary targets: Oracle Ubuntu VMs, Spark DGX Ubuntu, and a personal MacBook (Apple Silicon)
-- User configured by bootstrap: `psoland`
-- Home Manager targets in this repo: `psoland-vm`, `psoland-vm-arm`, `psoland-vm-openclaw`, `spark`, and `psoland-mac`
+- Primary targets: Oracle Ubuntu VMs, Spark DGX Ubuntu, a personal MacBook, and a work MacBook (Apple Silicon)
+- Users configured by bootstrap: `psoland` (personal), `pettersoland` (work)
+- Home Manager targets in this repo: `psoland-vm`, `psoland-vm-arm`, `psoland-vm-openclaw`, `spark`, `psoland-mac`, and `pettersoland-mac`
 
 ## Repository Layout
 
@@ -23,9 +23,10 @@ os-config/
 │   ├── spark/
 │   │   ├── bootstrap.sh          # Spark DGX bootstrap (runs as root)
 │   │   └── default.nix           # Host-specific HM module wiring
-│   └── macbook/
-│       ├── bootstrap.sh          # macOS bootstrap (runs as your user, not root)
-│       └── default.nix           # Host-specific HM module wiring
+│   └── mac/
+│       ├── bootstrap.sh          # macOS bootstrap (runs as your user, takes profile arg)
+│       ├── personal.nix          # Personal Mac HM module wiring
+│       └── work.nix              # Work Mac HM module wiring
 ├── modules/
 │   ├── common.nix                # Shared packages and programs
 │   ├── darwin.nix                # macOS-only HM bits (brew shellenv, etc.)
@@ -68,19 +69,35 @@ Notes:
 
 ### macOS bootstrap script (Apple Silicon)
 
-The macOS script runs as the normal user (`psoland`, not root) and:
+The macOS script runs as the normal user (not root) and takes a required
+profile argument:
 
-1. Verifies macOS + Apple Silicon (`arm64`) + expected user/home
-2. Ensures Xcode Command Line Tools are installed (opens installer prompt if missing)
-3. Installs Homebrew (if missing)
-4. Installs Nix (if missing)
-5. Clones this repo to `~/.dotfiles` and writes `~/.dotfiles/.hm-flake`
-6. Backs up conflicting dotfiles/configs to `~/.dotfiles-backup/<timestamp>/`
-7. Builds and activates `homeConfigurations.psoland-mac`
+```bash
+./bootstrap.sh personal    # → psoland-mac       (user: psoland)
+./bootstrap.sh work        # → pettersoland-mac  (user: pettersoland)
+```
+
+The script:
+
+1. Parses and validates the profile argument
+2. Verifies macOS + Apple Silicon (`arm64`) + expected user/home for that profile
+3. Ensures Xcode Command Line Tools are installed (opens installer prompt if missing)
+4. Installs Homebrew (if missing)
+5. Installs Nix (if missing)
+6. Clones this repo to `~/.dotfiles` and writes `~/.dotfiles/.hm-flake`
+7. Backs up conflicting dotfiles/configs to `~/.dotfiles-backup/<timestamp>/`
+8. Builds and activates the appropriate `homeConfiguration`
+
+Profile differences:
+
+| Profile | Flake | User | Modules |
+|---------|-------|------|---------|
+| `personal` | `psoland-mac` | `psoland` | `common.nix` only |
+| `work` | `pettersoland-mac` | `pettersoland` | `common.nix` + `darwin.nix` (Homebrew, Raycast, Outlook, dock settings) |
 
 Notes:
 - If Xcode CLT is not installed, the script triggers installation and exits; rerun it after CLT completes.
-- `nix-darwin` is intentionally not used yet. System-level macOS settings remain manual or Homebrew-managed.
+- `nix-darwin` is intentionally not used yet. macOS settings are managed via Home Manager (`targets.darwin.defaults`) or Homebrew.
 
 ## Quick Start
 
@@ -109,22 +126,23 @@ curl -fsSL https://raw.githubusercontent.com/psoland/os-config/main/hosts/spark/
 
 ### MacBook (Apple Silicon)
 
-Run as your normal user `psoland` (NOT root) on Apple Silicon. The script
-fails fast if the machine is not `arm64` or if the user/home does not match
-`psoland` / `/Users/psoland`.
+Run as your normal user (NOT root) on Apple Silicon. The script takes a
+required profile argument and validates the user/home match.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/psoland/os-config/main/hosts/macbook/bootstrap.sh | bash
+# Personal Mac (psoland, common.nix only)
+curl -fsSL https://raw.githubusercontent.com/psoland/os-config/main/hosts/mac/bootstrap.sh | bash -s -- personal
+
+# Work Mac (pettersoland, common.nix + darwin.nix)
+curl -fsSL https://raw.githubusercontent.com/psoland/os-config/main/hosts/mac/bootstrap.sh | bash -s -- work
 ```
 
 Notes:
-- `nix-darwin` is intentionally not used yet. System-level macOS settings
-  (Dock, Finder, key repeat, casks, etc.) are still managed manually or via
-  Homebrew. Home Manager covers shell, nvim, tmux, starship, git, and CLI
-  tooling — same as on the Linux hosts.
+- `nix-darwin` is intentionally not used yet. macOS settings (Dock, Finder, etc.)
+  are managed via Home Manager (`modules/darwin.nix`) or Homebrew casks.
 - After bootstrap, open a new terminal so the new `~/.zshrc` and `~/.zprofile`
   are loaded.
-- Homebrew stays on `PATH` via `~/.zprofile` (set from `modules/darwin.nix`),
+- Homebrew stays on `PATH` via `~/.zprofile` (set from `modules/zsh.nix`),
   so brew-installed CLIs and casks still work.
 
 ### Clone and run locally
@@ -180,6 +198,7 @@ nix build .#homeConfigurations.psoland-vm-arm.activationPackage
 nix build .#homeConfigurations.psoland-vm-openclaw.activationPackage
 nix build .#homeConfigurations.spark.activationPackage
 nix build .#homeConfigurations.psoland-mac.activationPackage
+nix build .#homeConfigurations.pettersoland-mac.activationPackage
 ./result/activate
 ```
 
@@ -192,6 +211,7 @@ nix build .#homeConfigurations.psoland-mac.activationPackage
 | `psoland-vm-openclaw` | `psoland` | `x86_64-linux` |
 | `spark` | `psoland` | `aarch64-linux` |
 | `psoland-mac` | `psoland` | `aarch64-darwin` |
+| `pettersoland-mac` | `pettersoland` | `aarch64-darwin` |
 
 ### Oracle OpenClaw target
 

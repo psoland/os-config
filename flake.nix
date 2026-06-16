@@ -17,8 +17,7 @@
     # OpenClaw Home Manager module and packages
     nix-openclaw.url = "github:openclaw/nix-openclaw";
 
-    # nix-darwin for the work Mac (pettersoland).
-    # The personal Mac (psoland) stays on Home Manager only.
+    # nix-darwin for macOS system management (master tracks nixos-unstable)
     darwin = {
       url = "github:nix-darwin/nix-darwin/master";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -26,13 +25,14 @@
   };
 
   outputs =
-    { self
-    , nixpkgs
-    , home-manager
-    , flake-utils
-    , nix-openclaw
-    , darwin
-    , ...
+    {
+      self,
+      nixpkgs,
+      home-manager,
+      flake-utils,
+      nix-openclaw,
+      darwin,
+      ...
     }:
     let
       # Supported systems
@@ -171,61 +171,14 @@
           };
         };
 
-        # MacBook (Apple Silicon) Home Manager configuration for psoland user.
-        # Stays on Home Manager only — no nix-darwin, no mas/cask installs,
-        # no system defaults changes. Use:
-        #   home-manager switch --flake .#psoland-mac
-        "psoland-mac" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgsFor.aarch64-darwin;
-          modules = [
-            ./hosts/macbook
-            {
-              home = {
-                username = "psoland";
-                homeDirectory = "/Users/psoland";
-              };
-            }
-          ];
-          extraSpecialArgs = {
-            inherit self;
-            isOpenclaw = false;
-          };
-        };
       };
 
-      # Work MacBook (pettersoland) — full nix-darwin + Home Manager.
-      # Installs casks (raycast), mas apps (Microsoft Outlook), and applies
-      # system defaults (dock autohide). Use:
-      #   darwin-rebuild switch --flake .#pettersoland-mac
+      # MacBook (Apple Silicon) nix-darwin + Home Manager configurations
+      # Usage: darwin-rebuild switch --flake .#psoland-mac
+      #        darwin-rebuild switch --flake .#pettersoland-mac
       darwinConfigurations = {
-        "pettersoland-mac" = darwin.lib.darwinSystem {
-          system = "aarch64-darwin";
-          specialArgs = {
-            inherit self;
-            username = "pettersoland";
-          };
-          modules = [
-            ./hosts/macbook-work/darwin.nix
-            home-manager.darwinModules.home-manager
-            {
-              home-manager = {
-                useGlobalPkgs = true;
-                useUserPackages = true;
-                users."pettersoland" = {
-                  imports = [ ./hosts/macbook ];
-                  home = {
-                    username = "pettersoland";
-                    homeDirectory = "/Users/pettersoland";
-                  };
-                };
-                extraSpecialArgs = {
-                  inherit self;
-                  isOpenclaw = false;
-                };
-              };
-            }
-          ];
-        };
+        "psoland-mac" = mkDarwinConfig { username = "psoland"; };
+        "pettersoland-mac" = mkDarwinConfig { username = "pettersoland"; };
       };
 
       # Templates for new projects

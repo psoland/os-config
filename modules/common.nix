@@ -34,6 +34,7 @@
       lazygit
       lazydocker
       opencode
+      codex
       claude-code
       bitwarden-cli
       gh
@@ -110,11 +111,6 @@
       # Hunk diff
       (writeShellScriptBin "hunk" ''
         exec ${nodejs}/bin/npx -y hunkdiff "$@"
-      '')
-
-      # Codex
-      (writeShellScriptBin "codex" ''
-        exec ${nodejs}/bin/npx -y @openai/codex "$@"
       '')
 
     ];

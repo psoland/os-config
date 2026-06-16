@@ -10,11 +10,8 @@ info() {
   echo "==> $*"
 }
 
-USERNAME="${BOOTSTRAP_USERNAME:-psoland}"
-HOME_MANAGER_FLAKE="${BOOTSTRAP_HM_FLAKE:-psoland-mac}"
-# Set to a darwinConfigurations name (e.g. "pettersoland-mac") to activate via
-# nix-darwin + darwin-rebuild instead of plain Home Manager.
-DARWIN_CONFIG="${BOOTSTRAP_DARWIN_CONFIG:-}"
+USERNAME="psoland"
+HOME_MANAGER_FLAKE="psoland-mac"
 REPO_URL="https://github.com/psoland/os-config.git"
 DOTFILES_DIR="$HOME/.dotfiles"
 BACKUP_DIR="$HOME/.dotfiles-backup/$(date +%Y%m%d-%H%M%S)"
@@ -131,16 +128,10 @@ if [ -e "$HOME/.config/nvim" ] || [ -L "$HOME/.config/nvim" ]; then
   fi
 fi
 
-# 6. Build and activate
+# 6. Build and activate via nix-darwin
+info "Building and activating nix-darwin configuration '$HOME_MANAGER_FLAKE'..."
 cd "$DOTFILES_DIR"
-if [ -n "$DARWIN_CONFIG" ]; then
-  info "Building and activating nix-darwin configuration '$DARWIN_CONFIG'..."
-  nix run nix-darwin -- switch --flake ".#${DARWIN_CONFIG}"
-else
-  info "Building Home Manager configuration '$HOME_MANAGER_FLAKE'..."
-  nix build ".#homeConfigurations.${HOME_MANAGER_FLAKE}.activationPackage"
-  ./result/activate
-fi
+nix run nix-darwin -- switch --flake ".#${HOME_MANAGER_FLAKE}"
 
 echo
 echo "macOS bootstrap complete."

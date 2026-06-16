@@ -112,6 +112,11 @@
         exec ${nodejs}/bin/npx -y hunkdiff "$@"
       '')
 
+      # Codex
+      (writeShellScriptBin "codex" ''
+        exec ${nodejs}/bin/npx -y @openai/codex "$@"
+      '')
+
     ];
 
   # Configs from config folder

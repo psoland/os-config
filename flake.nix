@@ -147,27 +147,23 @@
 
       };
 
-      # nix-darwin configurations for macOS hosts
-      darwinConfigurations = {
-        # Personal MacBook (Apple Silicon) — standalone Home Manager
-        # Usage: home-manager switch --flake .#psoland-mac
-        "psoland-mac" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgsFor.aarch64-darwin;
-          modules = [
-            ./hosts/mac/personal.nix
-            {
-              home = {
-                username = "psoland";
-                homeDirectory = "/Users/psoland";
-              };
-            }
-          ];
-          extraSpecialArgs = {
-            inherit self;
-            isOpenclaw = false;
-          };
+      # Personal MacBook (Apple Silicon) — standalone Home Manager
+      # Usage: home-manager switch --flake .#psoland-mac
+      "psoland-mac" = home-manager.lib.homeManagerConfiguration {
+        pkgs = nixpkgsFor.aarch64-darwin;
+        modules = [
+          ./hosts/mac/personal.nix
+          {
+            home = {
+              username = "psoland";
+              homeDirectory = "/Users/psoland";
+            };
+          }
+        ];
+        extraSpecialArgs = {
+          inherit self;
+          isOpenclaw = false;
         };
-
       };
 
       # nix-darwin configurations for macOS hosts

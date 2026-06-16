@@ -1,25 +1,21 @@
 # modules/darwin.nix
-# Shared nix-darwin system configuration for all Mac hosts.
-{ username, ... }:
+# macOS-specific Home Manager configuration.
+{ ... }:
 
 {
-  nixpkgs.hostPlatform = "aarch64-darwin";
-  nixpkgs.config.allowUnfree = true;
-
-  system.stateVersion = 6;
-
-  system.primaryUser = username;
-
-  users.users.${username} = {
-    name = username;
-    home = "/Users/${username}";
-  };
-
-  system.defaults.dock.autohide = true;
-
-  homebrew.enable = true;
-  homebrew.casks = [ "raycast" ];
-  homebrew.masApps = {
-    "Microsoft Outlook" = 985367838;
-  };
+  # Keep Homebrew on PATH for login shells.
+  # macOS reads /etc/zprofile -> ~/.zprofile for login shells; Home Manager
+  # writes ~/.zprofile from programs.zsh.profileExtra. Without this, anything
+  # installed under /opt/homebrew (casks, GUI apps' CLIs, etc.) will not be on
+  # PATH unless a Nix-installed equivalent shadows it.
+  programs.zsh.profileExtra = ''
+    # Homebrew (Apple Silicon)
+    if [ -x /opt/homebrew/bin/brew ]; then
+      eval "$(/opt/homebrew/bin/brew shellenv)"
+    fi
+    # Homebrew (Intel) - harmless on Apple Silicon if not present
+    if [ -x /usr/local/bin/brew ]; then
+      eval "$(/usr/local/bin/brew shellenv)"
+    fi
+  '';
 }

@@ -66,12 +66,8 @@
           exit 1
         fi
 
-        if [ "$(uname -s)" = "Darwin" ]; then
-          darwin-rebuild switch --flake ".#''${flake}"
-        else
-          nix build ".#homeConfigurations.''${flake}.activationPackage"
-          ./result/activate
-        fi
+        nix build ".#homeConfigurations.''${flake}.activationPackage"
+        ./result/activate
       '')
 
       # Apply changes
@@ -90,12 +86,8 @@
           exit 1
         fi
 
-        if [ "$(uname -s)" = "Darwin" ]; then
-          darwin-rebuild switch --flake ".#''${flake}"
-        else
-          nix build ".#homeConfigurations.''${flake}.activationPackage"
-          ./result/activate
-        fi
+        nix build ".#homeConfigurations.''${flake}.activationPackage"
+        ./result/activate
       '')
 
       # Tmux developer layouts

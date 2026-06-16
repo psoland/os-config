@@ -65,6 +65,32 @@
       );
 
     in
+    let
+      mkDarwinConfig = { username }:
+        darwin.lib.darwinSystem {
+          system = "aarch64-darwin";
+          specialArgs = {
+            inherit self username;
+          };
+          modules = [
+            ./modules/darwin.nix
+            home-manager.darwinModules.home-manager
+            {
+              home-manager = {
+                useGlobalPkgs = true;
+                useUserPackages = true;
+                users.${username} = {
+                  imports = [ ./hosts/macbook ];
+                };
+                extraSpecialArgs = {
+                  inherit self username;
+                  isOpenclaw = false;
+                };
+              };
+            }
+          ];
+        };
+    in
     {
       # Home Manager configurations
       homeConfigurations = {
@@ -168,9 +194,8 @@
       };
 
       # Work MacBook (pettersoland) — full nix-darwin + Home Manager.
-      # Imports modules/darwin.nix (the shared nix-darwin system module)
-      # which sets casks, mas apps, system defaults, and the user account.
-      # Use:
+      # Installs casks (raycast), mas apps (Microsoft Outlook), and applies
+      # system defaults (dock autohide). Use:
       #   darwin-rebuild switch --flake .#pettersoland-mac
       darwinConfigurations = {
         "pettersoland-mac" = darwin.lib.darwinSystem {
@@ -180,7 +205,7 @@
             username = "pettersoland";
           };
           modules = [
-            ./modules/darwin.nix
+            ./hosts/macbook-work/darwin.nix
             home-manager.darwinModules.home-manager
             {
               home-manager = {

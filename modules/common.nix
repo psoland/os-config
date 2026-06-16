@@ -67,8 +67,27 @@
           exit 1
         fi
 
-        nix build ".#homeConfigurations.''${flake}.activationPackage"
-        ./result/activate
+        # TODO: use darwin-rebuild for all Darwin flake targets once personal Mac
+        # moves to nix-darwin. For now, only pettersoland-mac uses darwin-rebuild.
+        CASE="${flake}"
+        if [ "$(uname -s)" = "Darwin" ]; then
+          case "$flake" in
+            pettersoland-mac)
+              darwin-rebuild switch --flake ".#$flake"
+              ;;
+            # Future: add other darwin targets here when they move to nix-darwin
+            # psoland-mac)
+            #   darwin-rebuild switch --flake ".#$flake"
+            #   ;;
+            *)
+              nix build ".#homeConfigurations.$flake.activationPackage"
+              ./result/activate
+              ;;
+          esac
+        else
+          nix build ".#homeConfigurations.$flake.activationPackage"
+          ./result/activate
+        fi
       '')
 
       # Apply changes
@@ -87,8 +106,27 @@
           exit 1
         fi
 
-        nix build ".#homeConfigurations.''${flake}.activationPackage"
-        ./result/activate
+        # TODO: use darwin-rebuild for all Darwin flake targets once personal Mac
+        # moves to nix-darwin. For now, only pettersoland-mac uses darwin-rebuild.
+        CASE="${flake}"
+        if [ "$(uname -s)" = "Darwin" ]; then
+          case "$flake" in
+            pettersoland-mac)
+              darwin-rebuild switch --flake ".#$flake"
+              ;;
+            # Future: add other darwin targets here when they move to nix-darwin
+            # psoland-mac)
+            #   darwin-rebuild switch --flake ".#$flake"
+            #   ;;
+            *)
+              nix build ".#homeConfigurations.$flake.activationPackage"
+              ./result/activate
+              ;;
+          esac
+        else
+          nix build ".#homeConfigurations.$flake.activationPackage"
+          ./result/activate
+        fi
       '')
 
       # Tmux developer layouts

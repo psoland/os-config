@@ -1,5 +1,5 @@
 # modules/darwin.nix
-# macOS-specific Home Manager configuration.
+# nix-darwin module — macOS system-level configuration.
 { ... }:
 
 {
@@ -12,5 +12,5 @@
     };
   };
 
-  targets.darwin.defaults."com.apple.dock".autohide = true;
+  system.defaults.dock.autohide = true;
 }

@@ -29,7 +29,7 @@ os-config/
 │       └── work.nix              # Work Mac HM module wiring
 ├── modules/
 │   ├── common.nix                # Shared packages and programs
-│   ├── darwin.nix                # macOS-only HM bits (brew shellenv, etc.)
+│   ├── darwin.nix                # nix-darwin module (homebrew, system settings)
 │   ├── openclaw.nix              # OpenClaw Home Manager module config
 │   ├── zsh.nix
 │   ├── tmux.nix
@@ -86,18 +86,18 @@ The script:
 5. Installs Nix (if missing)
 6. Clones this repo to `~/.dotfiles` and writes `~/.dotfiles/.hm-flake`
 7. Backs up conflicting dotfiles/configs to `~/.dotfiles-backup/<timestamp>/`
-8. Builds and activates the appropriate `homeConfiguration`
+8. Builds and activates the appropriate `darwinConfiguration` via `darwin-rebuild`
 
 Profile differences:
 
 | Profile | Flake | User | Modules |
 |---------|-------|------|---------|
-| `personal` | `psoland-mac` | `psoland` | `common.nix` only |
-| `work` | `pettersoland-mac` | `pettersoland` | `common.nix` + `darwin.nix` (Homebrew, Raycast, Outlook, dock settings) |
+| `personal` | `psoland-mac` | `psoland` | nix-darwin + `common.nix` only |
+| `work` | `pettersoland-mac` | `pettersoland` | nix-darwin + `common.nix` + `darwin.nix` (Homebrew, Raycast, Outlook, dock settings) |
 
 Notes:
 - If Xcode CLT is not installed, the script triggers installation and exits; rerun it after CLT completes.
-- `nix-darwin` is intentionally not used yet. macOS settings are managed via Home Manager (`targets.darwin.defaults`) or Homebrew.
+- macOS system and Homebrew management use nix-darwin. `modules/darwin.nix` is a nix-darwin module (not a Home Manager module) loaded at the `darwinConfigurations` level.
 
 ## Quick Start
 
@@ -130,16 +130,17 @@ Run as your normal user (NOT root) on Apple Silicon. The script takes a
 required profile argument and validates the user/home match.
 
 ```bash
-# Personal Mac (psoland, common.nix only)
+# Personal Mac (psoland, nix-darwin + common.nix only)
 curl -fsSL https://raw.githubusercontent.com/psoland/os-config/main/hosts/mac/bootstrap.sh | bash -s -- personal
 
-# Work Mac (pettersoland, common.nix + darwin.nix)
+# Work Mac (pettersoland, nix-darwin + common.nix + darwin.nix)
 curl -fsSL https://raw.githubusercontent.com/psoland/os-config/main/hosts/mac/bootstrap.sh | bash -s -- work
 ```
 
 Notes:
-- `nix-darwin` is intentionally not used yet. macOS settings (Dock, Finder, etc.)
-  are managed via Home Manager (`modules/darwin.nix`) or Homebrew casks.
+- The script installs nix-darwin and Home Manager together. macOS settings (Dock,
+  Finder, etc.) and Homebrew casks/brews/mas are managed by nix-darwin via
+  `modules/darwin.nix`.
 - After bootstrap, open a new terminal so the new `~/.zshrc` and `~/.zprofile`
   are loaded.
 - Homebrew stays on `PATH` via `~/.zprofile` (set from `modules/zsh.nix`),
@@ -190,28 +191,38 @@ nix build .#homeConfigurations.$(tr -d '\n' < ~/.dotfiles/.hm-flake).activationP
 ./result/activate
 ```
 
+On macOS, use `darwin-rebuild` instead:
+
+```bash
+cd ~/.dotfiles
+darwin-rebuild switch --flake .#$(tr -d '\n' < ~/.dotfiles/.hm-flake)
+```
+
 If `~/.dotfiles/.hm-flake` does not exist, use one of these explicitly:
 
 ```bash
+# Linux
 nix build .#homeConfigurations.psoland-vm.activationPackage
 nix build .#homeConfigurations.psoland-vm-arm.activationPackage
 nix build .#homeConfigurations.psoland-vm-openclaw.activationPackage
 nix build .#homeConfigurations.spark.activationPackage
-nix build .#homeConfigurations.psoland-mac.activationPackage
-nix build .#homeConfigurations.pettersoland-mac.activationPackage
 ./result/activate
+
+# macOS
+darwin-rebuild switch --flake .#psoland-mac
+darwin-rebuild switch --flake .#pettersoland-mac
 ```
 
-## Home Manager Configurations
+## Configurations
 
-| Name | User | System |
-|------|------|--------|
-| `psoland-vm` | `psoland` | `x86_64-linux` |
-| `psoland-vm-arm` | `psoland` | `aarch64-linux` |
-| `psoland-vm-openclaw` | `psoland` | `x86_64-linux` |
-| `spark` | `psoland` | `aarch64-linux` |
-| `psoland-mac` | `psoland` | `aarch64-darwin` |
-| `pettersoland-mac` | `pettersoland` | `aarch64-darwin` |
+| Name | User | System | Type |
+|------|------|--------|------|
+| `psoland-vm` | `psoland` | `x86_64-linux` | Home Manager |
+| `psoland-vm-arm` | `psoland` | `aarch64-linux` | Home Manager |
+| `psoland-vm-openclaw` | `psoland` | `x86_64-linux` | Home Manager |
+| `spark` | `psoland` | `aarch64-linux` | Home Manager |
+| `psoland-mac` | `psoland` | `aarch64-darwin` | nix-darwin |
+| `pettersoland-mac` | `pettersoland` | `aarch64-darwin` | nix-darwin |
 
 ### Oracle OpenClaw target
 
@@ -231,8 +242,7 @@ apply
 ```bash
 cd ~/.dotfiles
 nix flake update
-nix build .#homeConfigurations.$(tr -d '\n' < ~/.dotfiles/.hm-flake).activationPackage
-./result/activate
+apply
 ```
 
 ### Use the devshell template in another project
@@ -247,8 +257,8 @@ This repo provides a `syncapply` command that:
 1. goes to `~/.dotfiles`
 2. pulls latest changes with rebase
 3. selects target in this order: `HOME_MANAGER_FLAKE` env var -> `~/.dotfiles/.hm-flake` -> fail if still unset
-4. builds the selected Home Manager activation package
-5. activates it
+4. On Linux: builds the selected Home Manager activation package and activates it
+5. On macOS: runs `darwin-rebuild switch --flake .#<target>`
 
 Usage:
 

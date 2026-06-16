@@ -149,11 +149,30 @@
         "psoland-mac" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgsFor.aarch64-darwin;
           modules = [
-            ./hosts/macbook
+            ./hosts/mac/personal.nix
             {
               home = {
                 username = "psoland";
                 homeDirectory = "/Users/psoland";
+              };
+            }
+          ];
+          extraSpecialArgs = {
+            inherit self;
+            isOpenclaw = false;
+          };
+        };
+
+        # Work MacBook (Apple Silicon) Home Manager configuration for pettersoland user
+        # Usage: home-manager switch --flake .#pettersoland-mac
+        "pettersoland-mac" = home-manager.lib.homeManagerConfiguration {
+          pkgs = nixpkgsFor.aarch64-darwin;
+          modules = [
+            ./hosts/mac/work.nix
+            {
+              home = {
+                username = "pettersoland";
+                homeDirectory = "/Users/pettersoland";
               };
             }
           ];

@@ -1,6 +1,7 @@
 { ... }:
 
 {
+
   # Zsh setup
   programs.zsh = {
     enable = true;
@@ -97,6 +98,17 @@
         if [[ -n "$SSH_CONNECTION" && -z "$TMUX" && -z "$VSCODE_IPC_HOOK_CLI" ]]; then
           tmux attach || tmux new
         fi
+      fi
+    '';
+
+    profileExtra = ''
+      # Homebrew (Apple Silicon)
+      if [ -x /opt/homebrew/bin/brew ]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+      fi
+      # Homebrew (Intel) - harmless on Apple Silicon if not present
+      if [ -x /usr/local/bin/brew ]; then
+        eval "$(/usr/local/bin/brew shellenv)"
       fi
     '';
 

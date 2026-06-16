@@ -34,6 +34,7 @@
       lazygit
       lazydocker
       opencode
+      codex
       claude-code
       bitwarden-cli
       gh

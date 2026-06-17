@@ -14,6 +14,7 @@
       "raycast"
       "ghostty"
       "obsidian"
+      "orbstack"
       "slack"
       "spotify"
       "microsoft-teams"
@@ -26,6 +27,7 @@
       "Microsoft Word" = 462054704;
       "Microsoft PowerPoint" = 462062816;
       "Tailscale" = 1475387142;
+      "Magnet" = 441258766;
     };
   };
 

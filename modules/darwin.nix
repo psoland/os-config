@@ -3,6 +3,9 @@
 { ... }:
 
 {
+  system.stateVersion = 7;
+  system.primaryUser = "pettersoland";
+
   homebrew = {
     enable = true;
     brews = [ "mas" ];

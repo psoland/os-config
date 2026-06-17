@@ -10,8 +10,16 @@
   homebrew = {
     enable = true;
     brews = [ "mas" ];
-    casks = [ "raycast" ];
+    casks = [ 
+    "raycast"
+    "ghostty"
+    "obsidian"
+    "slack"
+    "spotify"
+    ];
     masApps = {
+      "Amphetamine" = 937984704;
+      "Bitwarden" = 1352778147;
       "Microsoft Outlook" = 985367838;
     };
   };

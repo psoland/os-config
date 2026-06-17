@@ -29,5 +29,36 @@
     };
   };
 
-  system.defaults.dock.autohide = true;
+  system.defaults = {
+    dock = {
+      autohide = true;
+      magnification = true;
+      largesize = 77;
+      tilesize = 49;
+      "show-recents" = false;
+      "wvous-bl-corner" = 4;
+      "wvous-br-corner" = 12;
+    };
+
+    trackpad = {
+      Clicking = true;
+      TrackpadRightClick = true;
+    };
+
+    NSGlobalDomain = {
+      AppleInterfaceStyle = "Dark";
+      ApplePressAndHoldEnabled = false;
+      InitialKeyRepeat = 15;
+      KeyRepeat = 5;
+      NSAutomaticCapitalizationEnabled = false;
+      NSAutomaticInlinePredictionEnabled = false;
+      NSAutomaticPeriodSubstitutionEnabled = false;
+      NSAutomaticSpellingCorrectionEnabled = false;
+    };
+  };
+
+  system.keyboard = {
+    enableKeyMapping = true;
+    remapCapsLockToEscape = true;
+  };
 }

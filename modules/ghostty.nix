@@ -5,5 +5,6 @@
     theme = Catppuccin Mocha
     shell-integration-features = ssh-terminfo
     shell-integration-features = ssh-env
+    clipboard-paste-protection = false
   '';
 }

@@ -154,11 +154,10 @@ if [ "$PROFILE" = "work" ]; then
   # Work Mac uses nix-darwin
   info "Building and activating nix-darwin configuration '$HOME_MANAGER_FLAKE'..."
   cd "$DOTFILES_DIR"
-  nix run nix-darwin#darwin-rebuild -- switch --flake ".#${HOME_MANAGER_FLAKE}"
+  nix build ".#darwinConfigurations.${HOME_MANAGER_FLAKE}.system"
+  sudo ./result/activate
 else
   # Personal Mac uses standalone Home Manager
-  # TODO: switch to nix-darwin when personal Mac moves to nix-darwin
-  # nix run nix-darwin#darwin-rebuild -- switch --flake ".#${HOME_MANAGER_FLAKE}"
   info "Building Home Manager configuration '$HOME_MANAGER_FLAKE'..."
   cd "$DOTFILES_DIR"
   nix build ".#homeConfigurations.${HOME_MANAGER_FLAKE}.activationPackage"

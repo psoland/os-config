@@ -16,6 +16,7 @@
       "obsidian"
       "slack"
       "spotify"
+      "microsoft-teams"
     ];
     masApps = {
       "Amphetamine" = 937984704;

@@ -3,6 +3,7 @@
 { ... }:
 
 {
+  nix.enable = false;
   system.stateVersion = 7;
   system.primaryUser = "pettersoland";
 

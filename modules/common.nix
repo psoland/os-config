@@ -69,7 +69,7 @@
 
         # TODO: use darwin-rebuild for all Darwin flake targets once personal Mac
         # moves to nix-darwin. For now, only pettersoland-mac uses darwin-rebuild.
-        CASE="${flake}"
+        # CASE="$flake"
         if [ "$(uname -s)" = "Darwin" ]; then
           case "$flake" in
             pettersoland-mac)
@@ -108,7 +108,8 @@
 
         # TODO: use darwin-rebuild for all Darwin flake targets once personal Mac
         # moves to nix-darwin. For now, only pettersoland-mac uses darwin-rebuild.
-        CASE="${flake}"
+        # TODO: IS CASE NEEDED HERE?
+        # CASE="$flake"
         if [ "$(uname -s)" = "Darwin" ]; then
           case "$flake" in
             pettersoland-mac)

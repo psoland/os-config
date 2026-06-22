@@ -73,6 +73,72 @@
       NSAutomaticPeriodSubstitutionEnabled = false;
       NSAutomaticSpellingCorrectionEnabled = false;
     };
+
+    CustomUserPreferences = {
+      NSGlobalDomain = {
+        NSUserKeyEquivalents = {
+          "Bottom" = "nil";
+          "Bottom & Quarters" = "nil";
+          "Bottom & Top" = "nil";
+          "Center" = "nil";
+          "Fill" = "nil";
+          "Left" = "nil";
+          "Left & Quarters" = "nil";
+          "Left & Right" = "nil";
+          "Minimize" = "@m";
+          "Return to Previous Size" = "nil";
+          "Right" = "nil";
+          "Right & Left" = "nil";
+          "Right & Quarters" = "nil";
+          "Top" = "nil";
+          "Top & Bottom" = "nil";
+          "Top & Quarters" = "nil";
+        };
+      };
+
+      "com.apple.symbolichotkeys" = {
+        AppleSymbolicHotKeys = {
+          # Mission Control, Application Windows, Spaces, Dock, and desktop switching shortcuts.
+          "32".enabled = false;
+          "33".enabled = false;
+          "52".enabled = false;
+          "79".enabled = false;
+          "81".enabled = false;
+          "118".enabled = false;
+          "119".enabled = false;
+          "120".enabled = false;
+          "121".enabled = false;
+          "122".enabled = false;
+          "123".enabled = false;
+          "124".enabled = false;
+          "125".enabled = false;
+          "126".enabled = false;
+          "127".enabled = false;
+          "128".enabled = false;
+          "129".enabled = false;
+          "130".enabled = false;
+          "131".enabled = false;
+          "132".enabled = false;
+          "133".enabled = false;
+          "134".enabled = false;
+          "135".enabled = false;
+          "136".enabled = false;
+          "137".enabled = false;
+          "138".enabled = false;
+          "139".enabled = false;
+          "140".enabled = false;
+          "141".enabled = false;
+          "142".enabled = false;
+          "143".enabled = false;
+          "144".enabled = false;
+          "145".enabled = false;
+          "146".enabled = false;
+          "147".enabled = false;
+          "148".enabled = false;
+          "149".enabled = false;
+        };
+      };
+    };
   };
 
   system.keyboard = {

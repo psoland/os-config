@@ -67,6 +67,10 @@
       source ${./zsh_functions.sh}
       source ${./zsh_wt.sh}
 
+      if command -v devenv >/dev/null 2>&1; then
+        eval "$(devenv hook zsh)"
+      fi
+
       # In zsh, IGNOREEOF env var is ignored; use shell option instead
       setopt IGNORE_EOF
 

@@ -247,6 +247,10 @@
           path = ./templates/devenv-typescript;
           description = "TypeScript devenv template";
         };
+        devenv-terraform = {
+          path = ./templates/devenv-terraform;
+          description = "Terraform devenv template";
+        };
       };
 
       # Development shells for this repository

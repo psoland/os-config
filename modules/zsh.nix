@@ -31,6 +31,7 @@
       init-devenv = "nix flake init -t path:$HOME/.dotfiles#devenv && devenv allow";
       init-devenv-py = "nix flake init -t path:$HOME/.dotfiles#devenv-python && devenv allow";
       init-devenv-ts = "nix flake init -t path:$HOME/.dotfiles#devenv-typescript && devenv allow";
+      init-devenv-tf = "nix flake init -t path:$HOME/.dotfiles#devenv-terraform && devenv allow";
 
       # Neovim in current folder
       v = "nvim";

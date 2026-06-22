@@ -22,6 +22,7 @@
       "spotify"
       "microsoft-teams"
       "google-chrome"
+      "zen"
       #"logi-options+"
       #"visual-studio-code"
     ];

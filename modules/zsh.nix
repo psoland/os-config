@@ -22,6 +22,11 @@
       ll = "eza -la --icons";
       cx = "claude --dangerously-skip-permissions";
 
+      # Nix flakes
+      init-flake = "nix flake init -t ~/.dotfiles#devshell";
+      init-flake-py = "nix flake init -t ~/.dotfiles#python";
+      init-flake-ts = "nix flake init -t ~/.dotfiles#typescript";
+
       # Devenv
       init-devenv = "nix flake init -t path:$HOME/.dotfiles#devenv && devenv allow";
       init-devenv-py = "nix flake init -t path:$HOME/.dotfiles#devenv-python && devenv allow";

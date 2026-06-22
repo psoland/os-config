@@ -18,6 +18,9 @@
       "slack"
       "spotify"
       "microsoft-teams"
+      "google-chrome"
+      #"logi-options+"
+      #"visual-studio-code"
     ];
     masApps = {
       "Amphetamine" = 937984704;

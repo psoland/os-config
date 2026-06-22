@@ -235,6 +235,18 @@
           path = ./templates/typescript;
           description = "TypeScript development shell template";
         };
+        devenv = {
+          path = ./templates/devenv;
+          description = "Devenv template with Node and Python examples";
+        };
+        devenv-python = {
+          path = ./templates/devenv-python;
+          description = "Python + uv devenv template";
+        };
+        devenv-typescript = {
+          path = ./templates/devenv-typescript;
+          description = "TypeScript devenv template";
+        };
       };
 
       # Development shells for this repository

@@ -12,7 +12,7 @@ direnv allow
 
 ## Included Tools
 
-- `nodejs_20`
+- `nodejs_24`
 - `pnpm`
 - `typescript`
 - `vtsls`

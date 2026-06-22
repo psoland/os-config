@@ -24,7 +24,7 @@
       {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            nodejs_20
+            nodejs_24
             pnpm
             typescript
             vtsls

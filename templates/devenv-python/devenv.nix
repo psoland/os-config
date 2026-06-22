@@ -7,10 +7,14 @@ let
   ];
 in
 {
+  languages.python = {
+    enable = true;
+    version = "3.12";
+    uv.enable = true;
+  };
+
   packages =
     (with pkgs; [
-      python312
-      uv
       ruff
       ty
       just

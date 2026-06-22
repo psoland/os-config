@@ -7,17 +7,25 @@ let
   ];
 in
 {
+  languages.python = {
+    enable = true;
+    version = "3.12";
+    uv.enable = true;
+  };
+
+  languages.javascript = {
+    enable = true;
+    package = pkgs.nodejs_22;
+    pnpm.enable = true;
+  };
+
+  languages.typescript = {
+    enable = true;
+    lsp.package = pkgs.vtsls;
+  };
+
   packages =
     (with pkgs; [
-      # Node.js project
-      nodejs_22
-      pnpm
-      typescript
-      vtsls
-
-      # Python project
-      python312
-      uv
       ruff
       ty
 

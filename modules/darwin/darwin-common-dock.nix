@@ -1,5 +1,8 @@
-{ ... }:
+{ config, ... }:
 
+let
+  primaryUser = config.system.primaryUser;
+in
 {
   system.defaults.dock = {
     autohide = true;
@@ -20,7 +23,7 @@
 
     persistent-others = [
       "/Applications"
-      "/Users/pettersoland/Downloads"
+      "/Users/${primaryUser}/Downloads"
     ];
   };
 }

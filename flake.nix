@@ -200,6 +200,8 @@
             home-manager.darwinModules.home-manager
             ./modules/darwin/darwin.nix
             {
+              system.primaryUser = "pettersoland";
+
               users.users.pettersoland = {
                 name = "pettersoland";
                 home = "/Users/pettersoland";

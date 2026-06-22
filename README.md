@@ -40,8 +40,13 @@ os-config/
 │   ├── SOUL.md
 │   └── TOOLS.md
 └── templates/
-    └── devshell/
-        └── flake.nix
+    ├── devshell/                  # Generic flake devShell template
+    ├── python/                    # Python flake devShell template
+    ├── typescript/                # TypeScript flake devShell template
+    ├── devenv/                    # Generic devenv template
+    ├── devenv-python/             # Python + uv devenv template
+    ├── devenv-typescript/         # TypeScript devenv template
+    └── devenv-terraform/          # Terraform devenv template
 ```
 
 ## Bootstrap Scripts
@@ -245,10 +250,38 @@ nix flake update
 apply
 ```
 
-### Use the devshell template in another project
+### Use project templates
+
+Flake dev shell templates:
 
 ```bash
-nix flake init -t github:psoland/os-config#devshell
+init-flake      # generic devShell
+init-flake-py   # Python + uv devShell
+init-flake-ts   # TypeScript devShell
+```
+
+Devenv templates:
+
+```bash
+init-devenv      # generic devenv
+init-devenv-py   # Python + uv devenv
+init-devenv-ts   # TypeScript devenv
+init-devenv-tf   # Terraform devenv
+```
+
+The aliases use local templates from `path:$HOME/.dotfiles`, so template edits work before they are committed.
+
+Equivalent direct commands:
+
+```bash
+nix flake init -t path:$HOME/.dotfiles#devshell
+nix flake init -t path:$HOME/.dotfiles#python
+nix flake init -t path:$HOME/.dotfiles#typescript
+
+nix flake init -t path:$HOME/.dotfiles#devenv && devenv allow
+nix flake init -t path:$HOME/.dotfiles#devenv-python && devenv allow
+nix flake init -t path:$HOME/.dotfiles#devenv-typescript && devenv allow
+nix flake init -t path:$HOME/.dotfiles#devenv-terraform && devenv allow
 ```
 
 ### sync-and-apply alias

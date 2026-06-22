@@ -23,9 +23,9 @@
       cx = "claude --dangerously-skip-permissions";
 
       # Nix flakes
-      init-flake = "nix flake init -t ~/.dotfiles#devshell";
-      init-flake-py = "nix flake init -t ~/.dotfiles#python";
-      init-flake-ts = "nix flake init -t ~/.dotfiles#typescript";
+      init-flake = "nix flake init -t path:$HOME/.dotfiles#devshell";
+      init-flake-py = "nix flake init -t path:$HOME/.dotfiles#python";
+      init-flake-ts = "nix flake init -t path:$HOME/.dotfiles#typescript";
 
       # Devenv
       init-devenv = "nix flake init -t path:$HOME/.dotfiles#devenv && devenv allow";

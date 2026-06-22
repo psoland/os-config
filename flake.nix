@@ -198,7 +198,7 @@
           system = "aarch64-darwin";
           modules = [
             home-manager.darwinModules.home-manager
-            ./modules/darwin.nix
+            ./modules/darwin/darwin.nix
             {
               users.users.pettersoland = {
                 name = "pettersoland";

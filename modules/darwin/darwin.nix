@@ -24,6 +24,8 @@
       "google-chrome"
       "zen"
       "logi-options+"
+      "codex-app"
+      "claude"
       #"visual-studio-code"
     ];
     masApps = {

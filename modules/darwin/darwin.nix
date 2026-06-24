@@ -23,7 +23,7 @@
       "microsoft-teams"
       "google-chrome"
       "zen"
-      #"logi-options+"
+      "logi-options+"
       #"visual-studio-code"
     ];
     masApps = {

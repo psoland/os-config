@@ -19,6 +19,7 @@ in
       "/Applications/Spotify.app"
       "/Applications/Ghostty.app"
       "/Applications/Obsidian.app"
+      "/Applications/Zen.app"
     ];
 
     persistent-others = [

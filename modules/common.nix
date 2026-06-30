@@ -42,6 +42,7 @@
       git-lfs
       lsof
       devpod
+      cloudflared
     ]
     ++ lib.optionals (!isOpenclaw) [ nodejs ]
     # Linux-only: gcc (use Apple clang from Xcode CLT on macOS),

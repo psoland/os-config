@@ -61,7 +61,7 @@ in
       bind -r C-n next-window
 
       # Vim-like copy mode
-      bind-key v copy-mode \; send-keys -X begin-selection
+      bind-key v copy-mode
       bind-key -T copy-mode-vi v send-keys -X begin-selection
       bind-key -T copy-mode-vi y send-keys -X copy-selection-and-cancel
       bind-key -T copy-mode-vi Enter send-keys -X copy-selection-and-cancel

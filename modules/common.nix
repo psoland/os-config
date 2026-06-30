@@ -41,6 +41,7 @@
       gh
       git-lfs
       lsof
+      devpod
     ]
     ++ lib.optionals (!isOpenclaw) [ nodejs ]
     # Linux-only: gcc (use Apple clang from Xcode CLT on macOS),
@@ -48,7 +49,6 @@
     ++ lib.optionals pkgs.stdenv.isLinux [
       gcc
       lazysql
-      devpod
       syncthing
     ]
     ++ [

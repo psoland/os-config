@@ -46,7 +46,7 @@
     ]
     ++ lib.optionals (!isOpenclaw) [ nodejs ]
     # Linux-only: gcc (use Apple clang from Xcode CLT on macOS),
-    # syncthing (use the GUI app on macOS), lazysql/devpod (pull in Linux deps).
+    # syncthing (use the GUI app on macOS), lazysql (pull in Linux deps).
     ++ lib.optionals pkgs.stdenv.isLinux [
       gcc
       lazysql

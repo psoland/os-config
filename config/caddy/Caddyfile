@@ -1,0 +1,11 @@
+http://127.0.0.1:8000 {
+	@borealis path /borealis /borealis/*
+	handle @borealis {
+		uri strip_prefix /borealis
+		reverse_proxy 127.0.0.1:8015
+	}
+
+	handle {
+		respond "unknown model route" 404
+	}
+}

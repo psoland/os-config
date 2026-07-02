@@ -88,6 +88,98 @@
         --cache-reuse "$CACHE_REUSE" \
         "$@"
     '')
+
+    (writeShellScriptBin "vllm-serve" ''
+      set -euo pipefail
+
+      usage() {
+        echo "Usage: vllm-serve <name> <model> <host-port> [vllm args...]" >&2
+        echo "Example: vllm-serve borealis NbAiLab/borealis-27b 8015 --gpu-memory-utilization 0.70" >&2
+      }
+
+      if [ "$#" -lt 3 ]; then
+        usage
+        exit 1
+      fi
+
+      NAME="$1"
+      MODEL="$2"
+      HOST_PORT="$3"
+      shift 3
+
+      IMAGE="''${VLLM_IMAGE:-vllm/vllm-openai:v0.24.0}"
+      GPUS="''${VLLM_GPUS:-all}"
+      HF_CACHE="''${VLLM_HF_CACHE:-$HOME/.cache/huggingface}"
+      GPU_MEMORY_UTILIZATION="''${VLLM_GPU_MEMORY_UTILIZATION:-0.70}"
+
+      if docker inspect "$NAME" >/dev/null 2>&1; then
+        if [ "$(docker inspect -f '{{.State.Running}}' "$NAME")" = "true" ]; then
+          echo "Container '$NAME' is already running."
+          echo "Logs: vllm-log $NAME"
+          exit 0
+        fi
+
+        echo "Starting existing container '$NAME'. Use vllm-rm $NAME to recreate it with new settings."
+        exec docker start "$NAME"
+      fi
+
+      exec docker run -d \
+        --name "$NAME" \
+        --restart unless-stopped \
+        --gpus "$GPUS" \
+        --ipc=host \
+        --label dotfiles.service=vllm \
+        --label "dotfiles.vllm.model=$MODEL" \
+        -p "127.0.0.1:$HOST_PORT:8000" \
+        -v "$HF_CACHE:/root/.cache/huggingface" \
+        "$IMAGE" \
+        "$MODEL" \
+        --host 0.0.0.0 \
+        --port 8000 \
+        --gpu-memory-utilization "$GPU_MEMORY_UTILIZATION" \
+        "$@"
+    '')
+
+    (writeShellScriptBin "vllm-log" ''
+      set -euo pipefail
+
+      if [ "$#" -ne 1 ]; then
+        echo "Usage: vllm-log <name>" >&2
+        exit 1
+      fi
+
+      exec docker logs -f "$1"
+    '')
+
+    (writeShellScriptBin "vllm-stop" ''
+      set -euo pipefail
+
+      if [ "$#" -lt 1 ]; then
+        echo "Usage: vllm-stop <name> [name...]" >&2
+        exit 1
+      fi
+
+      exec docker stop "$@"
+    '')
+
+    (writeShellScriptBin "vllm-rm" ''
+      set -euo pipefail
+
+      if [ "$#" -lt 1 ]; then
+        echo "Usage: vllm-rm <name> [name...]" >&2
+        exit 1
+      fi
+
+      exec docker rm -f "$@"
+    '')
+
+    (writeShellScriptBin "vllm-ps" ''
+      set -euo pipefail
+
+      exec docker ps -a \
+        --filter label=dotfiles.service=vllm \
+        --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}\t{{.Image}}'
+    '')
   ];
 
   home.sessionVariables = {
@@ -101,6 +193,13 @@
     fim-start-debug = "tmux has-session -t fim-serve 2>/dev/null || tmux new-session -d -s fim-serve 'fim --log-timestamps --log-prefix --log-verbosity 4'";
     fim-log = "tmux attach-session -t fim-serve";
     fim-stop = "tmux kill-session -t fim-serve";
+
+    # vLLM Docker helpers (Spark-only)
+    borealis-start = "vllm-serve borealis NbAiLab/borealis-27b 8015";
+    borealis-log = "vllm-log borealis";
+    borealis-stop = "vllm-stop borealis";
+    borealis-rm = "vllm-rm borealis";
+    vllm-list = "vllm-ps";
   };
 
   systemd.user.services.code-server = {

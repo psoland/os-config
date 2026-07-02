@@ -1,6 +1,4 @@
 :8000 {
-	bind 127.0.0.1
-
 	@borealis path /borealis /borealis/*
 	handle @borealis {
 		uri strip_prefix /borealis

@@ -58,10 +58,5 @@
     };
   };
 
-  system.keyboard = {
-    enableKeyMapping = true;
-    remapCapsLockToEscape = true;
-  };
-
   system.defaults.hitoolbox.AppleFnUsageType = "Do Nothing";
 }

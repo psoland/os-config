@@ -34,6 +34,8 @@
       jq
       lazygit
       lazydocker
+      lazysql
+      pgcli
       opencode
       codex
       claude-code
@@ -50,7 +52,6 @@
     # syncthing (use the GUI app on macOS), lazysql (pull in Linux deps).
     ++ lib.optionals pkgs.stdenv.isLinux [
       gcc
-      lazysql
       syncthing
     ]
     ++ [

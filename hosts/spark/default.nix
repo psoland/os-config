@@ -93,8 +93,9 @@
       set -euo pipefail
 
       usage() {
-        echo "Usage: vllm-serve <name> <model> <host-port> [vllm args...]" >&2
-        echo "Example: vllm-serve borealis NbAiLab/borealis-27b 8015 --gpu-memory-utilization 0.70" >&2
+        echo "Usage: vllm-serve <name> <model> <host-port> [-g|--gpu-memory-utilization VALUE] [vllm args...]" >&2
+        echo "Example: vllm-serve borealis NbAiLab/borealis-27b 8015 -g 0.45 --max-model-len 8192" >&2
+        echo "Default GPU memory utilization: ''${VLLM_GPU_MEMORY_UTILIZATION:-0.70}" >&2
       }
 
       if [ "$#" -lt 3 ]; then
@@ -111,6 +112,34 @@
       GPUS="''${VLLM_GPUS:-all}"
       HF_CACHE="''${VLLM_HF_CACHE:-$HOME/.cache/huggingface}"
       GPU_MEMORY_UTILIZATION="''${VLLM_GPU_MEMORY_UTILIZATION:-0.70}"
+      VLLM_ARGS=()
+
+      while [ "$#" -gt 0 ]; do
+        case "$1" in
+          -g|--gpu-memory-utilization)
+            if [ "$#" -lt 2 ]; then
+              echo "Missing value for $1" >&2
+              usage
+              exit 1
+            fi
+            GPU_MEMORY_UTILIZATION="$2"
+            shift 2
+            ;;
+          --gpu-memory-utilization=*)
+            GPU_MEMORY_UTILIZATION="''${1#*=}"
+            shift
+            ;;
+          --)
+            shift
+            VLLM_ARGS+=("$@")
+            break
+            ;;
+          *)
+            VLLM_ARGS+=("$1")
+            shift
+            ;;
+        esac
+      done
 
       if docker inspect "$NAME" >/dev/null 2>&1; then
         if [ "$(docker inspect -f '{{.State.Running}}' "$NAME")" = "true" ]; then
@@ -137,7 +166,7 @@
         --host 0.0.0.0 \
         --port 8000 \
         --gpu-memory-utilization "$GPU_MEMORY_UTILIZATION" \
-        "$@"
+        "''${VLLM_ARGS[@]}"
     '')
 
     (writeShellScriptBin "vllm-log" ''

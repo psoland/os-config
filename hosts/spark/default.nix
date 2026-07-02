@@ -4,6 +4,7 @@
 
   imports = [
     ../../modules/common.nix
+    ../../modules/caddy.nix
   ];
 
   home.packages = with pkgs; [
@@ -102,8 +103,6 @@
     fim-stop = "tmux kill-session -t fim-serve";
   };
 
-  xdg.configFile."caddy/Caddyfile".source = ../../config/caddy/Caddyfile;
-
   systemd.user.services.code-server = {
     Unit = {
       Description = "code-server";
@@ -112,24 +111,6 @@
 
     Service = {
       ExecStart = "${pkgs.code-server}/bin/code-server --bind-addr 127.0.0.1:8080 --auth none";
-      Restart = "on-failure";
-      RestartSec = 2;
-    };
-
-    Install = {
-      WantedBy = [ "default.target" ];
-    };
-  };
-
-  systemd.user.services.caddy = {
-    Unit = {
-      Description = "Caddy reverse proxy";
-      After = [ "network.target" ];
-    };
-
-    Service = {
-      ExecStart = "${pkgs.caddy}/bin/caddy run --config %h/.config/caddy/Caddyfile --adapter caddyfile";
-      ExecReload = "${pkgs.caddy}/bin/caddy reload --config %h/.config/caddy/Caddyfile --adapter caddyfile";
       Restart = "on-failure";
       RestartSec = 2;
     };

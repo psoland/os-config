@@ -5,6 +5,13 @@
 		reverse_proxy 127.0.0.1:8015
 	}
 
+	@gemma4 path /gemma4 /gemma4/*
+	handle @gemma4 {
+		uri strip_prefix /gemma4
+		reverse_proxy 127.0.0.1:8016
+	}
+
+
 	handle {
 		respond "unknown model route" 404
 	}

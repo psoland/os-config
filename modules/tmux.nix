@@ -59,8 +59,8 @@ in
 
       bind -r C-p previous-window
       bind -r C-n next-window
-      bind-key -r [ swap-window -t -1
-      bind-key -r ] swap-window -t +1
+      bind-key -r [ swap-window -t -1 \; select-window -t -1
+      bind-key -r ] swap-window -t +1 \; select-window -t +1
 
       # Vim-like copy mode
       bind-key v copy-mode

@@ -40,31 +40,24 @@
     "external_directory": {
       "~/.dotfiles/**": "allow",
       "~/.config/**": "allow",
-      "~/.local/**": "allow",
+      "~/.local/**": "allow"
     },
     "skill": {
       "*": "allow",
       "better-auth-*": "allow",
-      "experimental-*": "ask",
+      "experimental-*": "ask"
       // "web-design-guidlines": "deny"
     }
   },
   "mcp": {
     "playwright": {
       "type": "local",
-      "command": [
-        "npx",
-        "@playwright/mcp@latest"
-      ],
+      "command": ["npx", "@playwright/mcp@latest"],
       "enabled": false
     },
     "shadcn": {
       "type": "local",
-      "command": [
-        "npx",
-        "shadcn@latest",
-        "mcp"
-      ],
+      "command": ["npx", "shadcn@latest", "mcp"],
       "enabled": false
     }
   }

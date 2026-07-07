@@ -45,6 +45,7 @@
       lsof
       devpod
       cloudflared
+      bitwarden-cli
     ]
     ++ lib.optionals (!isOpenclaw) [ nodejs ]
     # Linux-only: gcc (use Apple clang from Xcode CLT on macOS),

@@ -106,7 +106,12 @@ wt() {
       fi
     else
       echo "Creating worktree with new branch '${branch_name}' from ${base_branch}..."
-      if ! ${gitcmd[@]} worktree add -b "$branch_name" "$target_dir" "$base_branch"; then
+      if [[ "$base_branch" == "origin/${branch_name}" ]]; then
+        if ! ${gitcmd[@]} worktree add -b "$branch_name" "$target_dir" "$base_branch"; then
+          echo "Error: failed to create worktree for branch '${branch_name}'"
+          return 1
+        fi
+      elif ! ${gitcmd[@]} worktree add --no-track -b "$branch_name" "$target_dir" "$base_branch"; then
         echo "Error: failed to create worktree for branch '${branch_name}'"
         return 1
       fi

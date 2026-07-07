@@ -168,6 +168,7 @@
       init.defaultBranch = "main";
       pull.rebase = true;
       push.default = "current";
+      push.autoSetupRemote = true;
       credential.helper = "!${pkgs.gh}/bin/gh auth git-credential";
 
       url = {

@@ -8,7 +8,7 @@ Declarative machine setup with:
 
 - Primary targets: Oracle Ubuntu VMs, Spark DGX Ubuntu, a personal MacBook, and a work MacBook (Apple Silicon)
 - Users configured by bootstrap: `psoland` (personal), `pettersoland` (work)
-- Home Manager targets in this repo: `psoland-vm`, `psoland-vm-arm`, `psoland-vm-openclaw`, `spark`, `psoland-mac`, and `pettersoland-mac`
+- Home Manager targets in this repo: `psoland-vm`, `psoland-vm-arm`, `spark`, `psoland-mac`, and `pettersoland-mac`
 
 ## Repository Layout
 
@@ -18,8 +18,7 @@ os-config/
 ├── hosts/
 │   ├── oracle/
 │   │   ├── bootstrap.sh          # Oracle Ubuntu bootstrap (runs as root)
-│   │   ├── default.nix           # Host-specific HM module wiring
-│   │   └── openclaw.nix          # Oracle host variant with OpenClaw enabled
+│   │   └── default.nix           # Host-specific HM module wiring
 │   ├── spark/
 │   │   ├── bootstrap.sh          # Spark DGX bootstrap (runs as root)
 │   │   └── default.nix           # Host-specific HM module wiring
@@ -30,15 +29,10 @@ os-config/
 ├── modules/
 │   ├── common.nix                # Shared packages and programs
 │   ├── darwin.nix                # nix-darwin module (homebrew, system settings)
-│   ├── openclaw.nix              # OpenClaw Home Manager module config
 │   ├── zsh.nix
 │   ├── tmux.nix
 │   ├── starship.nix
 │   └── nvim.nix
-├── openclaw-documents/           # Managed OpenClaw document directory
-│   ├── AGENTS.md
-│   ├── SOUL.md
-│   └── TOOLS.md
 └── templates/
     ├── devshell/                  # Generic flake devShell template
     ├── python/                    # Python flake devShell template
@@ -113,14 +107,6 @@ MacBook script: run as `psoland` (non-root) on Apple Silicon.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/psoland/os-config/main/hosts/oracle/bootstrap.sh | sudo bash
-```
-
-If you want OpenClaw on Oracle, run normal bootstrap first, then switch target:
-
-```bash
-printf '%s\n' psoland-vm-openclaw > ~/.dotfiles/.hm-flake
-cd ~/.dotfiles
-apply
 ```
 
 ### Spark DGX Ubuntu
@@ -209,7 +195,6 @@ If `~/.dotfiles/.hm-flake` does not exist, use one of these explicitly:
 # Linux
 nix build .#homeConfigurations.psoland-vm.activationPackage
 nix build .#homeConfigurations.psoland-vm-arm.activationPackage
-nix build .#homeConfigurations.psoland-vm-openclaw.activationPackage
 nix build .#homeConfigurations.spark.activationPackage
 ./result/activate
 
@@ -224,21 +209,9 @@ darwin-rebuild switch --flake .#pettersoland-mac
 |------|------|--------|------|
 | `psoland-vm` | `psoland` | `x86_64-linux` | Home Manager |
 | `psoland-vm-arm` | `psoland` | `aarch64-linux` | Home Manager |
-| `psoland-vm-openclaw` | `psoland` | `x86_64-linux` | Home Manager |
 | `spark` | `psoland` | `aarch64-linux` | Home Manager |
 | `psoland-mac` | `psoland` | `aarch64-darwin` | nix-darwin |
 | `pettersoland-mac` | `pettersoland` | `aarch64-darwin` | nix-darwin |
-
-### Oracle OpenClaw target
-
-- OpenClaw is currently supported only on `x86_64-linux` in this repo.
-- To enable OpenClaw on an Oracle machine, set `~/.dotfiles/.hm-flake` to `psoland-vm-openclaw` and apply:
-
-```bash
-printf '%s\n' psoland-vm-openclaw > ~/.dotfiles/.hm-flake
-cd ~/.dotfiles
-apply
-```
 
 ## Common Operations
 

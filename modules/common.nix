@@ -3,7 +3,6 @@
   pkgs,
   lib,
   inputs,
-  isOpenclaw ? false,
   ...
 }:
 
@@ -48,8 +47,8 @@
       devpod
       cloudflared
       bitwarden-cli
+      nodejs
     ]
-    ++ lib.optionals (!isOpenclaw) [ nodejs ]
     # Linux-only: gcc (use Apple clang from Xcode CLT on macOS),
     # syncthing (use the GUI app on macOS), lazysql (pull in Linux deps).
     ++ lib.optionals pkgs.stdenv.isLinux [

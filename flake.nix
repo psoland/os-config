@@ -14,9 +14,6 @@
     # Flake utils for multi-system support
     flake-utils.url = "github:numtide/flake-utils";
 
-    # OpenClaw Home Manager module and packages
-    nix-openclaw.url = "github:openclaw/nix-openclaw";
-
     # Hunk diff viewer
     hunk = {
       url = "github:modem-dev/hunk";
@@ -36,7 +33,6 @@
       nixpkgs,
       home-manager,
       flake-utils,
-      nix-openclaw,
       darwin,
       ...
     }:
@@ -60,16 +56,6 @@
         }
       );
 
-      # Nixpkgs with OpenClaw overlay, used only by OpenClaw profiles
-      nixpkgsForOpenclaw = forAllSystems (
-        system:
-        import nixpkgs {
-          inherit system;
-          overlays = [ nix-openclaw.overlays.default ];
-          config.allowUnfree = true;
-        }
-      );
-
     in
     {
       # Home Manager configurations
@@ -89,7 +75,6 @@
           ];
           extraSpecialArgs = {
             inherit self inputs;
-            isOpenclaw = false;
           };
         };
 
@@ -107,31 +92,8 @@
           ];
           extraSpecialArgs = {
             inherit self inputs;
-            isOpenclaw = false;
           };
         };
-
-        # Oracle Ubuntu VM with OpenClaw enabled (x86_64)
-        "psoland-vm-openclaw" = home-manager.lib.homeManagerConfiguration {
-          pkgs = nixpkgsForOpenclaw.x86_64-linux;
-          modules = [
-            ./hosts/oracle/openclaw.nix
-            {
-              home = {
-                username = "psoland";
-                homeDirectory = "/home/psoland";
-              };
-            }
-          ];
-          extraSpecialArgs = {
-            inherit self inputs;
-            openclawModule = nix-openclaw.homeManagerModules.openclaw;
-            isOpenclaw = true;
-          };
-        };
-
-        # NOTE: nix-openclaw currently supports Linux on x86_64 only.
-        # Keep ARM hosts on non-OpenClaw profiles until upstream adds aarch64-linux support.
 
         # Spark DGX Ubuntu configuration for psoland user (aarch64)
         "spark" = home-manager.lib.homeManagerConfiguration {
@@ -147,7 +109,6 @@
           ];
           extraSpecialArgs = {
             inherit self inputs;
-            isOpenclaw = false;
           };
         };
 
@@ -166,7 +127,6 @@
           ];
           extraSpecialArgs = {
             inherit self inputs;
-            isOpenclaw = false;
           };
         };
       };
@@ -189,7 +149,6 @@
         #         useUserPackages = true;
         #         extraSpecialArgs = {
         #           inherit self;
-        #           isOpenclaw = false;
         #         };
         #         users.psoland = ./hosts/mac/personal.nix;
         #       };
@@ -217,7 +176,6 @@
                 useUserPackages = true;
                 extraSpecialArgs = {
                   inherit self inputs;
-                  isOpenclaw = false;
                 };
                 users.pettersoland = ./hosts/mac/work.nix;
               };

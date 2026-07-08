@@ -272,6 +272,49 @@ Usage:
 syncapply
 ```
 
+## Spark vLLM model serving
+
+Spark model serving is declarative. Add/edit models in:
+
+```bash
+hosts/spark/vllm-models.nix
+```
+
+Ports and Caddy routes are generated automatically. After editing:
+
+```bash
+apply
+vllmctl list
+vllmctl start <name>
+```
+
+Useful commands:
+
+```bash
+vllmctl plan          # configured names/routes/ports
+vllmctl doctor        # registry + stale-container checks
+vllmctl logs <name>
+vllmctl recreate <name>  # apply changed settings to an existing container
+```
+
+### Serving other things through Caddy
+
+Caddy is managed by `modules/caddy.nix` via `dotfiles.caddy.configText`. Modules can append additional site blocks with `lib.mkAfter`:
+
+```nix
+{ lib, ... }:
+
+{
+  dotfiles.caddy.configText = lib.mkAfter ''
+    my-service.example.com {
+      reverse_proxy 127.0.0.1:8080
+    }
+  '';
+}
+```
+
+Use this for separate domains or listeners. If you need another route inside the existing `:8000` block, it must be composed into that same block because Caddy does not allow duplicate `:8000 { ... }` site definitions.
+
 ## Troubleshooting
 
 ### Nix not available in current shell

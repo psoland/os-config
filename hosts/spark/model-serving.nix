@@ -1,9 +1,93 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 
+let
+  vllmRegistryConfig = import ./vllm-models.nix;
+
+  defaults = vllmRegistryConfig.defaults or { };
+  basePort = defaults.basePort or 8015;
+  modelDefaults = builtins.removeAttrs defaults [ "basePort" ];
+
+  normalizeModel =
+    index: model:
+    let
+      merged =
+        modelDefaults
+        // {
+          port = basePort + index;
+          route = "/${model.name}";
+          matcher = "model_${toString index}";
+        }
+        // model;
+
+      normalized = merged // {
+        extraArgs = merged.extraArgs or [ ];
+        maxModelLen = merged.maxModelLen or null;
+      };
+    in
+    normalized
+    // {
+      configHash = builtins.hashString "sha256" (builtins.toJSON normalized);
+    };
+
+  vllmModels = lib.imap0 normalizeModel (vllmRegistryConfig.models or [ ]);
+
+  names = map (model: model.name) vllmModels;
+  routes = map (model: model.route) vllmModels;
+  ports = map (model: model.port) vllmModels;
+  unique = values: lib.length (lib.unique values) == lib.length values;
+
+  tab = "\t";
+
+  caddyRouteForModel = model: ''
+    ${tab}@${model.matcher} path ${model.route} ${model.route}/*
+    ${tab}handle @${model.matcher} {
+    ${tab}${tab}uri strip_prefix ${model.route}
+    ${tab}${tab}reverse_proxy 127.0.0.1:${toString model.port}
+    ${tab}}
+  '';
+
+  caddyConfig = ''
+    :8000 {
+    ${lib.concatMapStringsSep "\n" caddyRouteForModel vllmModels}
+    ${tab}handle {
+    ${tab}${tab}respond "unknown model route" 404
+    ${tab}}
+    }
+  '';
+
+  vllmRegistryJson = builtins.toJSON {
+    inherit defaults;
+    models = vllmModels;
+  };
+in
 {
+  assertions = [
+    {
+      assertion = unique names;
+      message = "hosts/spark/vllm-models.nix contains duplicate vLLM model names.";
+    }
+    {
+      assertion = unique routes;
+      message = "hosts/spark/vllm-models.nix contains duplicate vLLM routes.";
+    }
+    {
+      assertion = unique ports;
+      message = "hosts/spark/vllm-models.nix contains duplicate vLLM ports.";
+    }
+    {
+      assertion = builtins.all (name: builtins.match "[A-Za-z0-9][A-Za-z0-9_.-]*" name != null) names;
+      message = "vLLM model names must be valid Docker container names.";
+    }
+    {
+      assertion = builtins.all (route: lib.hasPrefix "/" route && !(lib.hasSuffix "/" route)) routes;
+      message = "vLLM routes must start with / and must not end with /.";
+    }
+  ];
+
   home.packages = with pkgs; [
     (llama-cpp.override { cudaSupport = true; })
     python313Packages.huggingface-hub
+    jq
 
     (writeShellScriptBin "llama-server-cuda" ''
       set -euo pipefail
@@ -82,127 +166,41 @@
         "$@"
     '')
 
+    (writeShellScriptBin "vllmctl" (builtins.readFile ./vllmctl.sh))
+
     (writeShellScriptBin "vllm-serve" ''
       set -euo pipefail
 
-      usage() {
-        echo "Usage: vllm-serve <name> <model> <host-port> [-g|--gpu-memory-utilization VALUE] [vllm args...]" >&2
-        echo "Example: vllm-serve borealis NbAiLab/borealis-27b 8015 -g 0.45 --max-model-len 8192" >&2
-        echo "Default GPU memory utilization: ''${VLLM_GPU_MEMORY_UTILIZATION:-0.70}" >&2
-      }
-
-      if [ "$#" -lt 3 ]; then
-        usage
-        exit 1
+      if [ "$#" -eq 1 ]; then
+        exec vllmctl start "$1"
       fi
 
-      NAME="$1"
-      MODEL="$2"
-      HOST_PORT="$3"
-      shift 3
-
-      IMAGE="''${VLLM_IMAGE:-vllm/vllm-openai:v0.24.0}"
-      GPUS="''${VLLM_GPUS:-all}"
-      HF_CACHE="''${VLLM_HF_CACHE:-$HOME/.cache/huggingface}"
-      GPU_MEMORY_UTILIZATION="''${VLLM_GPU_MEMORY_UTILIZATION:-0.70}"
-      VLLM_ARGS=()
-
-      while [ "$#" -gt 0 ]; do
-        case "$1" in
-          -g|--gpu-memory-utilization)
-            if [ "$#" -lt 2 ]; then
-              echo "Missing value for $1" >&2
-              usage
-              exit 1
-            fi
-            GPU_MEMORY_UTILIZATION="$2"
-            shift 2
-            ;;
-          --gpu-memory-utilization=*)
-            GPU_MEMORY_UTILIZATION="''${1#*=}"
-            shift
-            ;;
-          --)
-            shift
-            VLLM_ARGS+=("$@")
-            break
-            ;;
-          *)
-            VLLM_ARGS+=("$1")
-            shift
-            ;;
-        esac
-      done
-
-      if docker inspect "$NAME" >/dev/null 2>&1; then
-        if [ "$(docker inspect -f '{{.State.Running}}' "$NAME")" = "true" ]; then
-          echo "Container '$NAME' is already running."
-          echo "Logs: vllm-log $NAME"
-          exit 0
-        fi
-
-        echo "Starting existing container '$NAME'. Use vllm-rm $NAME to recreate it with new settings."
-        exec docker start "$NAME"
-      fi
-
-      exec docker run -d \
-        --name "$NAME" \
-        --restart unless-stopped \
-        --gpus "$GPUS" \
-        --ipc=host \
-        --label dotfiles.service=vllm \
-        --label "dotfiles.vllm.model=$MODEL" \
-        -p "127.0.0.1:$HOST_PORT:8000" \
-        -v "$HF_CACHE:/root/.cache/huggingface" \
-        "$IMAGE" \
-        "$MODEL" \
-        --host 0.0.0.0 \
-        --port 8000 \
-        --gpu-memory-utilization "$GPU_MEMORY_UTILIZATION" \
-        "''${VLLM_ARGS[@]}"
+      echo "vllm-serve has been replaced by declarative models + vllmctl." >&2
+      echo "Add models to ~/.dotfiles/hosts/spark/vllm-models.nix, run apply, then:" >&2
+      echo "  vllmctl start <name>" >&2
+      exit 1
     '')
 
     (writeShellScriptBin "vllm-log" ''
-      set -euo pipefail
-
-      if [ "$#" -ne 1 ]; then
-        echo "Usage: vllm-log <name>" >&2
-        exit 1
-      fi
-
-      exec docker logs -f "$1"
+      exec vllmctl logs "$@"
     '')
 
     (writeShellScriptBin "vllm-stop" ''
-      set -euo pipefail
-
-      if [ "$#" -lt 1 ]; then
-        echo "Usage: vllm-stop <name> [name...]" >&2
-        exit 1
-      fi
-
-      exec docker stop "$@"
+      exec vllmctl stop "$@"
     '')
 
     (writeShellScriptBin "vllm-rm" ''
-      set -euo pipefail
-
-      if [ "$#" -lt 1 ]; then
-        echo "Usage: vllm-rm <name> [name...]" >&2
-        exit 1
-      fi
-
-      exec docker rm -f "$@"
+      exec vllmctl rm "$@"
     '')
 
     (writeShellScriptBin "vllm-ps" ''
-      set -euo pipefail
-
-      exec docker ps -a \
-        --filter label=dotfiles.service=vllm \
-        --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}\t{{.Image}}'
+      exec vllmctl ps "$@"
     '')
   ];
+
+  xdg.configFile."vllm/models.json".text = vllmRegistryJson + "\n";
+
+  dotfiles.caddy.configText = caddyConfig;
 
   programs.zsh.shellAliases = {
     # llama.cpp helpers
@@ -213,10 +211,10 @@
     fim-stop = "tmux kill-session -t fim-serve";
 
     # vLLM Docker helpers
-    borealis-start = "vllm-serve borealis NbAiLab/borealis-27b 8015";
-    borealis-log = "vllm-log borealis";
-    borealis-stop = "vllm-stop borealis";
-    borealis-rm = "vllm-rm borealis";
-    vllm-list = "vllm-ps";
+    vllm-list = "vllmctl ps";
+    vllm-models = "vllmctl list";
+    vllm-plan = "vllmctl plan";
+    vllm-doctor = "vllmctl doctor";
+    vllm-containers = "vllmctl ps";
   };
 }

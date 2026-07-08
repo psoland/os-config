@@ -44,6 +44,9 @@
       hdm = "hunk diff main";
       hds = "hunk diff --staged";
 
+      # Zsh
+      zs = "source ~/.zshrc";
+
       # Opencode server in Tmux
       oc-start = "tmux has-session -t oc-serve 2>/dev/null || tmux new-session -d -s oc-serve 'opencode serve --hostname 0.0.0.0 --port 4090'";
       oc-log = "tmux attach-session -t oc-serve";

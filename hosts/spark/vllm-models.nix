@@ -33,7 +33,7 @@
 
     {
       name = "qwen_36_35";
-      model = "Qwen/Qwen3.6-27B-FP8";
+      model = "Qwen/Qwen3.6-35B-A3B-FP8";
       gpuMemoryUtilization = 0.60;
     }
 

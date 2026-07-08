@@ -30,5 +30,18 @@
       model = "nvidia/Qwen3.6-27B-NVFP4";
       gpuMemoryUtilization = 0.60;
     }
+
+    {
+      name = "qwen_36_35";
+      model = "Qwen/Qwen3.6-27B-FP8";
+      gpuMemoryUtilization = 0.60;
+    }
+
+    {
+      name = "qwen_36_27";
+      model = "Qwen/Qwen3.6-27B-FP8";
+      gpuMemoryUtilization = 0.60;
+    }
+
   ];
 }

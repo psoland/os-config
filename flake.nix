@@ -17,6 +17,12 @@
     # OpenClaw Home Manager module and packages
     nix-openclaw.url = "github:openclaw/nix-openclaw";
 
+    # Hunk diff viewer
+    hunk = {
+      url = "github:modem-dev/hunk";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # nix-darwin for macOS
     darwin = {
       url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";
@@ -25,7 +31,7 @@
   };
 
   outputs =
-    {
+    inputs@{
       self,
       nixpkgs,
       home-manager,
@@ -82,7 +88,7 @@
             }
           ];
           extraSpecialArgs = {
-            inherit self;
+            inherit self inputs;
             isOpenclaw = false;
           };
         };
@@ -100,7 +106,7 @@
             }
           ];
           extraSpecialArgs = {
-            inherit self;
+            inherit self inputs;
             isOpenclaw = false;
           };
         };
@@ -118,7 +124,7 @@
             }
           ];
           extraSpecialArgs = {
-            inherit self;
+            inherit self inputs;
             openclawModule = nix-openclaw.homeManagerModules.openclaw;
             isOpenclaw = true;
           };
@@ -140,7 +146,7 @@
             }
           ];
           extraSpecialArgs = {
-            inherit self;
+            inherit self inputs;
             isOpenclaw = false;
           };
         };
@@ -159,7 +165,7 @@
             }
           ];
           extraSpecialArgs = {
-            inherit self;
+            inherit self inputs;
             isOpenclaw = false;
           };
         };
@@ -210,7 +216,7 @@
                 useGlobalPkgs = true;
                 useUserPackages = true;
                 extraSpecialArgs = {
-                  inherit self;
+                  inherit self inputs;
                   isOpenclaw = false;
                 };
                 users.pettersoland = ./hosts/mac/work.nix;

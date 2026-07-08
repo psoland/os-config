@@ -2,6 +2,7 @@
 {
   pkgs,
   lib,
+  inputs,
   isOpenclaw ? false,
   ...
 }:
@@ -13,6 +14,7 @@
     ./zsh.nix
     ./starship.nix
     ./nvim.nix
+    inputs.hunk.homeManagerModules.default
   ];
 
   # Ghostty terminfo: ghostty itself is Linux-only in nixpkgs; on macOS the
@@ -130,12 +132,16 @@
         exec ${nodejs}/bin/npx -y @earendil-works/pi-coding-agent@latest "$@"
       '')
 
-      # Hunk diff
-      (writeShellScriptBin "hunk" ''
-        exec ${nodejs}/bin/npx -y hunkdiff "$@"
-      '')
-
     ];
+
+  programs.hunk = {
+    enable = true;
+    package = inputs.hunk.packages.${pkgs.stdenv.hostPlatform.system}.hunk;
+    enableGitIntegration = false;
+    settings = {
+      theme = "catppuccin-mocha";
+    };
+  };
 
   # Configs from config folder
   xdg.configFile."opencode/opencode.json".source = ../config/opencode/opencode.json;

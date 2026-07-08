@@ -8,7 +8,7 @@
     wget
     statix
     nil
-    nixpkgs-fmt
+    nixfmt
     ruff
     ty
     typescript

@@ -225,7 +225,8 @@
         {
           default = pkgs.mkShell {
             buildInputs = with pkgs; [
-              nixpkgs-fmt
+              nixfmt
+              nixfmt-tree
               nil
               statix
               repomix
@@ -238,7 +239,8 @@
         }
       );
 
-      # Formatter for nix files
-      formatter = forAllSystems (system: nixpkgsFor.${system}.nixpkgs-fmt);
+      # Formatter for Nix files. nixfmt-tree wraps nixfmt so `nix fmt .`
+      # handles directories.
+      formatter = forAllSystems (system: nixpkgsFor.${system}.nixfmt-tree);
     };
 }

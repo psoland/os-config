@@ -3,7 +3,7 @@
 
   inputs = {
     # Nixpkgs - using unstable for latest packages
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
     # Home Manager - follows nixpkgs to avoid duplicate downloads
     home-manager = {
@@ -22,7 +22,7 @@
 
     # nix-darwin for macOS
     darwin = {
-      url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";
+      url = "github:nix-darwin/nix-darwin/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };

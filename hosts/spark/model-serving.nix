@@ -59,6 +59,93 @@ let
     inherit defaults;
     models = vllmModels;
   };
+
+  llamaCppCuda = pkgs.llama-cpp.override { cudaSupport = true; };
+
+  llamaServerCuda = pkgs.writeShellScriptBin "llama-server-cuda" ''
+    set -euo pipefail
+
+    find_lib() {
+      local name="$1"
+      local found=""
+      for candidate in \
+        "/usr/lib/aarch64-linux-gnu/nvidia/$name" \
+        "/usr/lib/aarch64-linux-gnu/$name" \
+        "/lib/aarch64-linux-gnu/$name" \
+        "/usr/lib/x86_64-linux-gnu/nvidia/$name" \
+        "/usr/lib/x86_64-linux-gnu/$name" \
+        "/lib/x86_64-linux-gnu/$name" \
+        "/usr/lib64/$name" \
+        "/lib64/$name"
+      do
+        if [ -r "$candidate" ]; then
+          found="$candidate"
+          break
+        fi
+      done
+      printf '%s' "$found"
+    }
+
+    cuda_lib="$(find_lib libcuda.so.1)"
+    ptxjit_lib="$(find_lib libnvidia-ptxjitcompiler.so.1)"
+
+    if [ -z "$cuda_lib" ]; then
+      echo "error: libcuda.so.1 not found in common system paths" >&2
+      echo "hint: verify NVIDIA driver installation (e.g. nvidia-smi)" >&2
+      exit 1
+    fi
+
+    if [ -z "$ptxjit_lib" ]; then
+      echo "error: libnvidia-ptxjitcompiler.so.1 not found in common system paths" >&2
+      echo "hint: install/repair NVIDIA driver runtime packages" >&2
+      exit 1
+    fi
+
+    # Keep host libs out of LD_LIBRARY_PATH to avoid glibc mismatch with Nix binaries.
+    preload="$cuda_lib:$ptxjit_lib"
+    if [ -n "''${LD_PRELOAD:-}" ]; then
+      case ":$LD_PRELOAD:" in
+        *:"$cuda_lib":*) ;;
+        *) preload="$preload:$LD_PRELOAD" ;;
+      esac
+    fi
+    export LD_PRELOAD="$preload"
+
+    exec ${llamaCppCuda}/bin/llama-server "$@"
+  '';
+
+  fim = pkgs.writeShellScriptBin "fim" ''
+    set -euo pipefail
+
+    MODEL="''${FIM_MODEL:-ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF}"
+    HOST="''${FIM_HOST:-127.0.0.1}"
+    PORT="''${FIM_PORT:-8012}"
+    NGL="''${FIM_NGL:-99}"
+    FLASH_ATTN="''${FIM_FLASH_ATTN:-on}"
+    UBATCH="''${FIM_UBATCH:-1024}"
+    BATCH="''${FIM_BATCH:-1024}"
+    CTX_SIZE="''${FIM_CTX_SIZE:-0}"
+    CACHE_REUSE="''${FIM_CACHE_REUSE:-256}"
+
+    extra_args=()
+    if [ -n "''${FIM_EXTRA_ARGS:-}" ]; then
+      # Intentionally split user-provided debug/override args.
+      # shellcheck disable=SC2206
+      extra_args=( ''${FIM_EXTRA_ARGS} )
+    fi
+
+    exec ${llamaServerCuda}/bin/llama-server-cuda \
+      -hf "$MODEL" \
+      --host "$HOST" \
+      --port "$PORT" \
+      -ngl "$NGL" \
+      --flash-attn "$FLASH_ATTN" \
+      -ub "$UBATCH" -b "$BATCH" \
+      --ctx-size "$CTX_SIZE" \
+      --cache-reuse "$CACHE_REUSE" \
+      "''${extra_args[@]}" \
+      "$@"
+  '';
 in
 {
   assertions = [
@@ -85,86 +172,12 @@ in
   ];
 
   home.packages = with pkgs; [
-    (llama-cpp.override { cudaSupport = true; })
+    llamaCppCuda
     python313Packages.huggingface-hub
     jq
 
-    (writeShellScriptBin "llama-server-cuda" ''
-      set -euo pipefail
-
-      find_lib() {
-        local name="$1"
-        local found=""
-        for candidate in \
-          "/usr/lib/aarch64-linux-gnu/nvidia/$name" \
-          "/usr/lib/aarch64-linux-gnu/$name" \
-          "/lib/aarch64-linux-gnu/$name" \
-          "/usr/lib/x86_64-linux-gnu/nvidia/$name" \
-          "/usr/lib/x86_64-linux-gnu/$name" \
-          "/lib/x86_64-linux-gnu/$name" \
-          "/usr/lib64/$name" \
-          "/lib64/$name"
-        do
-          if [ -r "$candidate" ]; then
-            found="$candidate"
-            break
-          fi
-        done
-        printf '%s' "$found"
-      }
-
-      cuda_lib="$(find_lib libcuda.so.1)"
-      ptxjit_lib="$(find_lib libnvidia-ptxjitcompiler.so.1)"
-
-      if [ -z "$cuda_lib" ]; then
-        echo "error: libcuda.so.1 not found in common system paths" >&2
-        echo "hint: verify NVIDIA driver installation (e.g. nvidia-smi)" >&2
-        exit 1
-      fi
-
-      if [ -z "$ptxjit_lib" ]; then
-        echo "error: libnvidia-ptxjitcompiler.so.1 not found in common system paths" >&2
-        echo "hint: install/repair NVIDIA driver runtime packages" >&2
-        exit 1
-      fi
-
-      # Keep host libs out of LD_LIBRARY_PATH to avoid glibc mismatch with Nix binaries.
-      preload="$cuda_lib:$ptxjit_lib"
-      if [ -n "''${LD_PRELOAD:-}" ]; then
-        case ":$LD_PRELOAD:" in
-          *:"$cuda_lib":*) ;;
-          *) preload="$preload:$LD_PRELOAD" ;;
-        esac
-      fi
-      export LD_PRELOAD="$preload"
-
-      exec llama-server "$@"
-    '')
-
-    (writeShellScriptBin "fim" ''
-      set -euo pipefail
-
-      MODEL="''${FIM_MODEL:-ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF}"
-      HOST="''${FIM_HOST:-127.0.0.1}"
-      PORT="''${FIM_PORT:-8012}"
-      NGL="''${FIM_NGL:-99}"
-      FLASH_ATTN="''${FIM_FLASH_ATTN:-on}"
-      UBATCH="''${FIM_UBATCH:-1024}"
-      BATCH="''${FIM_BATCH:-1024}"
-      CTX_SIZE="''${FIM_CTX_SIZE:-0}"
-      CACHE_REUSE="''${FIM_CACHE_REUSE:-256}"
-
-      exec llama-server-cuda \
-        -hf "$MODEL" \
-        --host "$HOST" \
-        --port "$PORT" \
-        -ngl "$NGL" \
-        --flash-attn "$FLASH_ATTN" \
-        -ub "$UBATCH" -b "$BATCH" \
-        --ctx-size "$CTX_SIZE" \
-        --cache-reuse "$CACHE_REUSE" \
-        "$@"
-    '')
+    llamaServerCuda
+    fim
 
     (writeShellScriptBin "vllmctl" (builtins.readFile ./vllmctl.sh))
 
@@ -202,13 +215,30 @@ in
 
   dotfiles.caddy.configText = caddyConfig;
 
+  systemd.user.services.fim = {
+    Unit = {
+      Description = "llama.cpp FIM completion server";
+      After = [ "network.target" ];
+      X-Restart-Triggers = [ fim ];
+      X-SwitchMethod = "restart";
+    };
+
+    Service = {
+      ExecStart = "${fim}/bin/fim";
+      Restart = "on-failure";
+      RestartSec = 2;
+    };
+  };
+
   programs.zsh.shellAliases = {
     # llama.cpp helpers
     lls = "llama-server-cuda";
-    fim-start = "tmux has-session -t fim-serve 2>/dev/null || tmux new-session -d -s fim-serve 'fim'";
-    fim-start-debug = "tmux has-session -t fim-serve 2>/dev/null || tmux new-session -d -s fim-serve 'fim --log-timestamps --log-prefix --log-verbosity 4'";
-    fim-log = "tmux attach-session -t fim-serve";
-    fim-stop = "tmux kill-session -t fim-serve";
+    fim-start = "systemctl --user unset-environment FIM_EXTRA_ARGS; systemctl --user start fim";
+    fim-restart = "systemctl --user unset-environment FIM_EXTRA_ARGS; systemctl --user restart fim";
+    fim-start-debug = "systemctl --user set-environment FIM_EXTRA_ARGS='--log-timestamps --log-prefix --log-verbosity 4'; systemctl --user restart fim";
+    fim-log = "journalctl --user -u fim -f";
+    fim-status = "systemctl --user status fim";
+    fim-stop = "systemctl --user stop fim";
 
     # vLLM Docker helpers
     vllm-list = "vllmctl ps";

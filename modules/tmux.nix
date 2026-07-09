@@ -26,6 +26,8 @@ in
       # --- Standard settings ---
       set -g set-clipboard on
       set -g allow-passthrough on
+      set -g extended-keys on
+      set -g extended-keys-format csi-u
       set-option -g status-position top
       set-option -g renumber-windows on
       setw -g aggressive-resize on

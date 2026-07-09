@@ -137,7 +137,7 @@ cmd_start() {
   local name="$1"
   shift
 
-  local json model image gpus port route gpu_memory max_model_len config_hash hf_cache
+  local json model image gpus port route gpu_memory max_model_len restart_policy config_hash hf_cache
   json="$(model_json "$name")"
   model="$(json_field "$json" '.model')"
   image="${VLLM_IMAGE:-$(json_field "$json" '.image')}"
@@ -146,6 +146,7 @@ cmd_start() {
   route="$(json_field "$json" '.route')"
   gpu_memory="${VLLM_GPU_MEMORY_UTILIZATION:-$(json_field "$json" '.gpuMemoryUtilization')}"
   max_model_len="$(json_field "$json" '.maxModelLen // empty')"
+  restart_policy="${VLLM_RESTART_POLICY:-$(json_field "$json" '.restartPolicy // "on-failure:5"')}"
   config_hash="$(json_field "$json" '.configHash')"
   hf_cache="${VLLM_HF_CACHE:-$(json_field "$json" '.hfCache // empty')}"
   hf_cache="${hf_cache:-$HOME/.cache/huggingface}"
@@ -194,10 +195,11 @@ cmd_start() {
   echo "  route: $route"
   echo "  local: http://127.0.0.1:$port"
   echo "  proxy: $route"
+  echo "  restart: $restart_policy"
 
   docker run -d \
     --name "$name" \
-    --restart unless-stopped \
+    --restart "$restart_policy" \
     --gpus "$gpus" \
     --ipc=host \
     --label dotfiles.service=vllm \
@@ -207,6 +209,7 @@ cmd_start() {
     --label "dotfiles.vllm.port=$port" \
     --label "dotfiles.vllm.gpu-memory-utilization=$gpu_memory" \
     --label "dotfiles.vllm.max-model-len=$max_model_len" \
+    --label "dotfiles.vllm.restart-policy=$restart_policy" \
     --label "dotfiles.vllm.config-hash=$config_hash" \
     -p "127.0.0.1:$port:8000" \
     -v "$hf_cache:/root/.cache/huggingface" \

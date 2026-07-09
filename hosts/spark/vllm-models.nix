@@ -9,6 +9,7 @@
     gpus = "all";
     gpuMemoryUtilization = 0.60;
     maxModelLen = 8192;
+    restartPolicy = "on-failure:5";
     extraArgs = [ ];
   };
 

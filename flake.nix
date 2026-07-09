@@ -5,6 +5,10 @@
     # Nixpkgs - using unstable for latest packages
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
+    # TODO: Remove once https://github.com/cachix/devenv/issues/2842 is fixed in nixpkgs.
+    # Pin devenv to 2.1.0 until the GitHub HTTPS-to-SSH lock regression is fixed.
+    nixpkgs-devenv-210.url = "github:NixOS/nixpkgs/f962f9d446110b36d617402641005542df1a011a";
+
     # Home Manager - follows nixpkgs to avoid duplicate downloads
     home-manager = {
       url = "github:nix-community/home-manager";

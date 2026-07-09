@@ -154,6 +154,22 @@
         "type": "github"
       }
     },
+    "nixpkgs-devenv-210": {
+      "locked": {
+        "lastModified": 1778000478,
+        "narHash": "sha256-JWCmjk0QlOFiskEvrJWcFQM/hWs2ag6EcklqrgnRKCo=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "f962f9d446110b36d617402641005542df1a011a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "f962f9d446110b36d617402641005542df1a011a",
+        "type": "github"
+      }
+    },
     "nixpkgs-lib": {
       "locked": {
         "lastModified": 1769909678,
@@ -175,7 +191,8 @@
         "flake-utils": "flake-utils",
         "home-manager": "home-manager",
         "hunk": "hunk",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "nixpkgs-devenv-210": "nixpkgs-devenv-210"
       }
     },
     "systems": {

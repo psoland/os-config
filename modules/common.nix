@@ -26,7 +26,8 @@
   home.packages =
     with pkgs;
     [
-      devenv
+      # devenv
+      inputs.nixpkgs-devenv-210.legacyPackages.${pkgs.stdenv.hostPlatform.system}.devenv
       mosh
       htop
       fastfetch

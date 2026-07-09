@@ -60,6 +60,20 @@ let
     models = vllmModels;
   };
 
+  fimConfig = {
+    model = "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF";
+    host = "127.0.0.1";
+    port = 8012;
+    ngl = 99;
+    flashAttn = "on";
+    ubatch = 1024;
+    batch = 1024;
+    ctxSize = 0;
+    cacheReuse = 256;
+  };
+
+  fimEndpoint = "http://${fimConfig.host}:${toString fimConfig.port}/v1/completions";
+
   llamaCppCuda = pkgs.llama-cpp.override { cudaSupport = true; };
 
   llamaServerCuda = pkgs.writeShellScriptBin "llama-server-cuda" ''
@@ -117,15 +131,15 @@ let
   fim = pkgs.writeShellScriptBin "fim" ''
     set -euo pipefail
 
-    MODEL="''${FIM_MODEL:-ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF}"
-    HOST="''${FIM_HOST:-127.0.0.1}"
-    PORT="''${FIM_PORT:-8012}"
-    NGL="''${FIM_NGL:-99}"
-    FLASH_ATTN="''${FIM_FLASH_ATTN:-on}"
-    UBATCH="''${FIM_UBATCH:-1024}"
-    BATCH="''${FIM_BATCH:-1024}"
-    CTX_SIZE="''${FIM_CTX_SIZE:-0}"
-    CACHE_REUSE="''${FIM_CACHE_REUSE:-256}"
+    MODEL="''${FIM_MODEL:-${fimConfig.model}}"
+    HOST="''${FIM_HOST:-${fimConfig.host}}"
+    PORT="''${FIM_PORT:-${toString fimConfig.port}}"
+    NGL="''${FIM_NGL:-${toString fimConfig.ngl}}"
+    FLASH_ATTN="''${FIM_FLASH_ATTN:-${fimConfig.flashAttn}}"
+    UBATCH="''${FIM_UBATCH:-${toString fimConfig.ubatch}}"
+    BATCH="''${FIM_BATCH:-${toString fimConfig.batch}}"
+    CTX_SIZE="''${FIM_CTX_SIZE:-${toString fimConfig.ctxSize}}"
+    CACHE_REUSE="''${FIM_CACHE_REUSE:-${toString fimConfig.cacheReuse}}"
 
     extra_args=()
     if [ -n "''${FIM_EXTRA_ARGS:-}" ]; then
@@ -145,6 +159,17 @@ let
       --cache-reuse "$CACHE_REUSE" \
       "''${extra_args[@]}" \
       "$@"
+  '';
+
+  fimHealth = pkgs.writeShellScriptBin "fim-health" ''
+    set -euo pipefail
+
+    host="''${FIM_HOST:-${fimConfig.host}}"
+    port="''${FIM_PORT:-${toString fimConfig.port}}"
+    url="''${FIM_HEALTH_URL:-http://$host:$port/health}"
+
+    ${pkgs.curl}/bin/curl --fail --silent --show-error "$url"
+    echo
   '';
 in
 {
@@ -178,6 +203,7 @@ in
 
     llamaServerCuda
     fim
+    fimHealth
 
     (writeShellScriptBin "vllmctl" (builtins.readFile ./vllmctl.sh))
 
@@ -210,6 +236,10 @@ in
       exec vllmctl ps "$@"
     '')
   ];
+
+  home.sessionVariables = {
+    FIM_ENDPOINT = fimEndpoint;
+  };
 
   xdg.configFile."vllm/models.json".text = vllmRegistryJson + "\n";
 

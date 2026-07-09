@@ -16,7 +16,7 @@ return {
         openai_fim_compatible = {
           api_key = "TERM",
           name = "Llama.cpp",
-          end_point = "http://127.0.0.1:8012/v1/completions",
+          end_point = vim.env.FIM_ENDPOINT or "http://127.0.0.1:8012/v1/completions",
           model = "PLACEHOLDER",
           optional = {
             max_tokens = 64,

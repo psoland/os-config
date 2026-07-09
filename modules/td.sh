@@ -6,16 +6,17 @@
 #   Right col:  Optional AI assistant(s) (~25% width)
 #
 # Usage:
-#   td              # nvim + Pi on the right
+#   td              # nvim + empty pane on the right
 #   td c            # + OpenCode on the right
 #   td cx           # + Claude Code (danger mode) on the right
+#   td p            # + Pi on the right
 #   td c p          # + OpenCode top-right, Pi bottom-right
 #   td c cx         # + OpenCode top-right, Claude Code bottom-right
 #   td "my cmd"     # + arbitrary command on the right
 #
 set -euo pipefail
 
-arg1="${1:-p}"
+arg1="${1:-}"
 arg2="${2:-}"
 
 # Layout percentages
@@ -34,6 +35,10 @@ map_cmd() {
 
 right_top="$(map_cmd "$arg1")"
 right_bottom="$(map_cmd "$arg2")"
+create_right=0
+if [ $# -eq 0 ] || [ -n "$arg1" ]; then
+  create_right=1
+fi
 
 if [ -z "${TMUX:-}" ] || [ -z "${TMUX_PANE:-}" ]; then
   echo "td must be run from inside tmux."
@@ -52,7 +57,7 @@ if [ -n "$existing_nvim" ]; then
 fi
 
 # Optional right column
-if [ -n "$arg1" ]; then
+if [ "$create_right" -eq 1 ]; then
   right_pane="$(tmux split-window -h -p "$pct_right" -t "$nvim_pane" -P -F '#{pane_id}' -c "$PWD")"
 
   if [ -n "$arg2" ]; then
@@ -66,9 +71,9 @@ fi
 tmux set-option -p -t "$nvim_pane" @td_nvim 1
 
 # Start assistants first, then nvim
-if [ -n "$arg1" ]; then
+if [ -n "$right_top" ]; then
   tmux send-keys -t "$right_pane" "$right_top" C-m
-  if [ -n "$arg2" ]; then
+  if [ -n "$right_bottom" ]; then
     tmux send-keys -t "$right_bottom_pane" "$right_bottom" C-m
   fi
   # CRITICAL: Do not remove this sleep!

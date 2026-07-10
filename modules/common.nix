@@ -27,6 +27,7 @@
     with pkgs;
     [
       # devenv
+      # temp devenv implementation:
       inputs.nixpkgs-devenv-210.legacyPackages.${pkgs.stdenv.hostPlatform.system}.devenv
       mosh
       htop

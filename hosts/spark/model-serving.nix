@@ -237,9 +237,14 @@ in
     '')
   ];
 
-  home.sessionVariables = {
-    FIM_ENDPOINT = fimEndpoint;
-  };
+  # This lives outside ~/.config/nvim, which is an out-of-store symlink to
+  # the dotfiles checkout. Minuet reads it directly rather than inheriting a
+  # shell environment variable.
+  xdg.configFile."nvim-fim.lua".text = ''
+    return {
+      endpoint = ${builtins.toJSON fimEndpoint},
+    }
+  '';
 
   xdg.configFile."vllm/models.json".text = vllmRegistryJson + "\n";
 

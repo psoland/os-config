@@ -1,6 +1,9 @@
-if vim.env.NVIM_ENABLE_MINUET ~= "1" then
+local load_fim = loadfile(vim.fn.stdpath("config") .. "-fim.lua")
+if not load_fim then
   return {}
 end
+
+local fim = load_fim()
 
 return {
   {
@@ -14,9 +17,12 @@ return {
       context_window = 512,
       provider_options = {
         openai_fim_compatible = {
-          api_key = "TERM",
+          -- Minuet requires a token even though local llama.cpp ignores it.
+          api_key = function()
+            return "local"
+          end,
           name = "Llama.cpp",
-          end_point = vim.env.FIM_ENDPOINT,
+          end_point = fim.endpoint,
           model = "PLACEHOLDER",
           optional = {
             max_tokens = 64,

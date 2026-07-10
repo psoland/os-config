@@ -12,9 +12,6 @@
     code-server
   ];
 
-  home.sessionVariables = {
-    NVIM_ENABLE_MINUET = "1";
-  };
 
   systemd.user.services.code-server = {
     Unit = {

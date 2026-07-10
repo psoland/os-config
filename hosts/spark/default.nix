@@ -1,13 +1,19 @@
 { pkgs, inputs, ... }:
 
 let
-  ghostty = pkgs.runCommand "ghostty-with-host-gl" { nativeBuildInputs = [ pkgs.makeWrapper ]; } ''
+  ghostty = pkgs.runCommand "ghostty-with-host-gl" { } ''
     mkdir -p "$out/bin"
     ln -s ${pkgs.ghostty}/share "$out/share"
-    makeWrapper ${
+
+    cat > "$out/bin/ghostty" <<'EOF'
+    #!${pkgs.runtimeShell}
+    # NVIDIA's X11 EGL driver emits this non-fatal warning on every frame.
+    exec ${
       inputs.nix-gl-host.packages.${pkgs.stdenv.hostPlatform.system}.default
-    }/bin/nixglhost "$out/bin/ghostty" \
-      --add-flags ${pkgs.ghostty}/bin/ghostty
+    }/bin/nixglhost ${pkgs.ghostty}/bin/ghostty "$@" \
+      2> >(${pkgs.gnugrep}/bin/grep --line-buffered -v 'eglExportDMABUFImage failed: 0x3009' >&2)
+    EOF
+    chmod +x "$out/bin/ghostty"
   '';
 in
 {

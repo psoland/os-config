@@ -10,8 +10,8 @@
 
   home.packages = with pkgs; [
     code-server
+    ghostty
   ];
-
 
   systemd.user.services.code-server = {
     Unit = {

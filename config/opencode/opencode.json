@@ -30,25 +30,25 @@
   //      }
   //  }
   //},
-  "permission": {
-    "read": {
-      "*": "allow",
-      "*.env": "deny",
-      "*.env.*": "deny",
-      "*.env.example": "allow"
-    },
-    "external_directory": {
-      "~/.dotfiles/**": "allow",
-      "~/.config/**": "allow",
-      "~/.local/**": "allow"
-    },
-    "skill": {
-      "*": "allow",
-      "better-auth-*": "allow",
-      "experimental-*": "ask"
-      // "web-design-guidlines": "deny"
-    }
-  },
+  "permission": "allow",
+  // "read": {
+  //   "*": "allow",
+  //   "*.env": "deny",
+  //   "*.env.*": "deny",
+  //   "*.env.example": "allow"
+  // },
+  // "external_directory": {
+  //   "~/.dotfiles/**": "allow",
+  //   "~/.config/**": "allow",
+  //   "~/.local/**": "allow"
+  // },
+  // "skill": {
+  //   "*": "allow",
+  //   "better-auth-*": "allow",
+  //   "experimental-*": "ask",
+  //   "web-design-guidlines": "deny"
+  // }
+  // },
   "mcp": {
     "playwright": {
       "type": "local",

@@ -1,9 +1,20 @@
-{ pkgs, ... }:
+{ pkgs, inputs, ... }:
 
+let
+  ghostty = pkgs.runCommand "ghostty-with-host-gl" { nativeBuildInputs = [ pkgs.makeWrapper ]; } ''
+    mkdir -p "$out/bin"
+    ln -s ${pkgs.ghostty}/share "$out/share"
+    makeWrapper ${
+      inputs.nix-gl-host.packages.${pkgs.stdenv.hostPlatform.system}.default
+    }/bin/nixglhost "$out/bin/ghostty" \
+      --add-flags ${pkgs.ghostty}/bin/ghostty
+  '';
+in
 {
 
   imports = [
     ../../modules/common.nix
+    ../../modules/ghostty.nix
     ../../modules/caddy.nix
     ./model-serving.nix
   ];

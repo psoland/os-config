@@ -18,6 +18,12 @@
     # Flake utils for multi-system support
     flake-utils.url = "github:numtide/flake-utils";
 
+    # Exposes host GPU drivers to Nix-built graphical applications on Ubuntu.
+    nix-gl-host = {
+      url = "github:numtide/nix-gl-host";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Hunk diff viewer
     hunk = {
       url = "github:modem-dev/hunk";

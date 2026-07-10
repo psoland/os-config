@@ -30,6 +30,24 @@ in
     ghostty
   ];
 
+  # GNOME watches this user directory, unlike the profile symlink, so its
+  # launcher updates immediately and starts the host-graphics wrapper.
+  xdg.dataFile."applications/com.mitchellh.ghostty.desktop".text = ''
+    [Desktop Entry]
+    Version=1.0
+    Name=Ghostty
+    Type=Application
+    Comment=A terminal emulator
+    Exec=${ghostty}/bin/ghostty
+    Icon=${pkgs.ghostty}/share/icons/hicolor/512x512/apps/com.mitchellh.ghostty.png
+    Categories=System;TerminalEmulator;
+    Keywords=terminal;tty;pty;
+    StartupNotify=true
+    StartupWMClass=com.mitchellh.ghostty
+    Terminal=false
+    DBusActivatable=false
+  '';
+
   systemd.user.services.code-server = {
     Unit = {
       Description = "code-server";

@@ -27,8 +27,13 @@
     # Hunk diff viewer
     hunk = {
       url = "github:modem-dev/hunk";
-      inputs.nixpkgs.follows = "nixpkgs";
+      # TODO: Hunk currently evaluates an x86_64-darwin package output. Nixpkgs
+      # 26.11 dropped that platform, so use its final supported Nixpkgs
+      # release until Hunk removes the unsupported output.
+      inputs.nixpkgs.follows = "nixpkgs-hunk";
     };
+
+    nixpkgs-hunk.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
 
     # nix-darwin for macOS
     darwin = {

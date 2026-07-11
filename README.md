@@ -217,6 +217,24 @@ darwin-rebuild switch --flake .#pettersoland-mac
 
 ## Common Operations
 
+### Clean up Nix disk usage
+
+Oracle Home Manager configurations import `modules/home/services/nix-disk-cleanup.nix`. It installs a persistent monthly user timer that removes Home Manager generations and Nix profile history older than 30 days, then runs Nix store garbage collection. Other hosts can opt in by importing the same module from their host configuration.
+
+Check or run the cleanup manually with:
+
+```bash
+systemctl --user list-timers nix-disk-cleanup.timer
+systemctl --user start nix-disk-cleanup.service
+journalctl --user -u nix-disk-cleanup.service
+```
+
+System journal cleanup is intentionally separate because it requires root privileges. Vacuum archived journal data until journal usage is below 500 MB with:
+
+```bash
+sudo journalctl --vacuum-size=500M
+```
+
 ### Update flake inputs
 
 ```bash

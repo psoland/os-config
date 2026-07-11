@@ -1,4 +1,4 @@
-# modules/zsh_functions.sh
+# modules/home/programs/zsh_functions.sh
 
 # ---------------------------------------------------------
 # Terraform Functions

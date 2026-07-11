@@ -16,7 +16,7 @@ Commands:
   rm <name> [name...]      Remove containers
   doctor                   Validate registry and compare existing containers
 
-Model config lives in hosts/spark/vllm-models.nix and is generated to:
+Model config lives in hosts/spark/services/model-serving/models.nix and is generated to:
   ~/.config/vllm/models.json
 EOF
 }

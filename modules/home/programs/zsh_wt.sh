@@ -1,4 +1,4 @@
-# modules/zsh_wt.sh
+# modules/home/programs/zsh_wt.sh
 
 # ---------------------------------------------------------
 # Git Worktree Manager (wt)

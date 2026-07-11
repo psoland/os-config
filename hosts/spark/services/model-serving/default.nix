@@ -1,7 +1,7 @@
 { pkgs, lib, ... }:
 
 let
-  vllmRegistryConfig = import ./vllm-models.nix;
+  vllmRegistryConfig = import ./models.nix;
 
   defaults = vllmRegistryConfig.defaults or { };
   basePort = defaults.basePort or 8015;
@@ -176,15 +176,15 @@ in
   assertions = [
     {
       assertion = unique names;
-      message = "hosts/spark/vllm-models.nix contains duplicate vLLM model names.";
+      message = "hosts/spark/services/model-serving/models.nix contains duplicate vLLM model names.";
     }
     {
       assertion = unique routes;
-      message = "hosts/spark/vllm-models.nix contains duplicate vLLM routes.";
+      message = "hosts/spark/services/model-serving/models.nix contains duplicate vLLM routes.";
     }
     {
       assertion = unique ports;
-      message = "hosts/spark/vllm-models.nix contains duplicate vLLM ports.";
+      message = "hosts/spark/services/model-serving/models.nix contains duplicate vLLM ports.";
     }
     {
       assertion = builtins.all (name: builtins.match "[A-Za-z0-9][A-Za-z0-9_.-]*" name != null) names;
@@ -215,7 +215,7 @@ in
       fi
 
       echo "vllm-serve has been replaced by declarative models + vllmctl." >&2
-      echo "Add models to ~/.dotfiles/hosts/spark/vllm-models.nix, run apply, then:" >&2
+      echo "Add models to ~/.dotfiles/hosts/spark/services/model-serving/models.nix, run apply, then:" >&2
       echo "  vllmctl start <name>" >&2
       exit 1
     '')

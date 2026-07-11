@@ -1,4 +1,4 @@
-# modules/common.nix
+# Shared Home Manager profile.
 {
   pkgs,
   lib,
@@ -9,10 +9,10 @@
 {
 
   imports = [
-    ./tmux.nix
-    ./zsh.nix
-    ./starship.nix
-    ./nvim.nix
+    ../../modules/home/programs/tmux.nix
+    ../../modules/home/programs/zsh.nix
+    ../../modules/home/programs/starship.nix
+    ../../modules/home/programs/nvim.nix
     inputs.hunk.homeManagerModules.default
   ];
 
@@ -145,8 +145,8 @@
   };
 
   # Configs from config folder
-  xdg.configFile."opencode/opencode.json".source = ../config/opencode/opencode.json;
-  xdg.configFile."opencode/tui.json".source = ../config/opencode/tui.json;
+  xdg.configFile."opencode/opencode.json".source = ../../config/opencode/opencode.json;
+  xdg.configFile."opencode/tui.json".source = ../../config/opencode/tui.json;
 
   # Other configs
   programs.direnv = {

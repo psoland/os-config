@@ -2,7 +2,7 @@
 -- The lang.typescript and linting.eslint extras are enabled in lazyvim.json.
 -- vtsls is already LazyVim's default TS LSP, so no vim.g switch is needed.
 -- Here we only tell LazyVim not to install vtsls/eslint via Mason, since they
--- are provided by Nix (modules/nvim.nix).
+-- are provided by Nix (modules/home/programs/nvim.nix).
 return {
   {
     "neovim/nvim-lspconfig",

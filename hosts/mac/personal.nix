@@ -3,8 +3,8 @@
 {
 
   imports = [
-    ../../modules/common.nix
-    ../../modules/ghostty.nix
+    ../../profiles/home/common.nix
+    ../../modules/home/programs/ghostty.nix
   ];
 
   home.stateVersion = "25.11";

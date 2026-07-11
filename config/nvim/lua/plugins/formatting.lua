@@ -1,5 +1,5 @@
 -- Formatting configuration
--- prettier is provided via Nix (modules/nvim.nix home.packages) so we do NOT
+-- prettier is provided via Nix (modules/home/programs/nvim.nix home.packages) so we do NOT
 -- import LazyVim's prettier extra (which would add a Mason ensure_installed).
 -- require_cwd = false lets prettier format standalone files without a project config.
 return {

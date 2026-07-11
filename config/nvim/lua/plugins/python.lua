@@ -1,7 +1,7 @@
 -- Python LSP overrides
 -- The lang.python extra is enabled in lazyvim.json; the LSP choice (ty + ruff)
 -- is set in lua/config/options.lua. Here we only tell LazyVim not to install
--- ruff/ty via Mason, since they are provided by Nix (modules/nvim.nix).
+-- ruff/ty via Mason, since they are provided by Nix (modules/home/programs/nvim.nix).
 return {
   {
     "neovim/nvim-lspconfig",

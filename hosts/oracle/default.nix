@@ -3,7 +3,7 @@
 {
 
   imports = [
-    ../../modules/common.nix
+    ../../profiles/home/common.nix
   ];
 
   home.stateVersion = "25.11";

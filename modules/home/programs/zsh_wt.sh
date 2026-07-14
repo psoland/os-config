@@ -13,7 +13,8 @@ wt() {
     echo "  clone <url>           Clone a repo as a bare repo into .bare"
     echo "  add <branch> [base]   Create a new worktree; if[base] omitted, use origin/<branch> if it exists, otherwise origin's default branch"
     echo "  ls                    List all worktrees"
-    echo "  rm <branch>           Remove a worktree safely"
+    echo "  rm <path>             Remove a worktree safely"
+    echo "  rmo <path>            Remove a worktree and its branch from origin"
     return 1
   fi
 
@@ -146,6 +147,47 @@ wt() {
     ${gitcmd[@]} worktree remove "$@"
     ;;
 
+  rmo)
+    local target_dir="$1"
+    if [[ -z "$target_dir" ]]; then
+      echo "Usage: wt rmo <worktree-path> [--force]"
+      return 1
+    fi
+
+    local branch_name
+    branch_name="$(git -C "$target_dir" symbolic-ref --quiet --short HEAD 2>/dev/null)"
+    if [[ -z "$branch_name" ]]; then
+      echo "Error: cannot determine the branch for worktree '$target_dir' (it may have a detached HEAD)."
+      return 1
+    fi
+
+    local remote_info
+    if ! remote_info="$(${gitcmd[@]} ls-remote --symref origin HEAD "refs/heads/${branch_name}")"; then
+      echo "Error: could not inspect origin; worktree was not removed."
+      return 1
+    fi
+
+    if [[ "$remote_info" != *$'\t'"refs/heads/${branch_name}"* ]]; then
+      echo "Error: branch '${branch_name}' does not exist on origin; worktree was not removed."
+      return 1
+    fi
+
+    local remote_head_line="${remote_info%%$'\n'*}"
+    if [[ "$remote_head_line" == "ref: refs/heads/${branch_name}"$'\t'HEAD ]]; then
+      echo "Error: refusing to delete origin's default branch '${branch_name}'."
+      return 1
+    fi
+
+    if ! ${gitcmd[@]} worktree remove "$@"; then
+      return 1
+    fi
+
+    if ! ${gitcmd[@]} push origin --delete "$branch_name"; then
+      echo "Error: worktree was removed, but origin/${branch_name} could not be deleted."
+      return 1
+    fi
+    ;;
+
   *)
     echo "Git Worktree Manager (wt)"
     echo "Usage: wt <command> [arguments]"
@@ -154,7 +196,8 @@ wt() {
     echo "  clone <url>           Clone a repo as a bare repo into .bare"
     echo "  add <branch> [base]   Create a new worktree and branch (optionally from a base branch)"
     echo "  ls                    List all worktrees"
-    echo "  rm <branch>           Remove a worktree safely"
+    echo "  rm <path>             Remove a worktree safely"
+    echo "  rmo <path>            Remove a worktree and its branch from origin"
     return 1
     ;;
   esac

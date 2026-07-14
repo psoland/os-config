@@ -52,6 +52,7 @@
       oc-log = "tmux attach-session -t oc-serve";
       oc-stop = "tmux kill-session -t oc-serve";
       oc-serve = "opencode --port 4091";
+      oc = "opencode";
 
       zombiehunt = "ps -eo pid,ppid,stat,cmd,user | awk '\$3~\"Z\"' | awk '\$5~\"$USER\"'";
 

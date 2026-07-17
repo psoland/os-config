@@ -74,7 +74,7 @@ in
       bind-key R rename-window "#{b:pane_current_path}"
 
       # Move the current window after the last window in a session, e.g. "work"
-      bind-key m command-prompt -p "Move window to session:" "move-window -a -t '%%:{end}'"
+      bind-key m command-prompt -F -p "Move window to session:" "move-window -a -t '%1:{end}' \; switch-client -t '%1' \; select-window -t '#{window_id}'"
 
       # Pane resizing med Ctrl+arrow
       bind-key -r -T prefix C-Left resize-pane -L 5

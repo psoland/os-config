@@ -7,12 +7,18 @@ vim.keymap.del("n", "<leader><tab><tab>")
 vim.keymap.del("n", "<leader>ub")
 Snacks.toggle.option("background", { off = "light", on = "dark", name = "Dark Background" }):map("<leader>uB")
 
-vim.keymap.set("n", "<leader>ub", function()
-  if vim.b.completion == false then
-    vim.b.completion = nil
-  else
-    vim.b.completion = false
-  end
-  require("blink.cmp").hide()
-  vim.notify("Completion " .. (vim.b.completion == false and "disabled" or "enabled") .. " for this buffer")
-end, { desc = "Toggle Blink Completion" })
+Snacks.toggle({
+  id = "blink_completion",
+  name = "Blink Completion",
+  get = function()
+    return vim.b.completion ~= false
+  end,
+  set = function(enabled)
+    if enabled then
+      vim.b.completion = nil
+    else
+      vim.b.completion = false
+    end
+    require("blink.cmp").hide()
+  end,
+}):map("<leader>ub")

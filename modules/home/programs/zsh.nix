@@ -47,11 +47,12 @@
       # Zsh
       zs = "source ~/.zshrc";
 
-      # Opencode server in Tmux
-      oc-start = "tmux has-session -t oc-serve 2>/dev/null || tmux new-session -d -s oc-serve 'opencode serve --hostname 0.0.0.0 --port 4090'";
-      oc-log = "tmux attach-session -t oc-serve";
-      oc-stop = "tmux kill-session -t oc-serve";
-      oc-serve = "opencode --port 4091";
+       # OpenCode server managed by systemd
+       oc-start = "systemctl --user start opencode";
+       oc-log = "journalctl --user -fu opencode";
+       oc-stop = "systemctl --user stop opencode";
+       oc-reload = "systemctl --user restart opencode";
+       oc-serve = "opencode --port 4091";
       oc = "opencode";
 
       zombiehunt = "ps -eo pid,ppid,stat,cmd,user | awk '\$3~\"Z\"' | awk '\$5~\"$USER\"'";

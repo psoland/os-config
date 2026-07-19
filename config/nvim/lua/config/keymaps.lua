@@ -4,7 +4,10 @@
 
 vim.keymap.del("n", "<leader><tab><tab>")
 
-vim.keymap.set("n", "<leader>uB", function()
+vim.keymap.del("n", "<leader>ub")
+Snacks.toggle.option("background", { off = "light", on = "dark", name = "Dark Background" }):map("<leader>uB")
+
+vim.keymap.set("n", "<leader>ub", function()
   if vim.b.completion == false then
     vim.b.completion = nil
   else

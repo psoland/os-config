@@ -13,6 +13,7 @@
     ../../modules/home/programs/zsh.nix
     ../../modules/home/programs/starship.nix
     ../../modules/home/programs/nvim.nix
+    ../../modules/home/services/tailscale-serve.nix
     ../../modules/home/services/opencode.nix
     inputs.hunk.homeManagerModules.default
   ];

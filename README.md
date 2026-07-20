@@ -217,6 +217,28 @@ darwin-rebuild switch --flake .#pettersoland-mac
 
 ## Common Operations
 
+### Manage Tailscale Serve routes
+
+Tailscale Serve routes are declared through `dotfiles.tailscaleServe.routes`. This configuration is authoritative: reloading it resets Tailscale Serve before recreating all declared routes, so do not maintain additional routes manually.
+
+Service modules can contribute routes with:
+
+```nix
+dotfiles.tailscaleServe.routes = [
+  {
+    path = "/example";
+    target = "http://127.0.0.1:8080";
+  }
+];
+```
+
+Paths must start with `/` and must remain unique when ignoring a trailing slash. The OpenCode service reconciles the registry when it starts. To apply route changes without restarting OpenCode, activate the Home Manager configuration and then reload Serve directly:
+
+```bash
+apply
+tailscale-serve-reload
+```
+
 ### Clean up Nix disk usage
 
 Oracle Home Manager configurations import `modules/home/services/nix-disk-cleanup.nix`. It installs a persistent monthly user timer that removes Home Manager generations and Nix profile history older than 30 days, then runs Nix store garbage collection. Other hosts can opt in by importing the same module from their host configuration.

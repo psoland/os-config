@@ -1,4 +1,9 @@
-{ pkgs, lib, config, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 
 {
   systemd.user.services.opencode = lib.mkIf pkgs.stdenv.isLinux {
@@ -10,7 +15,7 @@
     Service = {
       ExecStart = "${pkgs.opencode}/bin/opencode serve --hostname 127.0.0.1 --port 4090";
       # Reconcile the shared route registry after the local server starts.
-      ExecStartPost = "-${config.dotfiles.tailscaleServe.reconcile}";
+      ExecStartPost = "-${config.home.profileDirectory}/bin/tailscale-serve-reload";
       WorkingDirectory = "%h";
       Restart = "on-failure";
       RestartSec = 2;

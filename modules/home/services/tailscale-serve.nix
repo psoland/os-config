@@ -7,8 +7,9 @@
 
 let
   cfg = config.dotfiles.tailscaleServe;
+  normalizedPaths = map (route: lib.removeSuffix "/" route.path) cfg.routes;
 
-  reconcile = pkgs.writeShellScript "tailscale-serve-reconcile" ''
+  reconcile = pkgs.writeShellScriptBin "tailscale-serve-reload" ''
     set -euo pipefail
 
     ${pkgs.tailscale}/bin/tailscale serve reset
@@ -38,13 +39,6 @@ in
       default = [ ];
       description = "Node-level Tailscale Serve routes managed by this configuration.";
     };
-
-    reconcile = lib.mkOption {
-      type = lib.types.package;
-      internal = true;
-      readOnly = true;
-      description = "Script that reconciles Tailscale Serve with routes.";
-    };
   };
 
   config = {
@@ -54,11 +48,11 @@ in
         message = "Tailscale Serve route paths must start with '/'.";
       }
       {
-        assertion = lib.length (lib.unique (map (route: route.path) cfg.routes)) == lib.length cfg.routes;
-        message = "Tailscale Serve route paths must be unique.";
+        assertion = lib.length (lib.unique normalizedPaths) == lib.length cfg.routes;
+        message = "Tailscale Serve route paths must be unique, ignoring a trailing '/'.";
       }
     ];
 
-    dotfiles.tailscaleServe.reconcile = reconcile;
+    home.packages = [ reconcile ];
   };
 }

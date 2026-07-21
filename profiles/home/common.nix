@@ -147,6 +147,7 @@
   };
 
   # Configs from config folder
+  xdg.configFile."lazygit/config.yml".source = ../../config/lazygit/config.yml;
   xdg.configFile."opencode/opencode.json".source = ../../config/opencode/opencode.json;
   xdg.configFile."opencode/tui.json".source = ../../config/opencode/tui.json;
   xdg.configFile."opencode/commands/hunk.md".source = ../../config/opencode/commands/hunk.md;

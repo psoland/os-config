@@ -17,7 +17,6 @@
     {
       name = "borealis";
       model = "NbAiLab/borealis-27b";
-      gpuMemoryUtilization = 0.60;
     }
 
     {
@@ -29,7 +28,6 @@
     {
       name = "nvidia_qwen";
       model = "nvidia/Qwen3.6-27B-NVFP4";
-      gpuMemoryUtilization = 0.60;
     }
 
     {
@@ -42,6 +40,16 @@
       name = "qwen_36_27";
       model = "Qwen/Qwen3.6-27B-FP8";
       gpuMemoryUtilization = 0.45;
+    }
+
+    {
+      name = "nemotron_nano_16";
+      model = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16";
+    }
+
+    {
+      name = "nemotron_nano_4";
+      model = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-NVFP4";
     }
 
   ];

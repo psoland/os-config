@@ -52,5 +52,10 @@
       model = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-NVFP4";
     }
 
+    {
+      name = "laguna";
+      model = "poolside/Laguna-S-2.1";
+    }
+
   ];
 }

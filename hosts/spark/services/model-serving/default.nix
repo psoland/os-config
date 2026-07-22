@@ -188,79 +188,27 @@ in
     }
   '';
 
-  # Capture the old Home Manager-owned registry before linkGeneration removes
-  # its store symlink. The next activation step converts it to local config.
-  home.activation.captureVllmRegistry = lib.hm.dag.entryBefore [ "linkGeneration" ] ''
+  home.activation.initializeVllmRegistry = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
     source="$HOME/.config/vllm/models.json"
-    migration="$HOME/.local/state/vllm/migration.json"
+    state="$HOME/.local/state/vllm"
 
-    if [ -L "$source" ] && [ ! -e "$migration" ]; then
-      $DRY_RUN_CMD mkdir -p "$HOME/.local/state/vllm"
-      $DRY_RUN_CMD cp --dereference "$source" "$migration"
+    $DRY_RUN_CMD mkdir -p "$HOME/.config/vllm" "$state"
+
+    if [ ! -e "$source" ] && [ "''${DRY_RUN_CMD:-}" = "" ]; then
+      ${pkgs.jq}/bin/jq -n '{ models: [] }' > "$source"
+    fi
+
+    if [ "''${DRY_RUN_CMD:-}" = "" ]; then
+      PATH=${
+        lib.makeBinPath [
+          pkgs.caddy
+          pkgs.coreutils
+          pkgs.jq
+          pkgs.util-linux
+        ]
+      }:$PATH VLLM_SKIP_CADDY_RELOAD=1 ${vllmctl}/bin/vllmctl update
     fi
   '';
-
-  home.activation.initializeVllmRegistry =
-    lib.hm.dag.entryAfter
-      [
-        "linkGeneration"
-        "captureVllmRegistry"
-      ]
-      ''
-        source="$HOME/.config/vllm/models.json"
-        state="$HOME/.local/state/vllm"
-        migration="$state/migration.json"
-
-        $DRY_RUN_CMD mkdir -p "$HOME/.config/vllm" "$state"
-
-        if [ -L "$source" ]; then
-          target="$(${pkgs.coreutils}/bin/readlink -f "$source" || true)"
-          case "$target" in
-            /nix/store/*) $DRY_RUN_CMD rm "$source" ;;
-          esac
-        fi
-
-        if [ ! -e "$source" ]; then
-          if [ -e "$migration" ]; then
-            $DRY_RUN_CMD ${pkgs.jq}/bin/jq '
-              .defaults as $defaults
-              | {
-                  models: [
-                    .models[]
-                    | . as $model
-                    | reduce ($model | keys_unsorted[]) as $key (
-                        {};
-                        if (["configHash", "matcher", "port"] | index($key)) != null
-                          or ($key == "route" and $model.route == ("/" + $model.name))
-                          or (($defaults | has($key)) and $model[$key] == $defaults[$key])
-                        then .
-                        else . + { ($key): $model[$key] }
-                        end
-                      )
-                  ]
-                }
-            ' "$migration" > "$source"
-            $DRY_RUN_CMD cp "$migration" "$state/registry.json"
-          else
-            $DRY_RUN_CMD ${pkgs.jq}/bin/jq -n '{ models: [] }' > "$source"
-          fi
-        fi
-
-        if [ -e "$migration" ]; then
-          $DRY_RUN_CMD rm "$migration"
-        fi
-
-        if [ "''${DRY_RUN_CMD:-}" = "" ]; then
-          PATH=${
-            lib.makeBinPath [
-              pkgs.caddy
-              pkgs.coreutils
-              pkgs.jq
-              pkgs.util-linux
-            ]
-          }:$PATH VLLM_SKIP_CADDY_RELOAD=1 ${vllmctl}/bin/vllmctl update
-        fi
-      '';
 
   systemd.user.services.fim = {
     Unit = {

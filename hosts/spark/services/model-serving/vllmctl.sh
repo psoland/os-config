@@ -78,12 +78,14 @@ cmd_update() {
       and ((.port // null) == null or (.port | type == "number" and floor == . and . >= 1 and . <= 65535))
       and ((.route // null) == null or (.route | type == "string" and test("^/[A-Za-z0-9][A-Za-z0-9._/-]*$") and (endswith("/") | not)))
       and ((.extraArgs // []) | type == "array" and all(.[]; type == "string"))
+      and ((.environment // {}) | type == "object" and all(to_entries[];
+        (.key | test("^[A-Za-z_][A-Za-z0-9_]*$")) and (.value | type == "string")))
       and ((.gpuMemoryUtilization // 0.5) | type == "number" and . > 0 and . <= 1)
       and ((.maxModelLen // null) == null or (.maxModelLen | type == "number" and floor == . and . > 0))
     )
   ' "$SOURCE_REGISTRY" >/dev/null 2>&1; then
     echo "Invalid model entry in $SOURCE_REGISTRY" >&2
-    echo "Check names, model IDs, routes, ports, GPU utilization, context lengths, and extraArgs." >&2
+    echo "Check names, model IDs, routes, ports, GPU utilization, context lengths, environment, and extraArgs." >&2
     exit 1
   fi
   if ! jq -e '[.models[].name] | length == (unique | length)' "$SOURCE_REGISTRY" >/dev/null; then
@@ -152,6 +154,7 @@ cmd_update() {
               matcher: ("model_" + ($index | tostring))
             }
             | .extraArgs = (.extraArgs // [])
+            | .environment = (.environment // {})
             | .maxModelLen = (.maxModelLen // null)) as $normalized
           | .models += [$normalized]
           | .used += [$port]
@@ -361,9 +364,13 @@ cmd_start() {
   require_docker
 
   local -a extra_args=()
+  local -a environment_args=()
   local -a vllm_args=()
 
   mapfile -t extra_args < <(jq -r '.extraArgs[]?' <<<"$json")
+  mapfile -t environment_args < <(
+    jq -r '(.environment // {}) | to_entries[] | "\(.key)=\(.value)"' <<<"$json"
+  )
 
   if [ -n "$max_model_len" ]; then
     vllm_args+=(--max-model-len "$max_model_len")
@@ -420,6 +427,7 @@ cmd_start() {
     --label "dotfiles.vllm.config-hash=$config_hash" \
     -p "127.0.0.1:$port:8000" \
     -v "$hf_cache:/root/.cache/huggingface" \
+    "${environment_args[@]/#/--env=}" \
     "$image" \
     "$model" \
     --host 0.0.0.0 \

@@ -55,6 +55,7 @@
     {
       name = "laguna";
       model = "poolside/Laguna-S-2.1";
+      gpuMemoryUtilization = 0.80;
     }
 
   ];

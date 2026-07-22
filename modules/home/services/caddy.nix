@@ -30,11 +30,17 @@ in
       caddy-reload = "systemctl --user reload caddy";
     };
 
-    home.activation.reloadCaddy = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-      if command -v systemctl >/dev/null 2>&1 && systemctl --user is-active --quiet caddy; then
-        $DRY_RUN_CMD systemctl --user reload caddy || true
-      fi
-    '';
+    home.activation.reloadCaddy =
+      lib.hm.dag.entryAfter
+        [
+          "linkGeneration"
+          "initializeVllmRegistry"
+        ]
+        ''
+          if command -v systemctl >/dev/null 2>&1 && systemctl --user is-active --quiet caddy; then
+            $DRY_RUN_CMD systemctl --user reload caddy || true
+          fi
+        '';
 
     systemd.user.services.caddy = {
       Unit = {

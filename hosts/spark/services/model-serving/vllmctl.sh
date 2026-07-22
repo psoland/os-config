@@ -1,12 +1,19 @@
 set -euo pipefail
 
-REGISTRY="${VLLM_MODELS_CONFIG:-$HOME/.config/vllm/models.json}"
+SOURCE_REGISTRY="${VLLM_MODELS_CONFIG:-$HOME/.config/vllm/models.json}"
+DEFAULTS_CONFIG="${VLLM_DEFAULTS_CONFIG:-$HOME/.config/vllm/defaults.json}"
+STATE_DIR="${VLLM_STATE_DIR:-$HOME/.local/state/vllm}"
+REGISTRY="${VLLM_REGISTRY_STATE:-$STATE_DIR/registry.json}"
+ROUTES_DIR="${VLLM_CADDY_ROUTES_DIR:-$STATE_DIR/routes}"
+ROUTES_FILE="$ROUTES_DIR/models.caddy"
+LOCK_FILE="$STATE_DIR/update.lock"
 
 usage() {
   cat >&2 <<'EOF'
 Usage: vllmctl <command> [args]
 
 Commands:
+  update                   Validate models, assign ports, and update Caddy
   list | ls | plan          Show configured models/routes/ports
   ps                       Show vLLM Docker containers
   start <name> [args...]   Start configured model, appending optional vLLM args
@@ -16,17 +23,217 @@ Commands:
   rm <name> [name...]      Remove containers
   doctor                   Validate registry and compare existing containers
 
-Model config lives in hosts/spark/services/model-serving/models.nix and is generated to:
+Edit model config locally, then run `vllmctl update`:
   ~/.config/vllm/models.json
+
+Resolved model state is generated at:
+  ~/.local/state/vllm/registry.json
 EOF
 }
 
 require_registry() {
   if [ ! -r "$REGISTRY" ]; then
-    echo "Missing vLLM registry: $REGISTRY" >&2
+    echo "Missing resolved vLLM registry: $REGISTRY" >&2
+    echo "Run: vllmctl update" >&2
+    exit 1
+  fi
+}
+
+cmd_update() {
+  require_jq
+
+  if [ ! -r "$SOURCE_REGISTRY" ]; then
+    echo "Missing editable vLLM registry: $SOURCE_REGISTRY" >&2
+    exit 1
+  fi
+  if [ ! -r "$DEFAULTS_CONFIG" ]; then
+    echo "Missing vLLM defaults: $DEFAULTS_CONFIG" >&2
     echo "Run: cd ~/.dotfiles && apply" >&2
     exit 1
   fi
+  if ! command -v caddy >/dev/null 2>&1; then
+    echo "caddy is required but was not found on PATH" >&2
+    exit 1
+  fi
+  if ! command -v flock >/dev/null 2>&1; then
+    echo "flock is required but was not found on PATH" >&2
+    exit 1
+  fi
+
+  if ! jq -e 'type == "object" and (.models | type == "array")' "$SOURCE_REGISTRY" >/dev/null 2>&1; then
+    echo "Invalid model config: expected a JSON object containing a models array: $SOURCE_REGISTRY" >&2
+    exit 1
+  fi
+  if ! jq -e '
+    type == "object"
+    and (.basePort | type == "number" and floor == . and . >= 1 and . <= 65535)
+  ' "$DEFAULTS_CONFIG" >/dev/null 2>&1; then
+    echo "Invalid vLLM defaults or basePort: $DEFAULTS_CONFIG" >&2
+    exit 1
+  fi
+  if ! jq -e '
+    all(.models[];
+      (.name | type == "string" and test("^[A-Za-z0-9][A-Za-z0-9_.-]*$"))
+      and (.model | type == "string" and length > 0)
+      and ((.port // null) == null or (.port | type == "number" and floor == . and . >= 1 and . <= 65535))
+      and ((.route // null) == null or (.route | type == "string" and test("^/[A-Za-z0-9][A-Za-z0-9._/-]*$") and (endswith("/") | not)))
+      and ((.extraArgs // []) | type == "array" and all(.[]; type == "string"))
+      and ((.gpuMemoryUtilization // 0.5) | type == "number" and . > 0 and . <= 1)
+      and ((.maxModelLen // null) == null or (.maxModelLen | type == "number" and floor == . and . > 0))
+    )
+  ' "$SOURCE_REGISTRY" >/dev/null 2>&1; then
+    echo "Invalid model entry in $SOURCE_REGISTRY" >&2
+    echo "Check names, model IDs, routes, ports, GPU utilization, context lengths, and extraArgs." >&2
+    exit 1
+  fi
+  if ! jq -e '[.models[].name] | length == (unique | length)' "$SOURCE_REGISTRY" >/dev/null; then
+    echo "Model names must be unique in $SOURCE_REGISTRY" >&2
+    exit 1
+  fi
+  if ! jq -e '[.models[].port? | select(. != null)] | length == (unique | length)' "$SOURCE_REGISTRY" >/dev/null; then
+    echo "Explicit model ports must be unique in $SOURCE_REGISTRY" >&2
+    exit 1
+  fi
+
+  mkdir -p "$STATE_DIR" "$ROUTES_DIR"
+  exec 9>"$LOCK_FILE"
+  flock 9
+
+  local work previous
+  work="$(mktemp -d "$STATE_DIR/.update.XXXXXX")"
+  trap "rm -rf '$work'" EXIT
+  previous="$work/previous.json"
+  if [ -r "$REGISTRY" ] && jq empty "$REGISTRY" >/dev/null 2>&1; then
+    cp "$REGISTRY" "$previous"
+  else
+    jq -n '{ models: [] }' > "$previous"
+  fi
+
+  local normalized hashed candidate_routes validation_config
+  normalized="$work/normalized.json"
+  hashed="$work/hashed.ndjson"
+  candidate_routes="$work/models.caddy"
+  validation_config="$work/Caddyfile"
+
+  jq -n \
+    --slurpfile source "$SOURCE_REGISTRY" \
+    --slurpfile defaults "$DEFAULTS_CONFIG" \
+    --slurpfile previous "$previous" '
+      def first_free($used; $start):
+        first(range($start; 65536) | . as $port | select(($used | index($port)) == null));
+
+      ($source[0].models // []) as $models
+      | ($defaults[0].basePort // 8015) as $basePort
+      | ($defaults[0] | del(.basePort)) as $modelDefaults
+      | [$models[].port? | select(. != null)] as $explicitPorts
+      | [
+          $models[]
+          | select((.port // null) == null) as $model
+          | $previous[0].models[]?
+          | select(.name == $model.name)
+          | .port
+          | select(type == "number" and . >= 1 and . <= 65535)
+          | . as $port
+          | select(($explicitPorts | index($port)) == null)
+        ] | unique as $reservedPorts
+      | reduce range(0; $models | length) as $index (
+          { models: [], used: ($explicitPorts + $reservedPorts) };
+          . as $state
+          | $models[$index] as $model
+          | ([ $previous[0].models[]? | select(.name == $model.name) | .port ][0] // null) as $previousPort
+          | (if $model.port != null then $model.port
+             elif $previousPort != null and ($reservedPorts | index($previousPort)) != null then $previousPort
+             else first_free($state.used; $basePort)
+             end) as $port
+          | (($model.route // ("/" + $model.name))) as $route
+          | ($modelDefaults + $model + {
+              port: $port,
+              route: $route,
+              matcher: ("model_" + ($index | tostring))
+            }
+            | .extraArgs = (.extraArgs // [])
+            | .maxModelLen = (.maxModelLen // null)) as $normalized
+          | .models += [$normalized]
+          | .used += [$port]
+        )
+      | { defaults: $defaults[0], models: .models }
+    ' > "$normalized"
+
+  if ! jq -e '[.models[].route] | length == (unique | length)' "$normalized" >/dev/null; then
+    echo "Resolved model routes must be unique." >&2
+    return 1
+  fi
+  if ! jq -e '[.models[].port] | length == (unique | length)' "$normalized" >/dev/null; then
+    echo "Resolved model ports must be unique." >&2
+    return 1
+  fi
+
+  : > "$hashed"
+  while IFS= read -r model_json; do
+    local config_hash
+    config_hash="$(jq -S -c 'del(.configHash, .matcher)' <<<"$model_json" | sha256sum | cut -d' ' -f1)"
+    jq -c --arg hash "$config_hash" '. + { configHash: $hash }' <<<"$model_json" >> "$hashed"
+  done < <(jq -c '.models[]' "$normalized")
+
+  jq -s --slurpfile normalized "$normalized" '
+    . as $models | $normalized[0] | .models = $models
+  ' "$hashed" > "$work/registry.json"
+
+  : > "$candidate_routes"
+  while IFS=$'\t' read -r matcher route port; do
+    cat >> "$candidate_routes" <<EOF
+@${matcher} path ${route} ${route}/*
+handle @${matcher} {
+  uri strip_prefix ${route}
+  reverse_proxy 127.0.0.1:${port}
+}
+
+EOF
+  done < <(jq -r '.models[] | [.matcher, .route, .port] | @tsv' "$work/registry.json")
+
+  cat > "$validation_config" <<EOF
+:8000 {
+  import ${candidate_routes}
+
+  handle {
+    respond "unknown model route" 404
+  }
+}
+EOF
+
+  if ! caddy validate --config "$validation_config" --adapter caddyfile >"$work/caddy-validation.log" 2>&1; then
+    cat "$work/caddy-validation.log" >&2
+    echo "Generated Caddy routes are invalid; existing state was not changed." >&2
+    return 1
+  fi
+
+  mv "$work/registry.json" "$REGISTRY"
+  mv "$candidate_routes" "$ROUTES_FILE"
+
+  echo "Updated vLLM registry and Caddy routes:"
+  jq -r '.models[] | "  \(.name): port=\(.port) route=\(.route)"' "$REGISTRY"
+
+  if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+    while IFS=$'\t' read -r name expected_hash; do
+      if docker_exists "$name"; then
+        local existing_hash
+        existing_hash="$(container_label "$name" dotfiles.vllm.config-hash)"
+        if [ "$existing_hash" != "$expected_hash" ]; then
+          echo "Stale container: $name (recreate with: vllmctl recreate $name)" >&2
+        fi
+      fi
+    done < <(jq -r '.models[] | [.name, .configHash] | @tsv' "$REGISTRY")
+  fi
+
+  if [ "${VLLM_SKIP_CADDY_RELOAD:-0}" != "1" ] \
+    && command -v systemctl >/dev/null 2>&1 \
+    && systemctl --user is-active --quiet caddy; then
+    systemctl --user reload caddy
+    echo "Reloaded Caddy."
+  fi
+
+  rm -rf "$work"
+  trap - EXIT
 }
 
 require_jq() {
@@ -428,6 +635,9 @@ main() {
   shift
 
   case "$command" in
+    update)
+      cmd_update "$@"
+      ;;
     list|ls|plan)
       cmd_plan "$@"
       ;;

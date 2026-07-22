@@ -1,64 +1,17 @@
-{ pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 let
-  vllmRegistryConfig = import ./models.nix;
+  vllmDefaults = import ./models.nix;
+  vllmDefaultsJson = builtins.toJSON vllmDefaults;
+  vllmStateDir = "${config.home.homeDirectory}/.local/state/vllm";
+  vllmRoutesGlob = "${vllmStateDir}/routes/*.caddy";
 
-  defaults = vllmRegistryConfig.defaults or { };
-  basePort = defaults.basePort or 8015;
-  modelDefaults = builtins.removeAttrs defaults [ "basePort" ];
-
-  normalizeModel =
-    index: model:
-    let
-      merged =
-        modelDefaults
-        // {
-          port = basePort + index;
-          route = "/${model.name}";
-          matcher = "model_${toString index}";
-        }
-        // model;
-
-      normalized = merged // {
-        extraArgs = merged.extraArgs or [ ];
-        maxModelLen = merged.maxModelLen or null;
-      };
-    in
-    normalized
-    // {
-      configHash = builtins.hashString "sha256" (builtins.toJSON normalized);
-    };
-
-  vllmModels = lib.imap0 normalizeModel (vllmRegistryConfig.models or [ ]);
-
-  names = map (model: model.name) vllmModels;
-  routes = map (model: model.route) vllmModels;
-  ports = map (model: model.port) vllmModels;
-  unique = values: lib.length (lib.unique values) == lib.length values;
-
-  tab = "\t";
-
-  caddyRouteForModel = model: ''
-    ${tab}@${model.matcher} path ${model.route} ${model.route}/*
-    ${tab}handle @${model.matcher} {
-    ${tab}${tab}uri strip_prefix ${model.route}
-    ${tab}${tab}reverse_proxy 127.0.0.1:${toString model.port}
-    ${tab}}
-  '';
-
-  caddyConfig = ''
-    :8000 {
-    ${lib.concatMapStringsSep "\n" caddyRouteForModel vllmModels}
-    ${tab}handle {
-    ${tab}${tab}respond "unknown model route" 404
-    ${tab}}
-    }
-  '';
-
-  vllmRegistryJson = builtins.toJSON {
-    inherit defaults;
-    models = vllmModels;
-  };
+  vllmctl = pkgs.writeShellScriptBin "vllmctl" (builtins.readFile ./vllmctl.sh);
 
   fimConfig = {
     model = "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF";
@@ -173,29 +126,6 @@ let
   '';
 in
 {
-  assertions = [
-    {
-      assertion = unique names;
-      message = "hosts/spark/services/model-serving/models.nix contains duplicate vLLM model names.";
-    }
-    {
-      assertion = unique routes;
-      message = "hosts/spark/services/model-serving/models.nix contains duplicate vLLM routes.";
-    }
-    {
-      assertion = unique ports;
-      message = "hosts/spark/services/model-serving/models.nix contains duplicate vLLM ports.";
-    }
-    {
-      assertion = builtins.all (name: builtins.match "[A-Za-z0-9][A-Za-z0-9_.-]*" name != null) names;
-      message = "vLLM model names must be valid Docker container names.";
-    }
-    {
-      assertion = builtins.all (route: lib.hasPrefix "/" route && !(lib.hasSuffix "/" route)) routes;
-      message = "vLLM routes must start with / and must not end with /.";
-    }
-  ];
-
   home.packages = with pkgs; [
     llamaCppCuda
     python313Packages.huggingface-hub
@@ -205,7 +135,7 @@ in
     fim
     fimHealth
 
-    (writeShellScriptBin "vllmctl" (builtins.readFile ./vllmctl.sh))
+    vllmctl
 
     (writeShellScriptBin "vllm-serve" ''
       set -euo pipefail
@@ -214,8 +144,8 @@ in
         exec vllmctl start "$1"
       fi
 
-      echo "vllm-serve has been replaced by declarative models + vllmctl." >&2
-      echo "Add models to ~/.dotfiles/hosts/spark/services/model-serving/models.nix, run apply, then:" >&2
+      echo "vllm-serve has been replaced by the local model registry + vllmctl." >&2
+      echo "Add the model to ~/.config/vllm/models.json, run vllmctl update, then:" >&2
       echo "  vllmctl start <name>" >&2
       exit 1
     '')
@@ -246,9 +176,91 @@ in
     }
   '';
 
-  xdg.configFile."vllm/models.json".text = vllmRegistryJson + "\n";
+  xdg.configFile."vllm/defaults.json".text = vllmDefaultsJson + "\n";
 
-  dotfiles.caddy.configText = caddyConfig;
+  dotfiles.caddy.configText = ''
+    :8000 {
+      import ${vllmRoutesGlob}
+
+      handle {
+        respond "unknown model route" 404
+      }
+    }
+  '';
+
+  # Capture the old Home Manager-owned registry before linkGeneration removes
+  # its store symlink. The next activation step converts it to local config.
+  home.activation.captureVllmRegistry = lib.hm.dag.entryBefore [ "linkGeneration" ] ''
+    source="$HOME/.config/vllm/models.json"
+    migration="$HOME/.local/state/vllm/migration.json"
+
+    if [ -L "$source" ] && [ ! -e "$migration" ]; then
+      $DRY_RUN_CMD mkdir -p "$HOME/.local/state/vllm"
+      $DRY_RUN_CMD cp --dereference "$source" "$migration"
+    fi
+  '';
+
+  home.activation.initializeVllmRegistry =
+    lib.hm.dag.entryAfter
+      [
+        "linkGeneration"
+        "captureVllmRegistry"
+      ]
+      ''
+        source="$HOME/.config/vllm/models.json"
+        state="$HOME/.local/state/vllm"
+        migration="$state/migration.json"
+
+        $DRY_RUN_CMD mkdir -p "$HOME/.config/vllm" "$state"
+
+        if [ -L "$source" ]; then
+          target="$(${pkgs.coreutils}/bin/readlink -f "$source" || true)"
+          case "$target" in
+            /nix/store/*) $DRY_RUN_CMD rm "$source" ;;
+          esac
+        fi
+
+        if [ ! -e "$source" ]; then
+          if [ -e "$migration" ]; then
+            $DRY_RUN_CMD ${pkgs.jq}/bin/jq '
+              .defaults as $defaults
+              | {
+                  models: [
+                    .models[]
+                    | . as $model
+                    | reduce ($model | keys_unsorted[]) as $key (
+                        {};
+                        if (["configHash", "matcher", "port"] | index($key)) != null
+                          or ($key == "route" and $model.route == ("/" + $model.name))
+                          or (($defaults | has($key)) and $model[$key] == $defaults[$key])
+                        then .
+                        else . + { ($key): $model[$key] }
+                        end
+                      )
+                  ]
+                }
+            ' "$migration" > "$source"
+            $DRY_RUN_CMD cp "$migration" "$state/registry.json"
+          else
+            $DRY_RUN_CMD ${pkgs.jq}/bin/jq -n '{ models: [] }' > "$source"
+          fi
+        fi
+
+        if [ -e "$migration" ]; then
+          $DRY_RUN_CMD rm "$migration"
+        fi
+
+        if [ "''${DRY_RUN_CMD:-}" = "" ]; then
+          PATH=${
+            lib.makeBinPath [
+              pkgs.caddy
+              pkgs.coreutils
+              pkgs.jq
+              pkgs.util-linux
+            ]
+          }:$PATH VLLM_SKIP_CADDY_RELOAD=1 ${vllmctl}/bin/vllmctl update
+        fi
+      '';
 
   systemd.user.services.fim = {
     Unit = {

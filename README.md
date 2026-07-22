@@ -316,24 +316,49 @@ syncapply
 
 ## Spark vLLM model serving
 
-Spark model serving is declarative. Add/edit models in:
+Spark keeps the vLLM tooling and defaults in Home Manager, while the frequently
+changed model list is local to the host. Add or edit models in:
 
 ```bash
-hosts/spark/services/model-serving/models.nix
+~/.config/vllm/models.json
 ```
 
-Ports and Caddy routes are generated automatically. After editing:
+The editable file only needs model-specific values:
+
+```json
+{
+  "models": [
+    {
+      "name": "borealis",
+      "model": "NbAiLab/borealis-27b"
+    },
+    {
+      "name": "laguna",
+      "model": "poolside/Laguna-S-2.1",
+      "gpuMemoryUtilization": 0.8
+    }
+  ]
+}
+```
+
+After editing, reconcile the registry and Caddy routes:
 
 ```bash
-apply
+vllmctl update
 vllmctl list
 vllmctl start <name>
 ```
+
+`vllmctl update` assigns ports to new models and preserves previous assignments
+by model name. Assigned ports and other derived values live in
+`~/.local/state/vllm/registry.json`; the editable JSON is not modified. Set a
+`port` explicitly in the editable file only when an override is needed.
 
 Useful commands:
 
 ```bash
 vllmctl plan          # configured names/routes/ports
+vllmctl update        # validate models, preserve/assign ports, and reload Caddy
 vllmctl doctor        # registry, Docker, NVIDIA, port, image, and stale-container checks
 vllmctl logs <name>
 vllmctl recreate <name>  # apply changed settings to an existing container

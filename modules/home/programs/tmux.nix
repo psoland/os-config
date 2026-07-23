@@ -91,6 +91,15 @@ in
 
     plugins = with pkgs.tmuxPlugins; [
       vim-tmux-navigator
+      resurrect
+      {
+        plugin = continuum;
+        extraConfig = ''
+          set -g @continuum-save-interval '15'
+          set -g @continuum-restore 'off'
+          set -g @resurrect-delete-backup-after '3'
+        '';
+      }
       {
         plugin = catppuccin;
         extraConfig = ''

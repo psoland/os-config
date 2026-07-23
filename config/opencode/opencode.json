@@ -65,5 +65,13 @@
       "url": "https://sideshow.sh/mcp",
       "enabled": true
     }
+    // "sideshow": {
+    //   "type": "remote",
+    //   "url": "https://sideshow.sh/psoland/mcp",
+    //   "enabled": true,
+    //   "headers": {
+    //     "Authorization": "Bearer {env:SIDESHOW_TOKEN}"
+    //   }
+    // }
   }
 }

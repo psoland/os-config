@@ -41,7 +41,7 @@ return {
         },
       },
       blink = {
-        enable_auto_complete = true,
+        enable_auto_complete = false,
       },
     },
   },

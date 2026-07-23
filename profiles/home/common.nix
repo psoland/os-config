@@ -151,6 +151,7 @@
   xdg.configFile."opencode/opencode.json".source = ../../config/opencode/opencode.json;
   xdg.configFile."opencode/tui.json".source = ../../config/opencode/tui.json;
   xdg.configFile."opencode/commands/hunk.md".source = ../../config/opencode/commands/hunk.md;
+  xdg.configFile."opencode/commands/bro.md".source = ../../config/opencode/commands/bro.md;
 
   # Other configs
   programs.direnv = {

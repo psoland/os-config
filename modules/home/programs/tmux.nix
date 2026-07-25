@@ -93,14 +93,6 @@ in
       vim-tmux-navigator
       resurrect
       {
-        plugin = continuum;
-        extraConfig = ''
-          set -g @continuum-save-interval '15'
-          set -g @continuum-restore 'off'
-          set -g @resurrect-delete-backup-after '3'
-        '';
-      }
-      {
         plugin = catppuccin;
         extraConfig = ''
           # --- Catppuccin Theme Config ---
@@ -136,6 +128,15 @@ in
           set -g @floax-border-color 'magenta'
           set -g @floax-text-color 'blue'
           set -g @floax-change-path 'true'
+        '';
+      }
+      {
+        # Continuum appends its autosave hook to status-right, so it must load last.
+        plugin = continuum;
+        extraConfig = ''
+          set -g @continuum-save-interval '15'
+          set -g @continuum-restore 'off'
+          set -g @resurrect-delete-backup-after '3'
         '';
       }
     ];

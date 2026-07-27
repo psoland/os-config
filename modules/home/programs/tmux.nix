@@ -64,6 +64,9 @@ in
       bind-key -r [ swap-window -t -1 \; select-window -t -1
       bind-key -r ] swap-window -t +1 \; select-window -t +1
 
+      # Group sessions by project name in the session overview
+      bind-key s choose-tree -Zs -O name
+
       # Vim-like copy mode
       bind-key v copy-mode
       bind-key -T copy-mode-vi v send-keys -X begin-selection

@@ -129,6 +129,7 @@
       # Tmux developer layouts
       (writeShellScriptBin "td" (builtins.readFile ./td.sh))
       (writeShellScriptBin "tdl" (builtins.readFile ./tdl.sh))
+      (writeShellScriptBin "ts" (builtins.readFile ./ts.sh))
 
       # Pi-coding-agent
       (writeShellScriptBin "pi" ''

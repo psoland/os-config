@@ -131,6 +131,7 @@ in
           set -g @floax-border-color 'magenta'
           set -g @floax-text-color 'blue'
           set -g @floax-change-path 'true'
+          set -g @floax-session-name '~scratch'
         '';
       }
       {

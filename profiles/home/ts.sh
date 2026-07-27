@@ -1,17 +1,29 @@
 #!/usr/bin/env bash
 # ts - start a named tmux development session
 #
-# Usage: ts <session-name>
+# Usage: ts <session-name> [path]
 #
 set -euo pipefail
 
-if [ "$#" -ne 1 ] || [ -z "$1" ]; then
-  echo "Usage: ts <session-name>" >&2
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ] || [ -z "$1" ]; then
+  echo "Usage: ts <session-name> [path]" >&2
   exit 1
 fi
 
 session_name="$1"
-working_dir="$PWD"
+requested_dir="${2:-$PWD}"
+
+case "$requested_dir" in
+  "~") requested_dir="$HOME" ;;
+  "~/"*) requested_dir="$HOME/${requested_dir#\~/}" ;;
+esac
+
+if [ ! -d "$requested_dir" ]; then
+  echo "Directory does not exist: $requested_dir" >&2
+  exit 1
+fi
+
+working_dir="$(cd -- "$requested_dir" && pwd -P)"
 
 case "$session_name" in
   *[.:]*)

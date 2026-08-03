@@ -38,6 +38,8 @@ in
       # --- Colors ---
       set -g default-terminal "tmux-256color"
       set -ag terminal-overrides ",*:RGB"
+      # iPad SSH clients accept OSC 52 clipboard writes terminated with ST, not BEL.
+      set -ag terminal-overrides ",xterm-256color:Ms=\e]52;%p1%s;%p2%s\e\\"
 
       # --- Keybinds ---
       unbind r

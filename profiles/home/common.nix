@@ -151,6 +151,8 @@
   xdg.configFile."opencode/tui.json".source = ../../config/opencode/tui.json;
   xdg.configFile."opencode/commands/hunk.md".source = ../../config/opencode/commands/hunk.md;
   xdg.configFile."opencode/commands/bro.md".source = ../../config/opencode/commands/bro.md;
+  xdg.configFile."opencode/plugins/worktree-session-picker.js".source =
+    ../../config/opencode/plugins/worktree-session-picker.js;
 
   # Other configs
   programs.direnv = {

@@ -144,6 +144,10 @@ wt() {
       return 1
     fi
 
+    if ! _devenv_stop_worktree "$target_dir"; then
+      return 1
+    fi
+
     ${gitcmd[@]} worktree remove "$@"
     ;;
 
@@ -175,6 +179,10 @@ wt() {
     local remote_head_line="${remote_info%%$'\n'*}"
     if [[ "$remote_head_line" == "ref: refs/heads/${branch_name}"$'\t'HEAD ]]; then
       echo "Error: refusing to delete origin's default branch '${branch_name}'."
+      return 1
+    fi
+
+    if ! _devenv_stop_worktree "$target_dir"; then
       return 1
     fi
 

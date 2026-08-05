@@ -31,6 +31,12 @@
 
     nixpkgs-hunk.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
 
+    # Terminal workspace manager for AI coding agents
+    herdr = {
+      url = "github:herdrdev/herdr/v0.8.0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # nix-darwin for macOS
     darwin = {
       url = "github:nix-darwin/nix-darwin/master";

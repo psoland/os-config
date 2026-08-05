@@ -50,6 +50,7 @@
       cloudflared
       bitwarden-cli
       nodejs
+      inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.herdr
     ]
     # Linux-only: gcc (use Apple clang from Xcode CLT on macOS),
     # syncthing (use the GUI app on macOS), lazysql (pull in Linux deps).

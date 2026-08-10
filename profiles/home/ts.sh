@@ -38,9 +38,9 @@ if tmux has-session -t "=$session_name" 2>/dev/null; then
 fi
 
 tmux new-session -d -s "$session_name" -n nvim -c "$working_dir"
-tmux new-window -d -t "=$session_name" -n hunk -c "$working_dir"
 tmux new-window -d -t "=$session_name" -n oc -c "$working_dir"
 tmux new-window -d -t "=$session_name" -n term -c "$working_dir"
+tmux new-window -d -t "=$session_name" -n hunk -c "$working_dir"
 
 # Run commands in shells so their named windows remain open after they exit.
 tmux send-keys -t "=$session_name:hunk" 'hd' C-m

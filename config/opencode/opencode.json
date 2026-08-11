@@ -30,6 +30,35 @@
   //      }
   //  }
   //},
+  "default_agent": "sol",
+  "agent": {
+    "build": {
+      "disable": true
+    },
+    "plan": {
+      "disable": true
+    },
+    "luna": {
+      "description": "Development agent and subagent using GPT-5.6 Luna with high reasoning.",
+      "mode": "all",
+      "model": "openai/gpt-5.6-luna",
+      "variant": "high",
+      "permission": "allow"
+    },
+    "sol": {
+      "description": "Development agent using GPT-5.6 Sol with medium reasoning.",
+      "mode": "primary",
+      "model": "openai/gpt-5.6-sol",
+      "variant": "medium",
+      "permission": "allow"
+    },
+    "terra": {
+      "description": "Subagent using GPT-5.6 Terra with the default reasoning variant.",
+      "mode": "subagent",
+      "model": "openai/gpt-5.6-terra",
+      "permission": "allow"
+    }
+  },
   "permission": "allow",
   // "read": {
   //   "*": "allow",

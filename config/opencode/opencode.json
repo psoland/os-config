@@ -98,6 +98,11 @@
       "type": "remote",
       "url": "https://executor.sh/mujo/mcp",
       "enabled": true
+    },
+    "open-computer-use": {
+      "type": "local",
+      "command": ["open-computer-use", "mcp"],
+      "enabled": true
     }
     // "sideshow": {
     //   "type": "remote",

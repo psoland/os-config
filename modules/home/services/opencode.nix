@@ -19,6 +19,8 @@
       WorkingDirectory = "%h";
       Restart = "on-failure";
       RestartSec = 2;
+      # Local MCP servers and other Home Manager packages are resolved by name.
+      Environment = "PATH=${config.home.profileDirectory}/bin:/usr/local/bin:/usr/bin:/bin";
     };
 
     Install.WantedBy = [ "default.target" ];

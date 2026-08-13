@@ -6,6 +6,9 @@
   ...
 }:
 
+let
+  open-computer-use = pkgs.callPackage ../../packages/open-computer-use.nix { };
+in
 {
 
   imports = [
@@ -42,6 +45,7 @@
       opencode
       codex
       claude-code
+      open-computer-use
       bitwarden-cli
       gh
       git-lfs

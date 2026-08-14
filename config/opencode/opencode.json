@@ -102,7 +102,7 @@
     "open-computer-use": {
       "type": "local",
       "command": ["open-computer-use", "mcp"],
-      "enabled": true
+      "enabled": false
     }
     // "sideshow": {
     //   "type": "remote",

@@ -37,3 +37,15 @@ function git_clone() {
   echo "Cloning $1 as a bare repo..."
   git clone --bare "$1" .bare
 }
+
+# Update this repository's Nix flake inputs.
+function update() {
+  local dotfiles_root="$HOME/.dotfiles"
+
+  if [[ "$(git rev-parse --show-toplevel 2>/dev/null)" != "$dotfiles_root" ]]; then
+    echo "update must be run from $dotfiles_root or one of its subdirectories." >&2
+    return 1
+  fi
+
+  nix flake update "$@"
+}

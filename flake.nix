@@ -22,14 +22,9 @@
 
     # Hunk diff viewer
     hunk = {
-      url = "github:modem-dev/hunk";
-      # TODO: Hunk currently evaluates an x86_64-darwin package output. Nixpkgs
-      # 26.11 dropped that platform, so use its final supported Nixpkgs
-      # release until Hunk removes the unsupported output.
-      inputs.nixpkgs.follows = "nixpkgs-hunk";
+      url = "github:modem-dev/hunk/v0.19.0";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    nixpkgs-hunk.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
 
     # Terminal workspace manager for AI coding agents
     herdr = {

@@ -96,7 +96,12 @@ in
 
     plugins = with pkgs.tmuxPlugins; [
       vim-tmux-navigator
-      resurrect
+      {
+        plugin = resurrect;
+        extraConfig = ''
+          set -g @resurrect-save 'S'
+        '';
+      }
       {
         plugin = catppuccin;
         extraConfig = ''

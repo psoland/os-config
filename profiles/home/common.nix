@@ -46,7 +46,6 @@ in
       codex
       claude-code
       open-computer-use
-      bitwarden-cli
       gh
       git-lfs
       lsof

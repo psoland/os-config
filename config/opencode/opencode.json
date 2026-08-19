@@ -42,7 +42,7 @@
       "description": "Development agent and subagent using GPT-5.6 Luna with high reasoning.",
       "mode": "all",
       "model": "openai/gpt-5.6-luna",
-      "variant": "high",
+      "variant": "max",
       "permission": "allow"
     },
     "sol": {
@@ -54,8 +54,9 @@
     },
     "terra": {
       "description": "Subagent using GPT-5.6 Terra with the default reasoning variant.",
-      "mode": "subagent",
+      "mode": "all",
       "model": "openai/gpt-5.6-terra",
+      "variant": "high",
       "permission": "allow"
     }
   },
@@ -92,7 +93,7 @@
     "sideshow": {
       "type": "remote",
       "url": "https://sideshow.sh/mcp",
-      "enabled": true
+      "enabled": false
     },
     "executor": {
       "type": "remote",

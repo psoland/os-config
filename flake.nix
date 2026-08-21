@@ -124,6 +124,24 @@
           };
         };
 
+        # Company Spark personal environment, without personal Spark services
+        # Usage: home-manager switch --flake .#psoland-work-spark
+        "psoland-work-spark" = home-manager.lib.homeManagerConfiguration {
+          pkgs = nixpkgsFor.aarch64-linux;
+          modules = [
+            ./hosts/spark/user.nix
+            {
+              home = {
+                username = "psoland";
+                homeDirectory = "/home/psoland";
+              };
+            }
+          ];
+          extraSpecialArgs = {
+            inherit self inputs;
+          };
+        };
+
         # Personal MacBook (Apple Silicon) — standalone Home Manager
         # Usage: home-manager switch --flake .#psoland-mac
         "psoland-mac" = home-manager.lib.homeManagerConfiguration {

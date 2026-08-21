@@ -6,9 +6,9 @@ Declarative machine setup with:
 
 ## Current Scope
 
-- Primary targets: Oracle Ubuntu VMs, Spark DGX Ubuntu, a personal MacBook, and a work MacBook (Apple Silicon)
+- Primary targets: Oracle Ubuntu VMs, personal and company Spark DGX Ubuntu hosts, a personal MacBook, and a work MacBook (Apple Silicon)
 - Users configured by bootstrap: `psoland` (personal), `pettersoland` (work)
-- Home Manager targets in this repo: `psoland-vm`, `psoland-vm-arm`, `spark`, `psoland-mac`, and `pettersoland-mac`
+- Home Manager targets in this repo: `psoland-vm`, `psoland-vm-arm`, `spark`, `psoland-work-spark`, `psoland-mac`, and `pettersoland-mac`
 
 ## Repository Layout
 
@@ -21,7 +21,8 @@ os-config/
 │   │   └── default.nix           # Host-specific HM module wiring
 │   ├── spark/
 │   │   ├── bootstrap.sh          # Spark DGX bootstrap (runs as root)
-│   │   ├── default.nix           # Host-specific HM module wiring
+│   │   ├── default.nix           # Personal Spark service wiring
+│   │   ├── user.nix              # Reusable psoland Spark environment
 │   │   └── services/             # Spark-only services
 │   └── mac/
 │       ├── bootstrap.sh          # macOS bootstrap (runs as your user, takes profile arg)
@@ -117,6 +118,43 @@ curl -fsSL https://raw.githubusercontent.com/psoland/os-config/main/hosts/oracle
 curl -fsSL https://raw.githubusercontent.com/psoland/os-config/main/hosts/spark/bootstrap.sh | sudo bash
 ```
 
+The bootstrap above is for the personal Spark. Do not run it on the company
+Spark, whose system and `aiservices` account are managed separately.
+
+### Personal account on the company Spark
+
+Create the Ubuntu account on the company Spark:
+
+```bash
+sudo adduser --shell /usr/bin/zsh psoland
+sudo usermod --append --groups sudo,docker psoland
+```
+
+The `sudo` and `docker` groups are appropriate for this personal administrator
+account. Docker access is root-equivalent and should not be granted to regular
+employee accounts.
+
+From another machine, install the public SSH key used for this account:
+
+```bash
+ssh-copy-id psoland@<company-spark-tailscale-name>
+```
+
+Log in as `psoland`, then clone and activate this repository:
+
+```bash
+git clone https://github.com/psoland/os-config.git ~/.dotfiles
+printf '%s\n' psoland-work-spark >~/.dotfiles/.hm-flake
+cd ~/.dotfiles
+nix build .#homeConfigurations.psoland-work-spark.activationPackage
+./result/activate
+```
+
+The company Spark target shares the personal Spark shell, tools, OpenCode,
+Syncthing, and desktop terminal environment. It excludes Caddy, Cloudflare,
+code-server, and model-serving services, leaving those responsibilities to the
+company-managed `aiservices` account.
+
 ### MacBook (Apple Silicon)
 
 Run as your normal user (NOT root) on Apple Silicon. The script takes a
@@ -198,6 +236,7 @@ If `~/.dotfiles/.hm-flake` does not exist, use one of these explicitly:
 nix build .#homeConfigurations.psoland-vm.activationPackage
 nix build .#homeConfigurations.psoland-vm-arm.activationPackage
 nix build .#homeConfigurations.spark.activationPackage
+nix build .#homeConfigurations.psoland-work-spark.activationPackage
 ./result/activate
 
 # macOS
@@ -212,6 +251,7 @@ darwin-rebuild switch --flake .#pettersoland-mac
 | `psoland-vm` | `psoland` | `x86_64-linux` | Home Manager |
 | `psoland-vm-arm` | `psoland` | `aarch64-linux` | Home Manager |
 | `spark` | `psoland` | `aarch64-linux` | Home Manager |
+| `psoland-work-spark` | `psoland` | `aarch64-linux` | Home Manager |
 | `psoland-mac` | `psoland` | `aarch64-darwin` | nix-darwin |
 | `pettersoland-mac` | `pettersoland` | `aarch64-darwin` | nix-darwin |
 

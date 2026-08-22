@@ -111,7 +111,7 @@
         "spark" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgsFor.aarch64-linux;
           modules = [
-            ./hosts/spark
+            ./hosts/spark/personal.nix
             {
               home = {
                 username = "psoland";
@@ -124,12 +124,12 @@
           };
         };
 
-        # Company Spark personal environment, without personal Spark services
+        # Company Spark personal environment, with shared tools only
         # Usage: home-manager switch --flake .#psoland-work-spark
         "psoland-work-spark" = home-manager.lib.homeManagerConfiguration {
           pkgs = nixpkgsFor.aarch64-linux;
           modules = [
-            ./hosts/spark/user.nix
+            ./hosts/spark/work.nix
             {
               home = {
                 username = "psoland";

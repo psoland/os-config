@@ -6,6 +6,15 @@
 }:
 
 {
+  imports = [ ./tailscale-serve.nix ];
+
+  programs.zsh.shellAliases = {
+    oc-start = "systemctl --user start opencode";
+    oc-log = "journalctl --user -fu opencode";
+    oc-stop = "systemctl --user stop opencode";
+    oc-reload = "systemctl --user restart opencode";
+  };
+
   systemd.user.services.opencode = lib.mkIf pkgs.stdenv.isLinux {
     Unit = {
       Description = "OpenCode server";

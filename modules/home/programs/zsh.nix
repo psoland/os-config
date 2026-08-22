@@ -48,11 +48,6 @@
       # Zsh
       zs = "source ~/.zshrc";
 
-      # OpenCode server managed by systemd
-      oc-start = "systemctl --user start opencode";
-      oc-log = "journalctl --user -fu opencode";
-      oc-stop = "systemctl --user stop opencode";
-      oc-reload = "systemctl --user restart opencode";
       oc-serve = "opencode --port 4091";
       oc = "opencode";
 

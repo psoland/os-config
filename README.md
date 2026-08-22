@@ -21,8 +21,8 @@ os-config/
 │   │   └── default.nix           # Host-specific HM module wiring
 │   ├── spark/
 │   │   ├── bootstrap.sh          # Spark DGX bootstrap (runs as root)
-│   │   ├── default.nix           # Personal Spark service wiring
-│   │   ├── user.nix              # Reusable psoland Spark environment
+│   │   ├── personal.nix          # Personal Spark services and desktop apps
+│   │   ├── work.nix              # Company Spark common profile only
 │   │   └── services/             # Spark-only services
 │   └── mac/
 │       ├── bootstrap.sh          # macOS bootstrap (runs as your user, takes profile arg)
@@ -150,10 +150,12 @@ nix build .#homeConfigurations.psoland-work-spark.activationPackage
 ./result/activate
 ```
 
-The company Spark target shares the personal Spark shell, tools, OpenCode,
-Syncthing, and desktop terminal environment. It excludes Caddy, Cloudflare,
-code-server, and model-serving services, leaving those responsibilities to the
-company-managed `aiservices` account.
+The company Spark target imports only the common Home Manager profile, including
+the shared shell, development tools, and OpenCode and Codex CLIs. It does not
+install Ghostty, Syncthing, or the Chrome/ChatGPT installer, and it does not
+enable the OpenCode server, Tailscale Serve routes, Caddy, the Cloudflare tunnel,
+code-server, or model-serving services. Those can be added later by importing
+their modules from `hosts/spark/work.nix`.
 
 ### MacBook (Apple Silicon)
 
@@ -258,6 +260,9 @@ darwin-rebuild switch --flake .#pettersoland-mac
 ## Common Operations
 
 ### Manage Tailscale Serve routes
+
+The personal Spark and Oracle profiles manage Tailscale Serve routes. The work
+Spark profile does not.
 
 Tailscale Serve routes are declared through `dotfiles.tailscaleServe.routes`. This configuration is authoritative: reloading it resets Tailscale Serve before recreating all declared routes, so do not maintain additional routes manually.
 
@@ -465,7 +470,7 @@ tailscale status
 
 ## code-server over Tailscale
 
-This repo enables `code-server` for the Spark host only.
+This repo enables `code-server` for the personal Spark host only.
 
 Spark config uses:
 - `bindAddr = 127.0.0.1:8080`
@@ -496,4 +501,4 @@ code http://localhost:8080
 
 Notes:
 - This avoids exposing `code-server` on LAN/public interfaces.
-- `code-server` is not enabled for Oracle unless you add it there.
+- `code-server` is not enabled for Oracle or the work Spark unless you add it there.

@@ -16,8 +16,6 @@ in
     ../../modules/home/programs/zsh.nix
     ../../modules/home/programs/starship.nix
     ../../modules/home/programs/nvim.nix
-    ../../modules/home/services/tailscale-serve.nix
-    ../../modules/home/services/opencode.nix
     inputs.hunk.homeManagerModules.default
   ];
 
@@ -55,11 +53,9 @@ in
       nodejs
       inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.herdr
     ]
-    # Linux-only: gcc (use Apple clang from Xcode CLT on macOS),
-    # syncthing (use the GUI app on macOS), lazysql (pull in Linux deps).
+    # Linux-only: use Apple clang from Xcode CLT on macOS.
     ++ lib.optionals pkgs.stdenv.isLinux [
       gcc
-      syncthing
     ]
     ++ [
 
@@ -206,11 +202,6 @@ in
     enable = true;
     enableZshIntegration = true;
     icons = "auto";
-  };
-
-  # Start syncthing (Linux only; on macOS use the Syncthing.app GUI)
-  services.syncthing = lib.mkIf pkgs.stdenv.isLinux {
-    enable = true;
   };
 
   # Home Manager needs to be able to update itself

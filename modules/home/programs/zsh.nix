@@ -57,6 +57,7 @@
       t = "tmux a || tmux new";
       tn = "tmux";
       tl = "tmux ls";
+      tpwd = "tmux display-message -p 'window=#{window_id} pane=#{pane_id}'";
 
       # Git
       gco = "git checkout";

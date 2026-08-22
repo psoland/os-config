@@ -1,7 +1,7 @@
 { pkgs, lib, ... }:
 
 let
-  pythonRuntimeLibs = lib.optionals pkgs.stdenv.isLinux [
+  pythonRuntimeLibs = lib.optionals pkgs.stdenv.hostPlatform.isLinux [
     pkgs.stdenv.cc.cc.lib
     pkgs.zlib
   ];

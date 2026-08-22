@@ -13,7 +13,7 @@
 
 let
   python = python3.withPackages (ps: [ ps.pygobject3 ]);
-  linuxWrapperArgs = lib.optionals stdenv.isLinux [
+  linuxWrapperArgs = lib.optionals stdenv.hostPlatform.isLinux [
     "--prefix"
     "PATH"
     ":"

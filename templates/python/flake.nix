@@ -28,11 +28,11 @@
           ty
           just
         ];
-        pythonRuntimeLibs = lib.optionals pkgs.stdenv.isLinux [
+        pythonRuntimeLibs = lib.optionals pkgs.stdenv.hostPlatform.isLinux [
           pkgs.stdenv.cc.cc.lib
           pkgs.zlib
         ];
-        pythonRuntimeShellHook = lib.optionalString pkgs.stdenv.isLinux ''
+        pythonRuntimeShellHook = lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
           __python_runtime_lib_path="${lib.makeLibraryPath pythonRuntimeLibs}"
 
           if [ -n "$__python_runtime_lib_path" ]; then

@@ -21,7 +21,7 @@ in
 
   # Ghostty terminfo: ghostty itself is Linux-only in nixpkgs; on macOS the
   # Ghostty.app bundle ships its own terminfo, so we only need this on Linux.
-  home.file.".terminfo" = lib.mkIf pkgs.stdenv.isLinux {
+  home.file.".terminfo" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     source = "${pkgs.ghostty.terminfo}/share/terminfo";
   };
 
@@ -54,7 +54,7 @@ in
       inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.herdr
     ]
     # Linux-only: use Apple clang from Xcode CLT on macOS.
-    ++ lib.optionals pkgs.stdenv.isLinux [
+    ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
       gcc
     ]
     ++ [

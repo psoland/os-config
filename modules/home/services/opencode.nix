@@ -15,7 +15,7 @@
     oc-reload = "systemctl --user restart opencode";
   };
 
-  systemd.user.services.opencode = lib.mkIf pkgs.stdenv.isLinux {
+  systemd.user.services.opencode = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     Unit = {
       Description = "OpenCode server";
       After = [ "network.target" ];

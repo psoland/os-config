@@ -100,6 +100,11 @@
       "url": "https://executor.sh/mujo/mcp",
       "enabled": true
     },
+    "tripletex": {
+      "type": "remote",
+      "url": "https://mcp.tripletex.no",
+      "enabled": false
+    },
     "open-computer-use": {
       "type": "local",
       "command": ["open-computer-use", "mcp"],

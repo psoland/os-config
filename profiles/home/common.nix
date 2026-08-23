@@ -43,6 +43,7 @@ in
       opencode
       codex
       claude-code
+      pi-coding-agent
       open-computer-use
       gh
       git-lfs
@@ -129,10 +130,11 @@ in
       (writeShellScriptBin "tdl" (builtins.readFile ./tdl.sh))
       (writeShellScriptBin "ts" (builtins.readFile ./ts.sh))
 
-      # Pi-coding-agent
-      (writeShellScriptBin "pi" ''
-        exec ${nodejs}/bin/npx -y @earendil-works/pi-coding-agent@latest "$@"
-      '')
+      # Pi-coding-agent installed through npx. Keep this as a reference while
+      # using the reproducible nixpkgs package above.
+      # (writeShellScriptBin "pi" ''
+      #   exec ${nodejs}/bin/npx -y @earendil-works/pi-coding-agent@latest "$@"
+      # '')
 
     ];
 

@@ -148,7 +148,11 @@ in
   };
 
   # Configs from config folder
+  home.file.".claude/CLAUDE.md".source = ../../config/agents/AGENTS.md;
+  home.file.".codex/AGENTS.md".source = ../../config/agents/AGENTS.md;
+  home.file.".pi/agent/AGENTS.md".source = ../../config/agents/AGENTS.md;
   xdg.configFile."lazygit/config.yml".source = ../../config/lazygit/config.yml;
+  xdg.configFile."opencode/AGENTS.md".source = ../../config/agents/AGENTS.md;
   xdg.configFile."opencode/opencode.json".source = ../../config/opencode/opencode.json;
   xdg.configFile."opencode/tui.json".source = ../../config/opencode/tui.json;
   xdg.configFile."opencode/commands/hunk.md".source = ../../config/opencode/commands/hunk.md;

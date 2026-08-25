@@ -4,6 +4,8 @@
 
 vim.keymap.del("n", "<leader><tab><tab>")
 
+vim.keymap.set("n", "<leader>br", "<cmd>edit!<cr>", { desc = "Reload Buffer" })
+
 vim.keymap.del("n", "<leader>ub")
 Snacks.toggle.option("background", { off = "light", on = "dark", name = "Dark Background" }):map("<leader>uB")
 

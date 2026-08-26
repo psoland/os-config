@@ -55,6 +55,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     done
 
     makeWrapper ${nodejs_24}/bin/node "$out/bin/dsh" \
+      --add-flags "--expose-internals" \
       --add-flags "$out/lib/deepseek-harness/apps/cli/lib/bin.js"
 
     runHook postInstall

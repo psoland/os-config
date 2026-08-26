@@ -8,6 +8,9 @@
 
 let
   open-computer-use = pkgs.callPackage ../../packages/open-computer-use.nix { };
+  deepseek-harness = pkgs.callPackage ../../packages/deepseek-harness.nix {
+    src = inputs.deepseek-harness;
+  };
 in
 {
 
@@ -44,6 +47,7 @@ in
       codex
       claude-code
       pi-coding-agent
+      deepseek-harness
       open-computer-use
       gh
       git-lfs

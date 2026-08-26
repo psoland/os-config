@@ -49,6 +49,22 @@
         "type": "github"
       }
     },
+    "deepseek-harness": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787313817,
+        "narHash": "sha256-rrjXoyccTxKIbZ00Z4Vy7EA9tGZ15WUqLBFnZSgw1YE=",
+        "owner": "deepseek-ai",
+        "repo": "deepseek-harness",
+        "rev": "b150a551b8d465e31e418e1b2eaf5e79bbb7d28e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "deepseek-ai",
+        "repo": "deepseek-harness",
+        "type": "github"
+      }
+    },
     "flake-parts": {
       "inputs": {
         "nixpkgs-lib": "nixpkgs-lib"
@@ -219,6 +235,7 @@
     "root": {
       "inputs": {
         "darwin": "darwin",
+        "deepseek-harness": "deepseek-harness",
         "flake-utils": "flake-utils",
         "herdr": "herdr",
         "home-manager": "home-manager",

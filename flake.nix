@@ -32,6 +32,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Plugin-based agent harness from DeepSeek AI.
+    deepseek-harness = {
+      url = "github:deepseek-ai/deepseek-harness";
+      flake = false;
+    };
+
     # nix-darwin for macOS
     darwin = {
       url = "github:nix-darwin/nix-darwin/master";
@@ -46,6 +52,7 @@
       home-manager,
       flake-utils,
       darwin,
+      deepseek-harness,
       ...
     }:
     let

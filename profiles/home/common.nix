@@ -155,12 +155,34 @@ in
   home.file.".claude/CLAUDE.md".source = ../../config/agents/AGENTS.md;
   home.file.".codex/AGENTS.md".source = ../../config/agents/AGENTS.md;
   home.file.".pi/agent/AGENTS.md".source = ../../config/agents/AGENTS.md;
+  home.file.".agents/skills" = {
+    source = ../../config/agents/skills;
+    recursive = true;
+  };
+  home.file.".claude/skills" = {
+    source = ../../config/agents/skills;
+    recursive = true;
+  };
+  home.file.".claude/commands" = {
+    source = ../../config/agents/commands;
+    recursive = true;
+  };
+  home.file.".codex/prompts" = {
+    source = ../../config/agents/commands;
+    recursive = true;
+  };
+  home.file.".pi/agent/prompts" = {
+    source = ../../config/agents/commands;
+    recursive = true;
+  };
   xdg.configFile."lazygit/config.yml".source = ../../config/lazygit/config.yml;
   xdg.configFile."opencode/AGENTS.md".source = ../../config/agents/AGENTS.md;
   xdg.configFile."opencode/opencode.json".source = ../../config/opencode/opencode.json;
   xdg.configFile."opencode/tui.json".source = ../../config/opencode/tui.json;
-  xdg.configFile."opencode/commands/hunk.md".source = ../../config/opencode/commands/hunk.md;
-  xdg.configFile."opencode/commands/bro.md".source = ../../config/opencode/commands/bro.md;
+  xdg.configFile."opencode/commands" = {
+    source = ../../config/agents/commands;
+    recursive = true;
+  };
   xdg.configFile."opencode/tui-plugins/worktree-session-picker.js".source =
     ../../config/opencode/tui-plugins/worktree-session-picker.js;
 

@@ -1,0 +1,132 @@
+/* ============================================================
+   Knowit Brand – Nordic Skies Design Tokens
+   Kilde: Knowit Brand MASTER FILE (Figma)
+   Bruk: <link rel="stylesheet" href="knowit-tokens.css">
+   eller kopier :root-blokken inn i prototypen.
+   ============================================================ */
+
+:root {
+  /* --- Primary palette --- */
+  --knowit-black: #0B0B26;   /* tekst + mørke flater. ALDRI #000 */
+  --knowit-white: #FEFBE6;   /* standard bakgrunn. ALDRI #FFF */
+  --knowit-purple: #CFCEFF;
+  --knowit-blue: #372BC5;
+
+  /* --- Extended palette --- */
+  --knowit-green: #55D440;
+  --knowit-pink: #FFD6B8;
+  --knowit-light-pink: #FFEBDD;
+  --knowit-light-purple: #F7F6FF;
+
+  /* --- Diagram/UI-kit (KUN diagrammer, alltid på mørk bakgrunn) --- */
+  --chart-bg: var(--knowit-black);
+  --chart-1: #9796FF;
+  --chart-2: #FFD6B8;
+  --chart-3: #55D440;
+  --chart-4: #FEFBE6;
+  --chart-5: #FCB27C;
+  --chart-6: #CFCEFF;
+  --chart-grid: rgba(254, 251, 230, 0.18);
+
+  /* --- Typografi --- */
+  /* Bagoss kun i offisielle maler; Arial er offisiell fallback */
+  --font-brand: Bagoss, Arial, Helvetica, sans-serif;
+  --font-weight: 400; /* KUN Regular – aldri bold */
+
+  /* Størrelsesskala: gylne snitt (×1,618), rundet til delelig på 8 */
+  --text-display: 96px;   /* line-height 0.9 */
+  --text-h1: 56px;        /* line-height 1.0 */
+  --text-h2: 40px;        /* line-height 1.1 */
+  --text-lead: 24px;      /* line-height 1.4 */
+  --text-body: 16px;      /* line-height 1.5 */
+  --text-small: 13px;
+
+  /* --- Vinduer / radius (delelig på 8, skaler med elementet) --- */
+  --radius-sm: 16px;
+  --radius-md: 24px;  /* referanseverdi */
+  --radius-lg: 32px;
+
+  /* --- Avstander (vindusregler: 24/16/8) --- */
+  --gap-sm: 8px;
+  --gap-md: 16px;
+  --gap-lg: 24px;
+
+  /* --- Maks tekstbredde (~65 tegn) --- */
+  --text-max-width: 65ch;
+}
+
+/* ---------- Basisstiler ---------- */
+
+body.knowit {
+  background: var(--knowit-white);
+  color: var(--knowit-black);
+  font-family: var(--font-brand);
+  font-weight: var(--font-weight);
+}
+
+.knowit h1, .knowit h2, .knowit h3,
+.knowit .display, .knowit .lead {
+  font-weight: 400; /* hierarki via størrelse, aldri vekt */
+  margin: 0;
+}
+
+.knowit .display { font-size: var(--text-display); line-height: 0.9; letter-spacing: -0.01em; }
+.knowit h1 { font-size: var(--text-h1); line-height: 1.0; }
+.knowit h2 { font-size: var(--text-h2); line-height: 1.1; }
+.knowit .lead { font-size: var(--text-lead); line-height: 1.4; }
+.knowit p { font-size: var(--text-body); line-height: 1.5; max-width: var(--text-max-width); }
+
+/* Highlight: maks ETT ord/setning per flate */
+.knowit .highlight { color: var(--knowit-blue); }
+.knowit .dark .highlight { color: var(--knowit-green); } /* eller purple/pink */
+
+/* ---------- Flater (kun tillatte kombinasjoner) ---------- */
+
+.surface-white  { background: var(--knowit-white);        color: var(--knowit-black); }
+.surface-dark   { background: var(--knowit-black);        color: var(--knowit-white); }
+.surface-purple { background: var(--knowit-purple);       color: var(--knowit-black); }
+.surface-blue   { background: var(--knowit-blue);         color: var(--knowit-white); }
+.surface-pink   { background: var(--knowit-pink);         color: var(--knowit-black); }
+.surface-light-pink   { background: var(--knowit-light-pink);   color: var(--knowit-black); }
+.surface-light-purple { background: var(--knowit-light-purple); color: var(--knowit-black); }
+/* FORBUDT: svart tekst på blue, hvit på green, purple-tekst på white, m.fl.
+   – se references/farger-og-typografi.md */
+
+/* ---------- Vinduer ---------- */
+
+.window {
+  border-radius: var(--radius-md);
+  overflow: hidden; /* bilder fyller hele vinduet */
+}
+.window img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.window--outline { border: 1px solid rgba(11, 11, 38, 0.18); }
+
+/* Gradientvindu: gradient = bildeinnhold. ALDRI tekst inni. */
+.window--gradient { aspect-ratio: 16/9; }
+.window--gradient img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ---------- Stjerne-bullets (størrelse = tekst ÷ 1,5) ---------- */
+
+.knowit ul.stars { list-style: none; padding: 0; margin: 0; }
+.knowit ul.stars li {
+  position: relative;
+  padding-left: 1.6em;
+  margin-bottom: 0.6em;
+}
+.knowit ul.stars li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.25em;
+  width: calc(1em / 1.5);
+  height: calc(1em / 1.5);
+  background: currentColor; /* byttes med star-SVG via mask */
+  -webkit-mask: url("stars/star-blue.svg") no-repeat center / contain;
+          mask: url("stars/star-blue.svg") no-repeat center / contain;
+}
+
+/* ---------- Logo ---------- */
+
+.logo { display: block; }
+.logo--footer { width: 96px; min-width: 72px; } /* aldri under 72px */
+/* Friareal: hold luft tilsvarende "o"-bredden (~13% av logobredden) rundt */

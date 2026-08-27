@@ -26,6 +26,7 @@
       "logi-options+"
       "codex-app"
       "claude"
+      "raspberry-pi-imager"
       #"visual-studio-code"
     ];
     masApps = {

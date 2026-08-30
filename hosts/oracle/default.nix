@@ -1,5 +1,8 @@
-{ ... }:
+{ pkgs, ... }:
 
+let
+  opencode2 = pkgs.callPackage ../../packages/opencode2.nix { };
+in
 {
 
   imports = [
@@ -10,5 +13,7 @@
   ];
 
   home.stateVersion = "25.11";
+
+  home.packages = [ opencode2 ];
 
 }

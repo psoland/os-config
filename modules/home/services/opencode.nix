@@ -19,6 +19,8 @@
     Unit = {
       Description = "OpenCode server";
       After = [ "network.target" ];
+      StartLimitIntervalSec = 300;
+      StartLimitBurst = 5;
     };
 
     Service = {

@@ -38,6 +38,7 @@ async function showSessionPicker(api) {
 	api.ui.dialog.replace(() =>
 		api.ui.DialogSelect({
 			title: "Sessions in current worktree",
+			current: api.route.current.name === "session" ? api.route.current.params.sessionID : undefined,
 			options: sessions.map((session) => ({
 				title: session.title,
 				value: session.id,

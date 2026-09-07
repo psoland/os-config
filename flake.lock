@@ -52,11 +52,11 @@
     "deepseek-harness": {
       "flake": false,
       "locked": {
-        "lastModified": 1788513383,
-        "narHash": "sha256-7gje0bGlfRbo6qEubnKt3z8a6UjDGNW90g7phGU+s6g=",
+        "lastModified": 1788787472,
+        "narHash": "sha256-7ASA741y57KyBbC7IXFmFhY9w9QVsLqYd+o+Os0u8mI=",
         "owner": "deepseek-ai",
         "repo": "deepseek-harness",
-        "rev": "d347e703908d0406b7a7ef80e3a0e594d86b2215",
+        "rev": "b0a7d2ce3b4c19d7452e364b2d7acbfa87e707ed",
         "type": "github"
       },
       "original": {
@@ -203,11 +203,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1788549839,
-        "narHash": "sha256-kOrCcSIA6w9J1hX5DqHy2k9pDTJymExTsbV74U9UtCA=",
+        "lastModified": 1788608636,
+        "narHash": "sha256-RqeFOwW329f4i1f5QlJgQYwgEZvxIHJsUYlzIBxsKsY=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "17de0b976395537756f30a3e78f2f06e5cec89ed",
+        "rev": "0af3d1402dec3fc7e93635e511d1f7428c89cebf",
         "type": "github"
       },
       "original": {

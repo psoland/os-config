@@ -47,7 +47,7 @@ in
       codex
       claude-code
       pi-coding-agent
-      deepseek-harness
+      #      deepseek-harness
       open-computer-use
       gh
       git-lfs

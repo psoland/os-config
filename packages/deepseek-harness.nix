@@ -11,17 +11,17 @@
 
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "deepseek-harness";
-  version = "0.1.1-rc.2";
+  version = "0.1.3-alpha.2";
 
   inherit src;
 
-  DSH_CLIENT_COMMIT_HASH = "b150a55";
+  DSH_CLIENT_COMMIT_HASH = "b0a7d2c";
 
   pnpmDeps = fetchPnpmDeps {
     inherit (finalAttrs) pname version src;
     pnpm = pnpm_11;
     fetcherVersion = 4;
-    hash = "sha256-IoX7qY6lXVJtYDljhSJF157JwZR72QZ1YX8Jpts7awk=";
+    hash = "sha256-H4OTJCZeUXFxWIqpFo7E5HD76p/VDUSfkSzg1Ytyd4s=";
   };
 
   nativeBuildInputs = [
@@ -30,6 +30,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     pnpm_11
     pnpmConfigHook
   ];
+
+  dontPatchShebangs = true;
 
   buildPhase = ''
     runHook preBuild

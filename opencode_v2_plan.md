@@ -16,8 +16,8 @@
 2. Manage V2 CLI preferences and a separate V2 worktree picker through Home Manager.
 3. List root sessions with server-side directory/workspace filtering, then follow
    every `cursor.next` page. Sort the complete result by update time and group by date.
-4. Remove blanket global and custom-agent permission overrides so V2's sensitive
-   defaults and built-in agent restrictions survive V1 compatibility normalization.
+4. Keep the blanket global permission override removed so built-in agent restrictions
+   survive V1 compatibility normalization. Give only custom model agents full access.
    Correct the Luna/Terra descriptions without changing their models or variants.
 5. Remove V1 service configuration and its obsolete service aliases/routes.
 6. Test pagination, worktree isolation, cancellation, failures, reload cleanup,
@@ -54,10 +54,12 @@
 
 ## Permissions
 
-Omit blanket `permission: "allow"` globally and on Sol/Luna/Terra. This intentionally
-changes the old unrestricted policy: ordinary tools use shipped defaults, external
-paths and `.env` reads ask, and `.env.example` reads remain allowed. Built-in
-`explore`, `general`, and maintenance-agent restrictions are not overridden.
+Omit blanket `permission: "allow"` globally, because global rules are appended to
+every agent and would override built-in `explore`, `general`, and maintenance-agent
+restrictions. Set `permission: "allow"` on Astra, Sol, Luna, and Terra instead. V2's
+V1 compatibility layer converts each setting to a final per-agent wildcard allow,
+so these custom model agents can use every tool, read `.env` files, and access paths
+outside the active workspace without prompting while built-in policies remain intact.
 
 These are tool permission rules, not a sandbox: shell commands still run with the
 user's authority. Do not use `--auto` when verifying approval prompts. Existing saved
@@ -105,8 +107,9 @@ No state preservation is required for this later cutover either.
   imported child session. The real promise client returned every matching root,
   excluded the child/other worktree, and sorted a renamed old session first.
   The TUI found and navigated to a session beyond the first page.
-- Checked 60 effective permission decisions from the running server, including
-  `.env`, external directories, normal tools, and built-in agent restrictions.
+- Checked effective permission decisions from the running server, including
+  unrestricted `.env` and external-directory access for custom agents and retained
+  built-in agent restrictions.
   `debug config` normalized all three custom models/variants correctly. On this
   beta `debug agents` returned an empty list during initialization, so verification
   used the running server's agent API instead of trusting that empty result.

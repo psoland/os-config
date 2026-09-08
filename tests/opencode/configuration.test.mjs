@@ -20,12 +20,12 @@ test("V2 preferences use native built-in key IDs and do not migrate the V1 plugi
   assert.equal(cli.animations, true)
 })
 
-test("shared config remains V1-compatible without overriding sensitive or built-in permissions", () => {
+test("shared config grants custom agents full access without overriding built-in permissions", () => {
   assert.equal(server.agents, undefined)
   assert.equal(server.permissions, undefined)
   assert.equal(server.permission, undefined)
   assert.equal(server.default_agent, "sol")
-  for (const agent of Object.values(server.agent)) assert.equal(agent.permission, undefined)
+  for (const name of ["astra", "sol", "luna", "terra"]) assert.equal(server.agent[name].permission, "allow")
   assert.equal(server.agent.sol.variant, "medium")
   assert.equal(server.agent.astra.variant, "medium")
   assert.equal(server.agent.luna.variant, "max")

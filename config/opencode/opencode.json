@@ -38,6 +38,12 @@
     "plan": {
       "disable": true
     },
+    "astra": {
+      "description": "Development agent using GPT-5.6 Astra with medium reasoning.",
+      "mode": "all",
+      "model": "openai/gpt-5.6-astra",
+      "variant": "medium"
+    },
     "luna": {
       "description": "Development agent and subagent using GPT-5.6 Luna with max reasoning.",
       "mode": "all",

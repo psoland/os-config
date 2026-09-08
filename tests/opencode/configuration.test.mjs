@@ -27,6 +27,7 @@ test("shared config remains V1-compatible without overriding sensitive or built-
   assert.equal(server.default_agent, "sol")
   for (const agent of Object.values(server.agent)) assert.equal(agent.permission, undefined)
   assert.equal(server.agent.sol.variant, "medium")
+  assert.equal(server.agent.astra.variant, "medium")
   assert.equal(server.agent.luna.variant, "max")
   assert.equal(server.agent.terra.variant, "high")
   assert.equal(server.agent.build.disable, true)

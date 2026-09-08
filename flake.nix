@@ -34,7 +34,8 @@
 
     # Plugin-based agent harness from DeepSeek AI.
     deepseek-harness = {
-      url = "github:deepseek-ai/deepseek-harness";
+      # Pin releases because the Nix dependency hash must match pnpm-lock.yaml.
+      url = "github:deepseek-ai/deepseek-harness/dsh-v0.1.3-alpha.2";
       flake = false;
     };
 

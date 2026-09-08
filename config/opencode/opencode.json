@@ -39,28 +39,25 @@
       "disable": true
     },
     "luna": {
-      "description": "Development agent and subagent using GPT-5.6 Luna with high reasoning.",
+      "description": "Development agent and subagent using GPT-5.6 Luna with max reasoning.",
       "mode": "all",
       "model": "openai/gpt-5.6-luna",
-      "variant": "max",
-      "permission": "allow"
+      "variant": "max"
     },
     "sol": {
       "description": "Development agent using GPT-5.6 Sol with medium reasoning.",
       "mode": "primary",
       "model": "openai/gpt-5.6-sol",
-      "variant": "medium",
-      "permission": "allow"
+      "variant": "medium"
     },
     "terra": {
-      "description": "Subagent using GPT-5.6 Terra with the default reasoning variant.",
+      "description": "Development agent and subagent using GPT-5.6 Terra with high reasoning.",
       "mode": "all",
       "model": "openai/gpt-5.6-terra",
-      "variant": "high",
-      "permission": "allow"
+      "variant": "high"
     }
   },
-  "permission": "allow",
+  // No blanket permission override: retain sensitive defaults and built-in agent restrictions.
   // "read": {
   //   "*": "allow",
   //   "*.env": "deny",

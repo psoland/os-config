@@ -1,113 +1,127 @@
-# OpenCode V2 Plan
+# OpenCode V2 Migration
 
-## Constraints
+## Scope and decisions
 
-- Keep OpenCode V1 operational until V2 has been verified.
-- Do not convert or remove `config/opencode/opencode.json` while V1 uses it.
-- Keep `config/opencode/tui.json` and the V1 worktree session picker.
-- Keep the V1 systemd service and any V1 API consumers until they are migrated separately.
-- Use separate files for V2 client settings and V2 plugin implementations.
+- Repository settings are the recovery baseline. No V1 state backups or rollback machinery.
+- Retire the unused V1 systemd service on port 4090 and its Tailscale routes.
+- Keep the V1 CLI, `tui.json`, and picker for existing launchers and non-V2 hosts.
+- Install the pinned V2 beta on supported Linux hosts alongside V1. Use V2's own
+  per-user background service, not another systemd server. `--standalone` remains available.
+- Keep shared server configuration V1-compatible until the remaining V1 CLI
+  launchers are migrated. Native V2 server syntax is optional, not a prerequisite.
 
-## Phase 1: Manage V2 CLI Configuration
+## Implementation plan
 
-1. Use the generated `~/.config/opencode/cli.json` as the migration baseline.
-2. Add a repository-owned `config/opencode/cli.json` containing the desired V2 settings:
-   - Catppuccin theme
-   - `ctrl+x` leader
-   - `ctrl+q` application exit
-   - Custom newline bindings
-   - Word-wrapped diffs
-   - Hidden session sidebar
-   - Visible scrollbar and thinking blocks
-   - Animations
-3. Do not include the V1 `tui-plugins/worktree-session-picker.js` path in the managed V2 config.
-4. Decide how Home Manager should own `cli.json`:
-   - Preferred: use an immutable Home Manager symlink and make the repository authoritative.
-   - Alternative: install a writable copy if settings changed through the V2 TUI must persist, with an explicit policy for reconciling runtime changes.
-5. Preserve the generated file before the first Home Manager deployment, then handle the existing-file collision deliberately.
-6. Keep the existing Home Manager mappings for V1 `tui.json` and its plugin unchanged.
-7. Add a separate Home Manager mapping for V2 `cli.json`.
-8. Validate the managed file against `https://opencode.ai/v2/cli.json` and check startup logs for rejected fields or keybinding IDs.
+1. Verify contracts against `0.0.0-beta-18684`, pinned in `packages/opencode2.nix`.
+2. Manage V2 CLI preferences and a separate V2 worktree picker through Home Manager.
+3. List root sessions with server-side directory/workspace filtering, then follow
+   every `cursor.next` page. Sort the complete result by update time and group by date.
+4. Remove blanket global and custom-agent permission overrides so V2's sensitive
+   defaults and built-in agent restrictions survive V1 compatibility normalization.
+   Correct the Luna/Terra descriptions without changing their models or variants.
+5. Remove V1 service configuration and its obsolete service aliases/routes.
+6. Test pagination, worktree isolation, cancellation, failures, reload cleanup,
+   effective permissions, config discovery, and both V2 server modes. Evaluate Home
+   Manager for Linux and ensure non-Linux configurations remain valid.
 
-## Phase 2: Port the Worktree Session Picker
+## Verified beta contracts
 
-1. Keep `config/opencode/tui-plugins/worktree-session-picker.js` as the V1 implementation.
-2. Create a separate V2 plugin under `config/opencode/plugins/tui/`, using the same user-facing command name where practical.
-3. Deploy it to `~/.config/opencode/plugins/tui/` so V2 discovers it without referencing the V1 plugin from `cli.json`.
-4. Implement the plugin with `Plugin.define()` from `@opencode-ai/plugin/tui`.
-5. Register its command with `context.keymap.layer()` and return the unregister function from `setup()`.
-6. Inspect the installed V2 client types before implementing session filtering. Confirm:
-   - The session location or directory field
-   - How root and child sessions are represented
-   - Whether `context.data.session.sync()` is required before listing
-   - The return shape of `context.keymap.shortcuts("session.list")`
-7. Resolve the active worktree from `context.location` or `context.data.location.default()`.
-8. Preserve the existing behavior:
-   - Show only root sessions for the active worktree
-   - Sort by most recently updated
-   - Group sessions by date
-   - Show a useful empty state
-   - Show a clear synchronization or API error
-9. Use the native V2 APIs:
-   - `context.data.session` for session data
-   - `context.ui.dialog.select()` for selection
-   - `context.ui.toast.show()` for feedback
-   - `context.ui.router.navigate()` for navigation
-10. Reuse the configured `session.list` shortcut if the V2 keymap API supports it reliably. Otherwise assign and document a dedicated binding.
-11. Verify the plugin with:
-   - The shared V2 service
-   - `opencode2 --standalone`
-   - Multiple worktrees
-   - Root and child sessions
-   - No matching sessions
-   - Plugin reload and cleanup
-   - A remote V2 server, if that is a supported workflow
+- `context.data.session.list()` is a cache, not a complete server listing.
+  `sync(sessionID)` refreshes one session; it cannot synchronize the global list.
+- Use `context.client.session.list({ directory, workspace, parentID: null,
+  order: "desc", limit: 100 })`, then follow `response.cursor.next`. The promise
+  client returns `{ data, cursor }` and throws on API errors.
+- Session location is `session.location` (`directory` and optional `workspaceID`).
+  Child sessions have `parentID`; timestamps are epoch milliseconds.
+- Keymap registration is `context.keymap.layer(() => layer)`. It returns `void`.
+  In this beta, calling it directly in `setup()` fails with `Keymap.Provider is
+  missing`. Mount it through `context.ui.slot({ append: "app", render })` instead.
+  Removing that slot disposes the layer; plugin cleanup also cancels pending work.
+- `shortcuts()` returns formatted display labels, not binding definitions. The
+  picker uses explicit `<leader>w` (Ctrl+X, then W); `<leader>l` remains the built-in
+  all-session picker. `/worktree-sessions` and the command palette also work.
+- The pinned beta discovers flat files in `plugins/tui/`, including with remote
+  servers. Deploy `plugins/tui/worktree-session-picker.js` there and keep helpers
+  outside that discovery directory. No V1 plugin path is migrated into `cli.json`.
+  Newer online docs describe a different package layout; it fails on this pin.
+- The published CLI schema rejects custom command keys, so the picker binding
+  lives in the plugin's `bind` declaration rather than in `cli.json`.
+- V2 writes `cli.json` with an atomic rename. A Home Manager symlink would be
+  replaced by a regular file. Instead, activation installs a writable copy from
+  the repository, deliberately replacing generated settings without a backup.
+  TUI changes last until the next activation; commit desired changes to
+  `config/opencode/cli.json`. Close V2 clients before applying to avoid write races.
 
-## Phase 3: Review V2 Permissions
+## Permissions
 
-1. Keep the current V1 `permission: "allow"` setting while V1 behavior depends on it.
-2. Before adopting a native V2 server config, define the intended policy explicitly rather than translating the blanket allow unchanged.
-3. Preserve V2's sensitive defaults unless there is a concrete reason to override them:
-   - Ask before external-directory access
-   - Ask before reading `.env` and `.env.*`
-   - Allow `.env.example`
-4. Ensure built-in subagents retain their intended restrictions:
-   - `explore` remains read-only and cannot launch subagents
-   - `general` cannot launch nested subagents
-   - Hidden maintenance agents remain denied normal tools
-5. Add narrowly scoped allow rules only where repeated prompts create real friction.
-6. Confirm effective ordering with `opencode2 debug agents`; the last matching rule wins.
-7. Test representative operations for `read`, `edit`, `shell`, `subagent`, `skill`, and `external_directory` before relying on the policy.
+Omit blanket `permission: "allow"` globally and on Sol/Luna/Terra. This intentionally
+changes the old unrestricted policy: ordinary tools use shipped defaults, external
+paths and `.env` reads ask, and `.env.example` reads remain allowed. Built-in
+`explore`, `general`, and maintenance-agent restrictions are not overridden.
 
-## Phase 4: Verify Shared V1 Configuration in V2
+These are tool permission rules, not a sandbox: shell commands still run with the
+user's authority. Do not use `--auto` when verifying approval prompts. Existing saved
+approvals and project-level rules may also affect the result.
 
-1. Continue running `opencode2 debug config` after V2 upgrades to verify V1 compatibility normalization.
-2. Confirm the custom `sol`, `luna`, and `terra` agents and their variants.
-3. Correct stale agent descriptions when a safe V1-compatible config update is scheduled:
-   - Luna's description says `high`, while its variant is `max`.
-   - Terra's description says `default`, while its variant is `high`.
-4. Authenticate the enabled `executor` MCP server if it is intended to be active.
-5. Verify global commands, skills, and `AGENTS.md` discovery.
-6. Treat failures in supported V1 configuration behavior as V2 compatibility bugs rather than rewriting the V1 config prematurely.
+## Deployment and verification
 
-## Phase 5: Native V2 Migration
+- Run `node --test tests/opencode/*.test.mjs`.
+- Build the relevant Home Manager activation package, then activate it with V2
+  clients closed. Activation resets `cli.json` to the repository baseline.
+- On hosts that previously enabled V1, stop/disable `opencode.service` and remove
+  only its `/` and `/opencode` Tailscale Serve routes to `127.0.0.1:4090`.
+  Do not reset unrelated Tailscale routes.
+- Run `opencode2 debug config`, `opencode2 debug agents`, and `opencode2 mcp list`.
+  `executor` remains enabled; OAuth authentication, if needed, is an interactive
+  follow-up (`opencode2 mcp auth executor`), not an automated credential change.
+- Try `opencode2` and `opencode2 --standalone`, then `/worktree-sessions` in
+  multiple worktrees, including a worktree with more than 100 root sessions.
+- Remote selection uses server-provided location identity, never client-side
+  filesystem canonicalization. Test `--server` if used in practice.
 
-Start this phase only after V1 and V1 API consumers have been retired.
+## Later: native V2-only cutover
 
-1. Back up the final shared V1 configuration.
-2. Convert `agent` to `agents` and migrate each complete nested agent entry without mixing formats inside it.
-3. Join model variants into `provider/model#variant` references.
-4. Convert `permission` to an ordered `permissions` array using V2 action names.
-5. Convert MCP entries to `mcp.servers`, invert `enabled` to `disabled`, and review OAuth behavior.
-6. Keep compatible fields such as `default_agent` unchanged.
-7. Validate the resulting effective configuration with `opencode2 debug config` and `opencode2 debug agents`.
-8. Verify models, credentials, agents, permissions, MCP servers, commands, skills, and plugins before removing any V1-only files.
+The existing `oc`, `td c`, `tdl c`, and `ts` launchers still run V1. Once these and
+any external V1 API clients have migrated, convert the shared server file:
 
-## Completion Criteria
+1. `agent` -> `agents`; each complete entry uses `disabled`, `system`, etc.
+2. Join agent model and variant as `provider/model#variant`.
+3. Any explicit policy uses ordered `permissions` arrays and native action names.
+4. MCP entries move under `mcp.servers`, with `enabled` inverted to `disabled`.
+5. Keep `default_agent` and compatible commands, skills, and `AGENTS.md` mappings.
+6. Verify effective config/agents before removing V1 packages and files.
 
-- V1 continues to work unchanged until its planned retirement.
-- V2 CLI settings are reproducible from the repository.
-- V1 and V2 use separate worktree session picker implementations.
-- V2 effective permissions match each agent's intended role.
-- V2 reports no config or plugin compatibility warnings.
-- Native V2 server configuration is adopted only after V1 is no longer consuming the shared config path.
+No state preservation is required for this later cutover either.
+
+## Validation results
+
+- All 16 unit tests pass, covering pagination beyond 100 sessions, server-side filters, root/child
+  and workspace isolation, deduplication, date grouping, API failures (including
+  failures after the first page), cancellation, duplicate invocation, and cleanup.
+- Published CLI schema validation passed. The pinned beta loaded the managed
+  plugin from Home Manager's actual Nix-store symlink layout without warnings.
+- Standalone TUI: verified startup, dedicated shortcut, and empty state.
+- Shared service: created 105 roots in one Git worktree, 110 in another, and an
+  imported child session. The real promise client returned every matching root,
+  excluded the child/other worktree, and sorted a renamed old session first.
+  The TUI found and navigated to a session beyond the first page.
+- Checked 60 effective permission decisions from the running server, including
+  `.env`, external directories, normal tools, and built-in agent restrictions.
+  `debug config` normalized all three custom models/variants correctly. On this
+  beta `debug agents` returned an empty list during initialization, so verification
+  used the running server's agent API instead of trusting that empty result.
+  The running server also discovered the managed `bro`/`hunk` commands and three
+  global skills. Executor reports `needs_auth`; it was not silently disabled.
+- Changed settings through the TUI, confirmed `cli.json` was writable, and ran
+  the generated activation commands against the test config directory: the
+  repository baseline was restored exactly.
+- Evaluated all standalone Home Manager targets plus the work Mac's CLI activation
+  configuration, and built the Spark activation package and ARM64 V2 package.
+  Existing upstream Nix deprecation warnings remain.
+- Stopped/disabled the V1 service on the current Spark and removed only its two
+  verified Tailscale routes. Other hosts need activation/service retirement there.
+- Full Home Manager activation is intentionally not run over unrelated in-progress
+  changes in `flake.nix`, `flake.lock`, and `packages/deepseek-harness.nix`.
+- Still requires user verification: provider login/model inference, interactive
+  approval prompts, executor OAuth, and an actual remote-server workflow. No model
+  requests or credential changes were made by these migration tests.

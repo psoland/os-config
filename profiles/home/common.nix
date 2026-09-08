@@ -19,6 +19,7 @@ in
     ../../modules/home/programs/zsh.nix
     ../../modules/home/programs/starship.nix
     ../../modules/home/programs/nvim.nix
+    ../../modules/home/programs/opencode2.nix
     inputs.hunk.homeManagerModules.default
   ];
 

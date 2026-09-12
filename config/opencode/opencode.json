@@ -31,6 +31,16 @@
   //  }
   //},
   "default_agent": "sol",
+  "permission": {
+    "read": {
+      "*": "allow",
+      "*.env": "ask",
+      "*.env.*": "ask",
+      "*.env.example": "allow",
+      "*.env.schema": "allow"
+    },
+    "external_directory": "allow"
+  },
   "agent": {
     "build": {
       "disable": true

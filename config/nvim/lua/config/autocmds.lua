@@ -14,3 +14,11 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.diagnostic.enable(false, { bufnr = 0 })
   end,
 })
+
+-- Keep completion opt-in for Markdown without affecting other filetypes.
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "markdown",
+  callback = function()
+    vim.b.completion = false
+  end,
+})

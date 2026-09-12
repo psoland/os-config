@@ -20,6 +20,7 @@ in
     ../../modules/home/programs/starship.nix
     ../../modules/home/programs/nvim.nix
     ../../modules/home/programs/opencode2.nix
+    ../../modules/home/services/taildrop.nix
     inputs.hunk.homeManagerModules.default
   ];
 

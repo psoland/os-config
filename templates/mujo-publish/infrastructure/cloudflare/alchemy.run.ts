@@ -55,8 +55,8 @@ export type PublishConfiguration =
 			accessEmail: string;
 	  });
 
-const hostnamePattern =
-	/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+mujo\.no$/;
+// The zone's standard Universal SSL coverage is for direct subdomains only.
+const hostnamePattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.mujo\.no$/;
 const emailPattern = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 function fail(message: string): never {
@@ -69,7 +69,7 @@ export function validateConfiguration(
 ): PublishConfiguration {
 	if (!hostnamePattern.test(raw.hostname)) {
 		fail(
-			"MUJO_HOSTNAME must be a lowercase DNS hostname below mujo.no (for example, demo.mujo.no)",
+			"MUJO_HOSTNAME must be one lowercase direct subdomain of mujo.no (for example, demo.mujo.no)",
 		);
 	}
 

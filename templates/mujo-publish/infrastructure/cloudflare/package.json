@@ -4,7 +4,7 @@
   "type": "module",
   "packageManager": "pnpm@11.9.0",
   "scripts": {
-    "check": "tsc --noEmit && vitest run && bash ../../systemd/verify-template.sh",
+    "check": "tsc --noEmit && vitest run && node --test ../../quick-tunnel.test.mjs && bash ../../systemd/verify-template.sh",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

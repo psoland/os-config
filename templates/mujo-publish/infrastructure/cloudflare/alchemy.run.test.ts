@@ -97,6 +97,7 @@ describe("publishing configuration", () => {
 
 	it.each([
 		["zone apex", { hostname: "mujo.no" }],
+		["nested subdomain without Universal SSL coverage", { hostname: "api.demo.mujo.no" }],
 		["unrelated domain", { hostname: "demo.example.com" }],
 		["uppercase hostname", { hostname: "Demo.mujo.no" }],
 		["non-loopback origin", { originUrl: "http://192.0.2.1:3000" }],
@@ -135,6 +136,19 @@ describe("publishing configuration", () => {
 });
 
 describe("Alchemy ownership compatibility patch", () => {
+	async function installedPredicate(
+		path: string,
+		pattern: RegExp,
+		parameters: string[],
+	) {
+		const source = await readFile(join(import.meta.dirname, "node_modules", path), "utf8");
+		const expression = source.match(pattern)?.[1];
+		if (!expression) throw new Error(`Could not locate ownership predicate in ${path}`);
+		return Function(...parameters, `return Boolean(${expression});`) as (
+			...values: unknown[]
+		) => boolean;
+	}
+
 	it("guards all four remote resource types against implicit adoption", async () => {
 		const patch = await readFile(
 			join(import.meta.dirname, "patches", "alchemy@2.0.0-beta.72.patch"),
@@ -148,11 +162,35 @@ describe("Alchemy ownership compatibility patch", () => {
 			"Access application domain ${body.domain} is already owned",
 		);
 		expect(patch).toContain("Access policy name ${name} is already owned");
-		expect(patch).toContain("existingAtDomain.id !== observed?.id");
+		expect(patch).toContain("existingAtDomain.id !== output?.applicationId");
 		expect(patch).toContain(
 			"existing.id === output?.policyId || news.adopt",
 		);
+		expect(patch).toContain("output?.recordId && existing?.id === output.recordId");
 		expect(patch).toContain("was created concurrently by another resource");
+	});
+
+	it("keeps an application owned when its id lookup transiently fails", async () => {
+		const conflicts = await installedPredicate(
+			"alchemy/lib/Cloudflare/Access/Application.js",
+			/if \((existingAtDomain\?\.id\s*&&\s*existingAtDomain\.id !== output\?\.applicationId\s*&&\s*!news\.adopt)\) \{/s,
+			["existingAtDomain", "output", "news"],
+		);
+
+		expect(conflicts({ id: "ours" }, { applicationId: "ours" }, { adopt: false })).toBe(false);
+		expect(conflicts({ id: "another" }, { applicationId: "ours" }, { adopt: false })).toBe(true);
+	});
+
+	it("does not accept a DNS create race without a persisted matching id", async () => {
+		const ownsRacedRecord = await installedPredicate(
+			"alchemy/lib/Cloudflare/DNS/Record.js",
+			/Effect\.flatMap\(\(existing\) =>\s*(output\?\.recordId\s*&&\s*existing\?\.id === output\.recordId)\s*\?/s,
+			["existing", "output"],
+		);
+
+		expect(ownsRacedRecord({ id: "record" }, undefined)).toBe(false);
+		expect(ownsRacedRecord({ id: "record" }, { recordId: "other" })).toBe(false);
+		expect(ownsRacedRecord({ id: "record" }, { recordId: "record" })).toBe(true);
 	});
 });
 

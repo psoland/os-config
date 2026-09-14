@@ -1,0 +1,22 @@
+[Unit]
+Description=__UNIT_DESCRIPTION__
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=__SELECTED_CONTENT_PATH__
+
+[Service]
+Type=simple
+ExecStart=__NODE_BINARY__ __QUICK_TUNNEL_SCRIPT__ --serve-only --path "__SELECTED_CONTENT_PATH__" --port __SELECTED_CONTENT_PORT__
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=default.target

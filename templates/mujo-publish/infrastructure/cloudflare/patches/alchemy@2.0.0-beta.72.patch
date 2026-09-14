@@ -9,7 +9,7 @@ index 48aa3b62a0ad4dacce82e20cb3c4664076e2eadf..d5aebffe87630f4212bb86c8d1dd4d5d
 +        if (news.type !== "warp" && typeof body.domain === "string") {
 +            const existingAtDomain = yield* findByDomain(accountId, body.domain);
 +            if (existingAtDomain?.id &&
-+                existingAtDomain.id !== observed?.id &&
++                existingAtDomain.id !== output?.applicationId &&
 +                !news.adopt) {
 +                return yield* Effect.fail(new Error(`Access application domain ${body.domain} is already owned by another resource`));
 +            }
@@ -91,7 +91,7 @@ index 774a365c72bb7ecb217b6e213b393a5e88a29163..149778a68c6eb5a62e8590ee77a8cc4d
              // existing record instead of failing the deploy. Ownership was
              // already gated by `read`/the adopt policy upstream.
 -            Effect.catchTag("DnsRecordAlreadyExists", () => findByNameType(zoneId, news.name, news.type).pipe(Effect.flatMap((existing) => existing
-+            Effect.catchTag("DnsRecordAlreadyExists", () => findByNameType(zoneId, news.name, news.type).pipe(Effect.flatMap((existing) => existing?.id === output?.recordId
++            Effect.catchTag("DnsRecordAlreadyExists", () => findByNameType(zoneId, news.name, news.type).pipe(Effect.flatMap((existing) => output?.recordId && existing?.id === output.recordId
                  ? Effect.succeed({ record: existing, raced: true })
 -                : Effect.fail(new Error(`Cloudflare reported an identical DNS record for ` +
 -                    `(${news.name}, ${news.type}) but it could not be found`))))));
@@ -155,7 +155,7 @@ index abe5c3c7df2facf0fb2092dc60da4c4826210564..13996c8d6bb85f2227a67c9c5e77de50
 +        const existingAtDomain = yield* findByDomain(accountId, body.domain);
 +        if (
 +          existingAtDomain?.id &&
-+          existingAtDomain.id !== observed?.id &&
++          existingAtDomain.id !== output?.applicationId &&
 +          !news.adopt
 +        ) {
 +          return yield* Effect.fail(
@@ -254,7 +254,7 @@ index 32f49fad5971c277ec4b634a92adedcface86d85..5c84e49a32d98a563de104e25df0587a
                findByNameType(zoneId, news.name, news.type).pipe(
                  Effect.flatMap((existing) =>
 -                  existing
-+                  existing?.id === output?.recordId
++                  output?.recordId && existing?.id === output.recordId
                      ? Effect.succeed({ record: existing, raced: true } as const)
                      : Effect.fail(
                          new Error(

@@ -11,7 +11,7 @@ overrides:
   '@effect/vitest': 4.0.0-rc.109
 
 patchedDependencies:
-  alchemy@2.0.0-beta.72: f7dcc51f02faffe68f80b2cdd3906c41775e57b8ffae06f270f82a88723446e2
+  alchemy@2.0.0-beta.72: 73c086849a21c1707fb4d2899b4f88c2fb666b1f4da9195271616c5032f9efd4
 
 importers:
 
@@ -25,7 +25,7 @@ importers:
         version: 22.20.2
       alchemy:
         specifier: 2.0.0-beta.72
-        version: 2.0.0-beta.72(patch_hash=f7dcc51f02faffe68f80b2cdd3906c41775e57b8ffae06f270f82a88723446e2)(@effect/platform-node@4.0.0-rc.109(effect@4.0.0-rc.109)(redis@6.2.1))(effect@4.0.0-rc.109)(typescript@5.9.3)(vite@8.3.0(@types/node@22.20.2)(yaml@2.9.0))(vitest@4.1.11(@types/node@22.20.2)(vite@8.3.0(@types/node@22.20.2)(yaml@2.9.0)))(ws@8.21.3)
+        version: 2.0.0-beta.72(patch_hash=73c086849a21c1707fb4d2899b4f88c2fb666b1f4da9195271616c5032f9efd4)(@effect/platform-node@4.0.0-rc.109(effect@4.0.0-rc.109)(redis@6.2.1))(effect@4.0.0-rc.109)(typescript@5.9.3)(vite@8.3.0(@types/node@22.20.2)(yaml@2.9.0))(vitest@4.1.11(@types/node@22.20.2)(vite@8.3.0(@types/node@22.20.2)(yaml@2.9.0)))(ws@8.21.3)
       effect:
         specifier: 4.0.0-rc.109
         version: 4.0.0-rc.109
@@ -3039,7 +3039,7 @@ snapshots:
 
   agent-base@7.1.4: {}
 
-  alchemy@2.0.0-beta.72(patch_hash=f7dcc51f02faffe68f80b2cdd3906c41775e57b8ffae06f270f82a88723446e2)(@effect/platform-node@4.0.0-rc.109(effect@4.0.0-rc.109)(redis@6.2.1))(effect@4.0.0-rc.109)(typescript@5.9.3)(vite@8.3.0(@types/node@22.20.2)(yaml@2.9.0))(vitest@4.1.11(@types/node@22.20.2)(vite@8.3.0(@types/node@22.20.2)(yaml@2.9.0)))(ws@8.21.3):
+  alchemy@2.0.0-beta.72(patch_hash=73c086849a21c1707fb4d2899b4f88c2fb666b1f4da9195271616c5032f9efd4)(@effect/platform-node@4.0.0-rc.109(effect@4.0.0-rc.109)(redis@6.2.1))(effect@4.0.0-rc.109)(typescript@5.9.3)(vite@8.3.0(@types/node@22.20.2)(yaml@2.9.0))(vitest@4.1.11(@types/node@22.20.2)(vite@8.3.0(@types/node@22.20.2)(yaml@2.9.0)))(ws@8.21.3):
     dependencies:
       '@alchemy.run/cloudflare-runtime': 2.0.0-beta.72(@distilled.cloud/cloudflare@1.0.0-rc.4(effect@4.0.0-rc.109))(@effect/platform-node@4.0.0-rc.109(effect@4.0.0-rc.109)(redis@6.2.1))(effect@4.0.0-rc.109)(rolldown@1.1.5)(typescript@5.9.3)(vite@8.3.0(@types/node@22.20.2)(yaml@2.9.0))
       '@alchemy.run/node-utils': 0.0.5

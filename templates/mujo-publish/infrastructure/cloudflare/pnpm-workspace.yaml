@@ -1,0 +1,13 @@
+allowBuilds:
+  msgpackr-extract: true
+  sharp: true
+  workerd: true
+
+overrides:
+  '@effect/platform-node-shared': 4.0.0-rc.109
+  '@effect/sql-d1': 4.0.0-rc.109
+  '@effect/sql-sqlite-do': 4.0.0-rc.109
+  '@effect/vitest': 4.0.0-rc.109
+
+patchedDependencies:
+  alchemy@2.0.0-beta.72: patches/alchemy@2.0.0-beta.72.patch

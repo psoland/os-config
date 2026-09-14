@@ -1,0 +1,314 @@
+diff --git a/lib/Cloudflare/Access/Application.js b/lib/Cloudflare/Access/Application.js
+index 48aa3b62a0ad4dacce82e20cb3c4664076e2eadf..d5aebffe87630f4212bb86c8d1dd4d5d6750fa33 100644
+--- a/lib/Cloudflare/Access/Application.js
++++ b/lib/Cloudflare/Access/Application.js
+@@ -195,6 +195,15 @@ export const ApplicationProvider = () => Provider.succeed(Application, {
+         if (output?.applicationId) {
+             observed = yield* observeById(accountId, output.applicationId);
+         }
++        if (news.type !== "warp" && typeof body.domain === "string") {
++            const existingAtDomain = yield* findByDomain(accountId, body.domain);
++            if (existingAtDomain?.id &&
++                existingAtDomain.id !== observed?.id &&
++                !news.adopt) {
++                return yield* Effect.fail(new Error(`Access application domain ${body.domain} is already owned by another resource`));
++            }
++            observed ??= existingAtDomain;
++        }
+         if (!observed && news.type === "warp") {
+             // Warp is a singleton per account — reuse any existing app.
+             observed = yield* findWarpApp(accountId);
+diff --git a/lib/Cloudflare/Access/Policy.js b/lib/Cloudflare/Access/Policy.js
+index 3a42e830043b116a0e5bf8501ce4b647ce9b6931..44d8c04ce82ea4bb9d32fdae1e692f72dd03dadb 100644
+--- a/lib/Cloudflare/Access/Policy.js
++++ b/lib/Cloudflare/Access/Policy.js
+@@ -2,6 +2,7 @@ import * as zeroTrust from "@distilled.cloud/cloudflare/zero-trust";
+ import * as Effect from "effect/Effect";
+ import * as Option from "effect/Option";
+ import * as Stream from "effect/Stream";
++import { Unowned } from "../../AdoptPolicy.js";
+ import { isResolved } from "../../Diff.js";
+ import { createPhysicalName } from "../../PhysicalName.js";
+ import * as Provider from "../../Provider.js";
+@@ -88,7 +89,13 @@ export const PolicyProvider = () => Provider.succeed(Policy, {
+                 .pipe(Effect.map(toObserved), Effect.catch(() => Effect.succeed(undefined)));
+         }
+         if (!observed) {
+-            observed = yield* findPolicyByName(acct, name);
++            const existing = yield* findPolicyByName(acct, name);
++            if (existing?.id &&
++                existing.id !== output?.policyId &&
++                !news.adopt) {
++                return yield* Effect.fail(new Error(`Access policy name ${name} is already owned by another resource`));
++            }
++            observed = existing;
+         }
+         // Ensure — create the policy if missing. Tolerate a race where a
+         // parallel actor created the same-named policy by re-observing.
+@@ -108,7 +115,8 @@ export const PolicyProvider = () => Provider.succeed(Policy, {
+             })
+                 .pipe(Effect.map(toObserved), Effect.catch((err) => Effect.gen(function* () {
+                 const existing = yield* findPolicyByName(acct, name);
+-                if (existing && existing.id)
++                if (existing?.id &&
++                    (existing.id === output?.policyId || news.adopt))
+                     return existing;
+                 return yield* Effect.fail(err);
+             })));
+@@ -206,7 +214,7 @@ export const PolicyProvider = () => Provider.succeed(Policy, {
+         const existing = yield* findPolicyByName(acct, name);
+         if (!existing || !existing.id)
+             return undefined;
+-        return {
++        const attrs = {
+             policyId: existing.id,
+             name: existing.name ?? name,
+             decision: existing.decision ?? olds?.decision ?? "allow",
+@@ -214,6 +222,7 @@ export const PolicyProvider = () => Provider.succeed(Policy, {
+             createdAt: existing.createdAt ?? undefined,
+             updatedAt: existing.updatedAt ?? undefined,
+         };
++        return Unowned(attrs);
+     }),
+ });
+ const createPolicyName = (id, name) => Effect.gen(function* () {
+diff --git a/lib/Cloudflare/DNS/Record.js b/lib/Cloudflare/DNS/Record.js
+index 774a365c72bb7ecb217b6e213b393a5e88a29163..149778a68c6eb5a62e8590ee77a8cc4d4fa6da0b 100644
+--- a/lib/Cloudflare/DNS/Record.js
++++ b/lib/Cloudflare/DNS/Record.js
+@@ -101,6 +101,9 @@ export const RecordProvider = () => Provider.succeed(Record, {
+         if (!observed) {
+             const existing = yield* findByNameType(zoneId, news.name, news.type);
+             if (existing) {
++                if (existing.id !== output?.recordId) {
++                    return yield* Effect.fail(new Error(`DNS record (${news.name}, ${news.type}) is already owned by another resource`));
++                }
+                 foundByScan = true;
+                 observed = existing;
+             }
+@@ -130,10 +133,9 @@ export const RecordProvider = () => Provider.succeed(Record, {
+             // (`DnsRecordAlreadyExists`). Self-heal: re-scan and adopt the
+             // existing record instead of failing the deploy. Ownership was
+             // already gated by `read`/the adopt policy upstream.
+-            Effect.catchTag("DnsRecordAlreadyExists", () => findByNameType(zoneId, news.name, news.type).pipe(Effect.flatMap((existing) => existing
++            Effect.catchTag("DnsRecordAlreadyExists", () => findByNameType(zoneId, news.name, news.type).pipe(Effect.flatMap((existing) => existing?.id === output?.recordId
+                 ? Effect.succeed({ record: existing, raced: true })
+-                : Effect.fail(new Error(`Cloudflare reported an identical DNS record for ` +
+-                    `(${news.name}, ${news.type}) but it could not be found`))))));
++                : Effect.fail(new Error(`DNS record (${news.name}, ${news.type}) was created concurrently by another resource`))))));
+             observed = created.record;
+             // A raced/adopted record is treated like a scanned-existing one so
+             // the sync step converges its mutable fields; a genuine fresh create
+diff --git a/lib/Cloudflare/Tunnel/Tunnel.js b/lib/Cloudflare/Tunnel/Tunnel.js
+index ca3e18c7468ff3aab26f57ed021d15b5a1fbf7e9..0f0ca06f9b0787accac75741a2150f4a17c14262 100644
+--- a/lib/Cloudflare/Tunnel/Tunnel.js
++++ b/lib/Cloudflare/Tunnel/Tunnel.js
+@@ -4,6 +4,7 @@ import * as Option from "effect/Option";
+ import * as Redacted from "effect/Redacted";
+ import * as Schedule from "effect/Schedule";
+ import * as Stream from "effect/Stream";
++import { Unowned } from "../../AdoptPolicy.js";
+ import { isResolved } from "../../Diff.js";
+ import { createPhysicalName } from "../../PhysicalName.js";
+ import * as Provider from "../../Provider.js";
+@@ -140,7 +141,13 @@ export const TunnelProvider = () => Provider.succeed(Tunnel, {
+                 .pipe(Effect.catch(() => Effect.succeed(undefined)));
+         }
+         if (!observed) {
+-            observed = yield* findTunnelByName(name);
++            const existing = yield* findTunnelByName(name);
++            if (existing?.id &&
++                existing.id !== output?.tunnelId &&
++                !news.adopt) {
++                return yield* Effect.fail(new Error(`Tunnel name ${name} is already owned by another resource`));
++            }
++            observed = existing;
+         }
+         // Ensure — create if missing. Cloudflare rejects a duplicate
+         // name with a generic error; tolerate by adopting the
+@@ -245,7 +252,7 @@ export const TunnelProvider = () => Provider.succeed(Tunnel, {
+             accountId,
+             tunnelId: existing.id,
+         });
+-        return {
++        const attrs = {
+             tunnelId: existing.id,
+             tunnelName: existing.name ?? name,
+             accountTag: existing.accountTag ?? undefined,
+@@ -256,6 +263,7 @@ export const TunnelProvider = () => Provider.succeed(Tunnel, {
+                 .configSrc ?? "cloudflare"),
+             token: Redacted.make(token),
+         };
++        return Unowned(attrs);
+     }),
+ });
+ const createTunnelName = (id, name) => Effect.gen(function* () {
+diff --git a/src/Cloudflare/Access/Application.ts b/src/Cloudflare/Access/Application.ts
+index abe5c3c7df2facf0fb2092dc60da4c4826210564..13996c8d6bb85f2227a67c9c5e77de5068975c7a 100644
+--- a/src/Cloudflare/Access/Application.ts
++++ b/src/Cloudflare/Access/Application.ts
+@@ -434,6 +434,21 @@ export const ApplicationProvider = () =>
+       if (output?.applicationId) {
+         observed = yield* observeById(accountId, output.applicationId);
+       }
++      if (news.type !== "warp" && typeof body.domain === "string") {
++        const existingAtDomain = yield* findByDomain(accountId, body.domain);
++        if (
++          existingAtDomain?.id &&
++          existingAtDomain.id !== observed?.id &&
++          !news.adopt
++        ) {
++          return yield* Effect.fail(
++            new Error(
++              `Access application domain ${body.domain} is already owned by another resource`,
++            ),
++          );
++        }
++        observed ??= existingAtDomain;
++      }
+       if (!observed && news.type === "warp") {
+         // Warp is a singleton per account — reuse any existing app.
+         observed = yield* findWarpApp(accountId);
+diff --git a/src/Cloudflare/Access/Policy.ts b/src/Cloudflare/Access/Policy.ts
+index 403035e4959389f15c0cf7e7cd42cfebb18a692f..e5dcc1c38a04e8ff2b69bbf6f7d53cc69e375c06 100644
+--- a/src/Cloudflare/Access/Policy.ts
++++ b/src/Cloudflare/Access/Policy.ts
+@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect";
+ import * as Option from "effect/Option";
+ import * as Stream from "effect/Stream";
+ 
++import { Unowned } from "../../AdoptPolicy.ts";
+ import { isResolved } from "../../Diff.ts";
+ import { createPhysicalName } from "../../PhysicalName.ts";
+ import * as Provider from "../../Provider.ts";
+@@ -230,7 +231,17 @@ export const PolicyProvider = () =>
+           );
+       }
+       if (!observed) {
+-        observed = yield* findPolicyByName(acct, name);
++        const existing = yield* findPolicyByName(acct, name);
++        if (
++          existing?.id &&
++          existing.id !== output?.policyId &&
++          !news.adopt
++        ) {
++          return yield* Effect.fail(
++            new Error(`Access policy name ${name} is already owned by another resource`),
++          );
++        }
++        observed = existing;
+       }
+ 
+       // Ensure — create the policy if missing. Tolerate a race where a
+@@ -254,7 +265,12 @@ export const PolicyProvider = () =>
+             Effect.catch((err) =>
+               Effect.gen(function* () {
+                 const existing = yield* findPolicyByName(acct, name);
+-                if (existing && existing.id) return existing;
++                if (
++                  existing?.id &&
++                  (existing.id === output?.policyId || news.adopt)
++                ) {
++                  return existing;
++                }
+                 return yield* Effect.fail(err);
+               }),
+             ),
+@@ -365,7 +381,7 @@ export const PolicyProvider = () =>
+       const name = yield* createPolicyName(id, olds?.name ?? output?.name);
+       const existing = yield* findPolicyByName(acct, name);
+       if (!existing || !existing.id) return undefined;
+-      return {
++      const attrs = {
+         policyId: existing.id,
+         name: existing.name ?? name,
+         decision: existing.decision ?? olds?.decision ?? "allow",
+@@ -373,6 +389,7 @@ export const PolicyProvider = () =>
+         createdAt: existing.createdAt ?? undefined,
+         updatedAt: existing.updatedAt ?? undefined,
+       };
++      return Unowned(attrs);
+     }),
+   });
+ 
+diff --git a/src/Cloudflare/DNS/Record.ts b/src/Cloudflare/DNS/Record.ts
+index 32f49fad5971c277ec4b634a92adedcface86d85..5c84e49a32d98a563de104e25df0587ab45c227e 100644
+--- a/src/Cloudflare/DNS/Record.ts
++++ b/src/Cloudflare/DNS/Record.ts
+@@ -248,6 +248,13 @@ export const RecordProvider = () =>
+       if (!observed) {
+         const existing = yield* findByNameType(zoneId, news.name, news.type);
+         if (existing) {
++          if (existing.id !== output?.recordId) {
++            return yield* Effect.fail(
++              new Error(
++                `DNS record (${news.name}, ${news.type}) is already owned by another resource`,
++              ),
++            );
++          }
+           foundByScan = true;
+           observed = existing;
+         }
+@@ -285,12 +292,11 @@ export const RecordProvider = () =>
+             Effect.catchTag("DnsRecordAlreadyExists", () =>
+               findByNameType(zoneId, news.name, news.type).pipe(
+                 Effect.flatMap((existing) =>
+-                  existing
++                  existing?.id === output?.recordId
+                     ? Effect.succeed({ record: existing, raced: true } as const)
+                     : Effect.fail(
+                         new Error(
+-                          `Cloudflare reported an identical DNS record for ` +
+-                            `(${news.name}, ${news.type}) but it could not be found`,
++                          `DNS record (${news.name}, ${news.type}) was created concurrently by another resource`,
+                         ),
+                       ),
+                 ),
+diff --git a/src/Cloudflare/Tunnel/Tunnel.ts b/src/Cloudflare/Tunnel/Tunnel.ts
+index ee949efa1f968660435b58eb561292841a721428..7f566d7db1c8b32b625de191c1b554138acc9e77 100644
+--- a/src/Cloudflare/Tunnel/Tunnel.ts
++++ b/src/Cloudflare/Tunnel/Tunnel.ts
+@@ -5,6 +5,7 @@ import * as Redacted from "effect/Redacted";
+ import * as Schedule from "effect/Schedule";
+ import * as Stream from "effect/Stream";
+ 
++import { Unowned } from "../../AdoptPolicy.ts";
+ import { isResolved } from "../../Diff.ts";
+ import { createPhysicalName } from "../../PhysicalName.ts";
+ import * as Provider from "../../Provider.ts";
+@@ -266,7 +267,17 @@ export const TunnelProvider = () =>
+           .pipe(Effect.catch(() => Effect.succeed(undefined)));
+       }
+       if (!observed) {
+-        observed = yield* findTunnelByName(name);
++        const existing = yield* findTunnelByName(name);
++        if (
++          existing?.id &&
++          existing.id !== output?.tunnelId &&
++          !news.adopt
++        ) {
++          return yield* Effect.fail(
++            new Error(`Tunnel name ${name} is already owned by another resource`),
++          );
++        }
++        observed = existing;
+       }
+ 
+       // Ensure — create if missing. Cloudflare rejects a duplicate
+@@ -394,7 +405,7 @@ export const TunnelProvider = () =>
+         accountId,
+         tunnelId: existing.id,
+       });
+-      return {
++      const attrs = {
+         tunnelId: existing.id,
+         tunnelName: existing.name ?? name,
+         accountTag: existing.accountTag ?? undefined,
+@@ -405,6 +416,7 @@ export const TunnelProvider = () =>
+           .configSrc ?? "cloudflare") as "cloudflare" | "local",
+         token: Redacted.make(token),
+       };
++      return Unowned(attrs);
+     }),
+   });
+ 

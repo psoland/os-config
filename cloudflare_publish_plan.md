@@ -1,1182 +1,469 @@
-# Cloudflare Publish: Detailed Implementation Plan
+# Mujo Publish: Simple Agent-Driven Plan
 
 ## 1. Objective
 
-Build a standalone tool named `cf-publish` that makes publishing local static
-content and web applications through a domain on Cloudflare predictable,
-secure, and repeatable.
+Make an existing local web application available at a hostname under `mujo.no`
+with one explicit access choice:
 
-The intended workflow is:
+- `public`: anyone can open the application;
+- `zero-trust`: Cloudflare Access requires an approved email address.
 
-```bash
-cf-publish init
-cf-publish plan
-cf-publish up
-cf-publish doctor
-```
+The expected operator request is deliberately simple:
 
-The tool must handle the complete publishing lifecycle:
+> Publish the application on `demo.mujo.no` and protect it with Zero Trust.
 
-- describe a deployment in a small project manifest;
-- provision a Cloudflare Tunnel and DNS record;
-- optionally protect the hostname with Cloudflare Access;
-- run a loopback-only static origin when needed;
-- supervise the tunnel connector;
-- store secrets outside the project and outside Git;
-- verify the public endpoint and its access behavior;
-- stop or destroy a deployment safely;
-- produce the same result when commands are run repeatedly.
+A coding agent should be able to inspect the project, ask for the few missing
+values, apply a small project template, show the Cloudflare plan, and complete
+the deployment after approval.
 
-## 2. Scope
+This is not a plan for a standalone deployment product. There will be no custom
+`cf-publish` CLI, generic manifest language, runtime manager, or local state
+machine.
 
-### 2.1 Version 1 scope
+## 2. Core Decision
 
-Version 1 will support:
+Use a small project-local Alchemy template based on the working patterns in:
 
-- Linux hosts with a systemd user manager;
-- installation and execution through a Nix flake;
-- Cloudflare authentication through named Alchemy profiles;
-- one Cloudflare Tunnel per project and stage;
-- one DNS hostname per deployment;
-- existing HTTP applications listening on loopback;
-- static files or directories served by a managed Caddy origin;
-- public hostnames;
-- browser authentication through Cloudflare Access email policies;
-- machine authentication through Cloudflare Access service tokens;
-- local connector supervision through systemd user services;
-- remote Alchemy state through `Cloudflare.state()`;
-- human-readable output and stable JSON output for automation.
+- `/home/psoland/workspace/github/knowit/ai_benchmarking/main`
+- `/home/psoland/workspace/github/knowit/aiservices_spark_dotfiles`;
 
-### 2.2 Non-goals for version 1
+Each published application owns a small, explicit set of resources:
 
-Version 1 will not include:
+- one remotely managed Cloudflare Tunnel;
+- one proxied DNS hostname under `mujo.no`;
+- zero or one Cloudflare Access application and email policy;
+- one connector token stored outside Git;
+- one minimal `cloudflared` systemd user service.
 
-- deployment of application source code to remote compute;
-- building arbitrary application frameworks automatically;
-- management of Cloudflare zones or domain registration;
-- shared tunnels containing routes owned by unrelated projects;
-- Kubernetes, Nomad, or other orchestrator integration;
-- macOS launchd or Windows service supervision;
-- Cloudflare Pages, Workers, R2, or object-storage hosting;
-- automatic modification of application source files;
-- automatic migration of existing tunnel deployments;
-- a hosted control plane or web dashboard;
-- arbitrary shell hooks from the manifest.
+Alchemy owns the Cloudflare resources and stores its state through
+`Cloudflare.state()`. The application's existing tooling remains responsible
+for building, starting, stopping, and monitoring the application itself.
 
-Applications remain responsible for their own build and runtime. `cf-publish`
-only manages static origins itself. An HTTP application must already be running
-and healthy before it is published.
+## 3. Scope
 
-## 3. Design Principles
+### 3.1 Version 1
 
-### 3.1 Declarative ownership
+Version 1 supports:
 
-Every deployment is described by a checked-in `.cf-publish.yaml` manifest. The
-manifest contains no secrets. Cloudflare resources and local runtime state are
-derived from that manifest.
+- one application per template instance;
+- one production hostname below `mujo.no`;
+- an existing HTTP application listening on loopback;
+- explicit `public` or `zero-trust` exposure;
+- one exact allowed email address in Zero Trust mode;
+- Cloudflare Tunnel, DNS, and Access provisioning through Alchemy;
+- connector supervision through a systemd user service;
+- agent-guided setup, planning, deployment, verification, and removal;
+- Linux hosts on which `cloudflared` can reach the local application.
 
-### 3.2 One deployment, one tunnel
+### 3.2 Non-goals
 
-Each project and stage receives a separate tunnel and connector token. This
-provides independent ownership, revocation, logs, rollout, and teardown. A
-project cannot overwrite another project's ingress rules.
+Version 1 does not include:
 
-### 3.3 Explicit exposure
+- a standalone publishing CLI;
+- a `.cf-publish.yaml` schema or global configuration system;
+- application build or process supervision;
+- framework detection beyond finding and confirming the local HTTP endpoint;
+- static file copying, scanning, snapshots, or managed Caddy instances;
+- automatic port allocation;
+- multiple stages or multiple machines for one template instance;
+- service-token authentication for machine clients;
+- multiple Zero Trust users, groups, or identity-provider management;
+- arbitrary Cloudflare zones or domain registration;
+- resource adoption or migration;
+- custom status, logging, doctor, or secret-rotation commands;
+- stable JSON output for automation;
+- a hosted control plane or dashboard.
 
-Public access must be explicitly declared. Changing an existing protected
-deployment to public requires an additional command-line confirmation.
+A plain static site must first be exposed through an HTTP server chosen by the
+project. Static hosting on Cloudflare Workers can be considered separately; it
+should not add a second deployment architecture to this template.
 
-### 3.4 Loopback origins
+## 4. Architecture
 
-Managed origins listen only on loopback. Existing HTTP origins must use a
-loopback URL unless the user provides an explicit unsafe override. No inbound
-firewall rule is required for a Cloudflare Tunnel.
+### 4.1 Request path
 
-### 3.5 Secrets stay out of repositories and process arguments
-
-Connector tokens and Access client secrets are written atomically with mode
-`0600` beneath the XDG state directory. `cloudflared` receives its connector
-token through `--token-file`, never through a command-line token value.
-
-### 3.6 Deterministic CLI before agent automation
-
-The CLI is the only implementation of provisioning and runtime operations. An
-OpenCode skill may inspect a project, create a manifest, and invoke the CLI, but
-must not contain a second implementation of Cloudflare operations.
-
-### 3.7 Safe failure
-
-If provisioning, origin startup, connector startup, or verification fails, the
-deployment must fail closed. A protected deployment must never be made public
-as a fallback.
-
-## 4. Proposed Repository
-
-Create a dedicated repository for the tool:
+Public mode:
 
 ```text
-cloudflare-publisher/
-  flake.nix
-  flake.lock
-  package.json
-  pnpm-lock.yaml
-  pnpm-workspace.yaml
-  tsconfig.json
-  src/
-    cli.ts
-    commands/
-      init.ts
-      validate.ts
-      plan.ts
-      up.ts
-      down.ts
-      status.ts
-      logs.ts
-      doctor.ts
-      destroy.ts
-      rotate-access-token.ts
-    config/
-      global-config.ts
-      manifest.ts
-      schema.ts
-    cloudflare/
-      stack.ts
-      published-app.ts
-      access.ts
-      dns.ts
-      tunnel.ts
-      secret-actions.ts
-    runtime/
-      deployment-state.ts
-      ports.ts
-      static-site.ts
-      systemd.ts
-      connector.ts
-    verification/
-      local-origin.ts
-      dns.ts
-      access.ts
-      endpoint.ts
-    output/
-      console.ts
-      json.ts
-    errors.ts
-  templates/
-    manifest.yaml
-    systemd/
-  tests/
-    unit/
-    integration/
-    fixtures/
-    live/
-  skill/
-    publish-cloudflare/
-      SKILL.md
-  docs/
-    manifest.md
-    commands.md
-    access.md
-    operations.md
-    troubleshooting.md
+browser -> Cloudflare DNS -> Cloudflare Tunnel -> cloudflared
+        -> local application on 127.0.0.1:<port>
 ```
 
-Alchemy, Effect, TypeScript, Node.js, Caddy, and `cloudflared` versions must be
-pinned by the lockfiles and Nix flake.
-
-## 5. Installation and Packaging
-
-The primary installation interface will be a Nix flake:
-
-```bash
-nix run github:<owner>/cloudflare-publisher -- init
-```
-
-For regular use, install it into a profile:
-
-```bash
-nix profile install github:<owner>/cloudflare-publisher
-cf-publish --version
-```
-
-The Nix package will provide:
-
-- the `cf-publish` CLI;
-- a compatible Node.js runtime;
-- the pinned `cloudflared` binary;
-- the pinned Caddy binary;
-- required runtime utilities;
-- wrapper environment variables containing immutable Nix store paths for Caddy
-  and `cloudflared`.
-
-The CLI must not depend on globally installed npm packages. A development shell
-will provide pnpm, TypeScript, formatting, linting, and test tools.
-
-## 6. Configuration Model
-
-### 6.1 Global configuration
-
-Optional user defaults live at:
+Zero Trust mode:
 
 ```text
-${XDG_CONFIG_HOME:-~/.config}/cf-publish/config.yaml
+browser -> Cloudflare Access -> Cloudflare Tunnel -> cloudflared
+        -> local application on 127.0.0.1:<port>
 ```
 
-Example:
+The tunnel ingress has exactly two rules:
 
 ```yaml
-version: 1
-defaults:
-  profile: mujo
-  zone: mujo.no
-  stage: dev
-  accessTokenDuration: 8760h
-```
-
-The global configuration contains preferences only. Cloudflare credentials stay
-in the Alchemy profile store, and deployment secrets stay in the XDG state
-directory.
-
-Precedence from highest to lowest:
-
-1. Command-line flag.
-2. Project manifest.
-3. Global configuration.
-4. Built-in default.
-
-### 6.2 Project manifest
-
-The project manifest is named `.cf-publish.yaml`.
-
-Recommended version 1 schema:
-
-```yaml
-apiVersion: cf-publish/v1
-id: product-demo
-stage: prod
-
-cloudflare:
-  profile: mujo
-  zone: mujo.no
-  hostname: product-demo.mujo.no
-
-origin:
-  type: static
-  source: ./dist
-  spa: false
-
-access:
-  mode: email
-  sessionDuration: 24h
-  emails:
-    - operator@example.com
-```
-
-`id` is a stable lowercase slug and must not be changed after deployment unless
-the user intends to create a new deployment. Resource names are derived from
-`id` and `stage`, not from the absolute checkout path.
-
-### 6.3 Manifest validation
-
-Validation must reject:
-
-- unknown fields;
-- unsupported `apiVersion` values;
-- invalid IDs, stages, hostnames, URLs, durations, or email addresses;
-- a hostname outside the configured zone;
-- non-loopback HTTP origins without an explicit unsafe override;
-- empty allow-lists for protected access modes;
-- Access fields that do not belong to the selected mode;
-- static source paths that do not exist;
-- static sources containing unsafe symlinks;
-- credential values placed directly in the manifest;
-- duplicate service-token client names;
-- reserved or colliding local ports.
-
-Unknown fields must be errors rather than warnings so misspelled security
-settings cannot silently change behavior.
-
-## 7. Origin Types
-
-### 7.1 Existing HTTP application
-
-Example:
-
-```yaml
-origin:
-  type: http
-  url: http://127.0.0.1:3000
-  healthPath: /health
-```
-
-Behavior:
-
-- `cf-publish up` verifies the origin before changing Cloudflare resources;
-- the application process remains owned by the user or its existing runtime;
-- the connector targets the exact configured URL;
-- the tool does not restart or terminate the application;
-- `doctor` checks both the configured health path and the public endpoint.
-
-Optional version 1 fields:
-
-```yaml
-origin:
-  type: http
-  url: http://127.0.0.1:3000
-  healthPath: /api/health
-  hostHeader: localhost
-  connectTimeout: 10s
-```
-
-The initial release should support HTTP origins only. HTTPS origins with custom
-certificate trust can be added after the trust model is designed explicitly.
-
-### 7.2 Static content
-
-Example:
-
-```yaml
-origin:
-  type: static
-  source: ./dist
-  index: index.html
-  spa: true
-```
-
-The static source may be a single HTML file or a directory. The tool must not
-serve the project checkout directly. It creates an isolated deployment snapshot
-at:
-
-```text
-${XDG_DATA_HOME:-~/.local/share}/cf-publish/<id>/<stage>/site/
-```
-
-Snapshot rules:
-
-- resolve the source to a canonical path;
-- copy regular files into a fresh staging directory;
-- reject symlinks that resolve outside the source root;
-- reject sockets, devices, FIFOs, and other special files;
-- reject known secret files such as `.env`, private keys, and credential files;
-- preserve only required read permissions;
-- atomically replace the previously deployed snapshot;
-- show the resolved source and file count in the plan;
-- calculate a content digest for idempotency and status output.
-
-A managed Caddy user service serves the snapshot from a loopback-only allocated
-port. SPA mode uses an explicit `try_files {path} /index.html` fallback. Directory
-listing is disabled.
-
-## 8. Access Modes
-
-### 8.1 Public
-
-```yaml
-access:
-  mode: public
-```
-
-Resources:
-
-- tunnel;
-- proxied DNS record;
-- no Access application;
-- no Access policy;
-- no Access client credentials.
-
-The plan must display a prominent `PUBLIC` classification. Changing a deployed
-hostname from `email` or `service-token` to `public` requires:
-
-```bash
-cf-publish up --allow-public
-```
-
-Non-interactive execution must fail without this flag.
-
-### 8.2 Email-protected web application
-
-```yaml
-access:
-  mode: email
-  sessionDuration: 24h
-  emails:
-    - user@example.com
-  emailDomains: []
-```
-
-Resources:
-
-- self-hosted Access application covering the exact hostname;
-- reusable Allow policy;
-- one or more exact-email and email-domain selectors;
-- configured browser session duration.
-
-At least one email or email domain is required. Exact emails should be
-recommended over broad domains. Identity provider configuration remains an
-account-level prerequisite and is not managed by this tool.
-
-### 8.3 Service-token-protected API
-
-```yaml
-access:
-  mode: service-token
-  clients:
-    - name: operator
-      duration: 8760h
-      secretVersion: 1
-```
-
-Resources:
-
-- self-hosted Access application covering the exact hostname;
-- one Access service token per declared client;
-- a Service Auth policy with `decision: non_identity`;
-- policy selectors restricted to the declared token IDs.
-
-Generated client credentials are written to:
-
-```text
-${XDG_STATE_HOME:-~/.local/state}/cf-publish/<id>/<stage>/clients/<name>.env
-```
-
-Each file contains:
-
-```dotenv
-CF_ACCESS_CLIENT_ID=...
-CF_ACCESS_CLIENT_SECRET=...
-```
-
-The CLI prints the file path, never the secret. Users move the credentials to a
-password or secret manager. Incrementing `secretVersion` rotates that client's
-secret without replacing unrelated clients.
-
-## 9. Cloudflare Resource Model
-
-### 9.1 Stack identity
-
-Use one Alchemy stack per manifest `id` and one Alchemy stage per manifest
-`stage`:
-
-```text
-stack: CfPublish-<id>
-stage: <stage>
-```
-
-Alchemy state uses `Cloudflare.state()` so the infrastructure state is not tied
-to one checkout. Local runtime state is separate from Alchemy state.
-
-### 9.2 Tunnel
-
-Create a remotely managed tunnel with a deterministic name:
-
-```text
-cf-publish-<id>-<stage>
-```
-
-Ingress contains exactly two rules:
-
-```yaml
-- hostname: <configured-hostname>
-  service: <resolved-loopback-origin>
+- hostname: <name>.mujo.no
+  service: http://127.0.0.1:<port>
 - service: http_status:404
 ```
 
-The catch-all rule is mandatory. Chunked encoding remains enabled for streaming
-responses. Tunnel origin settings should remain at Cloudflare defaults unless a
-manifest field has a demonstrated requirement.
+### 4.2 Ownership
 
-### 9.3 DNS
+The project-local Alchemy stack owns all remote resources for the hostname.
+Resource names and logical IDs are fixed in the generated template so repeated
+deployments update the same resources.
 
-Create one proxied CNAME pointing to:
+The project does not maintain a second infrastructure state file. Alchemy's
+Cloudflare state is authoritative for remote resources, while systemd is
+authoritative for the local connector process.
 
-```text
-<tunnel-id>.cfargotunnel.com
-```
+### 4.3 Runtime boundary
 
-The tool must fail if a DNS record with the same name is not already owned by
-the same Alchemy stack. Adoption requires a separate explicit command and a plan
-showing the existing resource.
+The application must already:
 
-Provider normalization must be covered by an idempotency test. A second `up`
-must not mutate the DNS record even if the Alchemy beta provider conservatively
-labels an output-dependent record as an update during planning.
+- start successfully using its normal project workflow;
+- listen on a confirmed loopback URL;
+- remain running independently of the publishing setup;
+- provide a URL that can be checked locally, preferably a health endpoint.
 
-### 9.4 Access resources
+Publishing must not modify application source code or invent a new runtime
+unless the user asks for that separately.
 
-Access resources are conditional on `access.mode`. Stable logical IDs are
-required so policy changes update resources instead of creating duplicates.
+## 5. Template
 
-The connector is started only after the complete Alchemy deployment succeeds.
-This ensures an email- or service-token-protected deployment has its Access
-application and policies before public traffic can reach the origin.
-
-### 9.5 Resource ownership and collisions
-
-Before planning, query Cloudflare for:
-
-- an existing DNS record using the hostname;
-- an existing tunnel using the deterministic tunnel name;
-- an existing Access application covering the hostname;
-- Alchemy state for the selected stack and stage.
-
-The default behavior is to fail on unowned resources. `--adopt` must be a
-separate expert workflow and must never be implied by `up`.
-
-## 10. Local State and Secrets
-
-### 10.1 Directory layout
+Create one reusable template in the dotfiles repository:
 
 ```text
-~/.local/state/cf-publish/<id>/<stage>/
-  deployment.json
-  tunnel-token
-  clients/
-    operator.env
+templates/mujo-publish/
+  infrastructure/
+    cloudflare/
+      alchemy.run.ts
+      package.json
+      pnpm-lock.yaml
+      tsconfig.json
+      infrastructure.env.example
+      README.md
   systemd/
-    connector.service
-    static-origin.service
-  locks/
-    operation.lock
-
-~/.local/share/cf-publish/<id>/<stage>/
-  site/
+    mujo-cloudflared.service.template
+  gitignore.snippet
 ```
 
-Directory mode is `0700`. Secret file mode is `0600`.
+The infrastructure directory is self-contained so it does not add Alchemy or
+Effect dependencies to the application's own package manifest.
 
-### 10.2 Deployment state
+The template is copied into a project only when that project needs publishing.
+After copying, the agent replaces explicit placeholders such as the stack name,
+logical resource prefix, and systemd unit name. Generated infrastructure should
+remain readable project code, not hidden behind a generic abstraction.
 
-`deployment.json` contains non-secret resolved information:
+Do not create a shared package or component until a third real deployment shows
+that maintaining these small resource declarations separately is a problem.
 
-- manifest ID and stage;
-- absolute manifest path;
-- hostname and zone;
-- tunnel ID and tunnel name;
-- origin type and resolved origin URL;
-- static content digest when applicable;
-- systemd unit names;
-- access mode and non-secret client IDs;
-- last successful deployment timestamp;
-- tool and schema versions.
+## 6. Configuration
 
-The file must never contain connector tokens or Access client secrets.
+The ignored `infrastructure.env` contains the deployment-specific values:
 
-### 10.3 Atomic writes
+```dotenv
+MUJO_HOSTNAME=demo.mujo.no
+MUJO_ORIGIN_URL=http://127.0.0.1:3000
+MUJO_ACCESS_MODE=zero-trust
+MUJO_ACCESS_EMAIL=operator@example.com
+CLOUDFLARED_TOKEN_FILE=/home/user/.local/state/mujo-publish/demo/tunnel-token
+```
 
-Every secret and state update follows this sequence:
+Rules:
 
-1. Create the parent directory with mode `0700`.
-2. Write a unique temporary file with mode `0600`.
-3. Flush and close the file.
-4. Rename it atomically over the destination.
-5. Verify owner and mode.
+- `MUJO_HOSTNAME` is required and must be below `mujo.no`;
+- `MUJO_ORIGIN_URL` is required and must use HTTP on a literal loopback address;
+- `MUJO_ACCESS_MODE` is required and has no default;
+- `MUJO_ACCESS_MODE` must be `public` or `zero-trust`;
+- `MUJO_ACCESS_EMAIL` is required only for `zero-trust`;
+- the connector token path must be absolute and outside the repository;
+- the environment file and token path must be ignored by Git;
+- no Cloudflare credential or connector token is accepted as a configuration
+  value in a checked-in file.
 
-Operations use a per-deployment file lock to prevent concurrent `up`, `down`,
-`destroy`, or rotation commands.
+The template should fail during configuration evaluation if these rules are not
+met. Unknown configuration is not interpreted.
 
-## 11. Runtime Supervision
+## 7. Cloudflare Resources
 
-### 11.1 Connector service
+### 7.1 Tunnel
 
-Generate a systemd user service named:
+Create one remotely managed tunnel with a deterministic, project-specific name.
+Its ingress points only from the exact configured hostname to the exact
+loopback origin and ends with `http_status:404`.
+
+The tunnel token is a redacted Alchemy output. A small Alchemy action writes it
+atomically to `CLOUDFLARED_TOKEN_FILE` with:
+
+- parent directory mode `0700`;
+- file mode `0600`;
+- a temporary file followed by rename;
+- no token in normal output or logs.
+
+### 7.2 DNS
+
+Resolve the existing `mujo.no` zone in the authenticated Cloudflare account and
+create one proxied CNAME:
 
 ```text
-cf-publish-<id>-<stage>-connector.service
+<hostname> -> <tunnel-id>.cfargotunnel.com
 ```
 
-Required behavior:
+The template must not create or modify the zone itself. If the hostname already
+belongs to an unrelated resource, deployment stops; the agent must not adopt,
+replace, or delete it automatically.
 
-- read the token from the deployment's token file;
-- use the pinned Nix `cloudflared` binary;
-- use `--no-autoupdate`;
-- restart on failure with bounded backoff;
+### 7.3 Public access
+
+For `MUJO_ACCESS_MODE=public`, create no Access application or policy.
+
+The agent must clearly state that the hostname will be reachable by anyone and
+request explicit approval before the first deployment. Changing an existing
+Zero Trust deployment to public requires a separate warning and confirmation
+after showing the Alchemy plan.
+
+### 7.4 Zero Trust access
+
+For `MUJO_ACCESS_MODE=zero-trust`, create:
+
+- one self-hosted Access application for the exact hostname;
+- one Allow policy;
+- one exact-email selector for `MUJO_ACCESS_EMAIL`;
+- a documented browser session duration with a conservative default.
+
+Cloudflare Zero Trust and a usable login method are account-level prerequisites
+and are not managed by the template.
+
+The Access resources must be deployed before the connector is started. A
+protected deployment must never fall back to public access if Access
+provisioning fails.
+
+## 8. Connector Service
+
+Install one project-specific systemd user service, for example:
+
+```text
+mujo-demo-cloudflared.service
+```
+
+The template unit must:
+
+- use the Nix-provided or otherwise explicitly resolved `cloudflared` binary;
+- run `cloudflared tunnel --no-autoupdate run --token-file <path>`;
+- never contain the token value;
 - start after `network-online.target`;
-- start after and require the managed static origin when applicable;
-- log to the systemd journal;
-- use practical systemd hardening that is tested with `cloudflared`;
-- never include a token value in `ExecStart`.
+- restart on failure with a short delay;
+- use practical hardening supported by the host;
+- log through the systemd journal;
+- be enabled only after successful Cloudflare provisioning.
 
-### 11.2 Static origin service
+The agent may adapt the unit to an existing Home Manager module when the project
+or host already manages user services declaratively. It must not create a
+second connector when an existing project-specific service already runs the
+same tunnel.
 
-Generate a systemd user service named:
+User lingering is a host policy decision. The agent should report whether the
+connector stops after logout, but must not enable lingering without approval.
 
-```text
-cf-publish-<id>-<stage>-origin.service
-```
+## 9. Agent Workflow
 
-It runs pinned Caddy against a generated read-only configuration, listens on an
-allocated loopback port, and serves only the staged snapshot.
+Provide an optional `publish-mujo` coding-agent skill. The template remains
+usable without the skill.
 
-### 11.3 Port allocation
+### 9.1 Discovery
 
-Use a configurable range reserved for managed static origins, for example
-`18100-18999`.
+The agent inspects the project and determines:
 
-Allocation must:
+- how the application is started;
+- the local HTTP URL and health path;
+- whether publishing infrastructure already exists;
+- whether a systemd or Home Manager service convention already exists;
+- whether the chosen hostname appears in project configuration.
 
-- prefer a deterministic candidate derived from `id` and `stage`;
-- check existing deployment state;
-- check active listeners before use;
-- resolve collisions by scanning the range;
-- persist the selected port;
-- fail rather than bind to all interfaces.
+The agent verifies the local URL before contacting Cloudflare.
 
-### 11.4 Service installation
+### 9.2 Required questions
 
-`up` writes generated units to the user systemd directory, runs `daemon-reload`,
-enables the units, and starts them. User lingering is not enabled automatically
-because that changes host-level policy. `doctor` reports when lingering is
-disabled and explains the reboot/logout consequence.
+Ask only for information that cannot be safely inferred:
 
-## 12. CLI Contract
+1. Which hostname below `mujo.no` should be used?
+2. Should it be `public` or protected by `zero-trust`?
+3. If protected, which exact email address should be allowed?
+4. Should the connector persist after logout if lingering is currently disabled?
 
-### 12.1 `cf-publish init`
+Never infer that an application should be public.
 
-Interactive mode asks for:
+### 9.3 Preparation
 
-- stable deployment ID;
-- stage;
-- Cloudflare profile;
-- zone and hostname;
-- static source or HTTP origin URL;
-- access mode;
-- email allow-list or service-token clients when required.
+The agent:
 
-It writes `.cf-publish.yaml`, validates it, and prints the next command. It does
-not contact Cloudflare or start services.
+1. Copies the template when no publishing infrastructure exists.
+2. Chooses stable project-specific Alchemy and systemd names.
+3. Creates `infrastructure.env` outside Git tracking.
+4. Adds only secret and local-state paths to `.gitignore`.
+5. Installs the pinned infrastructure dependencies.
+6. Validates TypeScript and confirms that the origin is loopback-only.
+7. Configures the named Alchemy profile if one is not already usable.
 
-Non-interactive flags must support project generators and agent use:
+### 9.4 Plan and approval
 
-```bash
-cf-publish init \
-  --id product-demo \
-  --stage prod \
-  --zone mujo.no \
-  --hostname product-demo.mujo.no \
-  --static ./dist \
-  --access public
-```
-
-### 12.2 `cf-publish validate`
-
-Validate schema, paths, access rules, local prerequisites, and naming. No
-Cloudflare API calls and no state changes.
-
-### 12.3 `cf-publish plan`
-
-Perform validation and origin preflight, then show:
-
-- deployment identity;
-- hostname and exposure classification;
-- resolved origin;
-- static snapshot changes;
-- Cloudflare resource creates, updates, replacements, and deletes;
-- local unit creates, updates, restarts, and removals;
-- credential creates or rotations;
-- security-sensitive transitions.
-
-Support `--json` for machine-readable output. Planning never writes secrets,
-changes Cloudflare, or starts services.
-
-### 12.4 `cf-publish up`
-
-Execution order:
-
-1. Acquire the deployment lock.
-2. Validate the manifest and tools.
-3. Verify an HTTP origin or prepare a static snapshot candidate.
-4. Calculate and display the plan.
-5. Require confirmation unless `--yes` is supplied.
-6. Require `--allow-public` for protected-to-public transitions.
-7. Apply the Alchemy stack.
-8. Write connector and client credentials atomically.
-9. Activate the static snapshot when applicable.
-10. Install or update user systemd units.
-11. Start the origin and connector.
-12. Run local and public verification.
-13. Persist non-secret deployment state.
-14. Print URL, access mode, status, and credential file paths.
-
-A failed verification returns non-zero and leaves diagnostic information. It
-must not silently destroy successfully created Cloudflare resources, because
-doing so can hide the original failure and complicate recovery.
-
-### 12.5 `cf-publish status`
-
-Report:
-
-- manifest and local state agreement;
-- origin status;
-- connector status;
-- Cloudflare tunnel status;
-- DNS resolution;
-- configured access mode;
-- last successful verification;
-- static content digest drift.
-
-Support `--json` and return non-zero for degraded deployments.
-
-### 12.6 `cf-publish logs`
-
-Show connector logs by default. Flags select connector, static origin, or both:
+Run Alchemy directly:
 
 ```bash
-cf-publish logs
-cf-publish logs --origin
-cf-publish logs --all --since 1h
+pnpm exec alchemy plan --stage prod --profile mujo --env-file infrastructure.env
 ```
 
-### 12.7 `cf-publish doctor`
+The agent summarizes:
 
-Run bounded checks for:
+- hostname;
+- local origin;
+- public or Zero Trust exposure;
+- resources to create, update, or delete;
+- whether Access protection will be removed;
+- connector token destination.
 
-- manifest validity;
-- required binaries;
-- state ownership and permissions;
-- systemd user manager and lingering;
-- local origin health;
-- connector process health;
-- tunnel connectivity;
-- DNS record correctness;
-- unauthenticated Access behavior;
-- authenticated Access behavior when local credentials exist;
-- final endpoint response;
-- accidental non-loopback listeners.
+The agent deploys only after explicit approval. It must stop on an unexpected
+delete, replacement, ownership conflict, authentication error, or origin
+failure.
 
-Doctor output must redact headers, tokens, and cookies.
+### 9.5 Deploy
 
-### 12.8 `cf-publish down`
-
-Stop and disable managed connector and static-origin units. Preserve Cloudflare
-resources, static snapshots, connector tokens, client credentials, and Alchemy
-state. The public endpoint becomes unavailable but remains reserved.
-
-### 12.9 `cf-publish destroy`
-
-Execution order:
-
-1. Show a destructive plan.
-2. Require the exact deployment ID as confirmation, or `--yes` in automation.
-3. Stop local connector and origin services.
-4. Remove DNS first.
-5. Remove Access resources and service tokens.
-6. Remove the tunnel.
-7. Remove generated units and non-secret local state.
-8. Retain secret files unless `--purge-secrets` is explicitly supplied.
-
-The operation must be safe to retry after partial failure.
-
-### 12.10 `cf-publish rotate-access-token`
-
-Require service-token access mode and a declared client name:
+Run:
 
 ```bash
-cf-publish rotate-access-token operator
+pnpm exec alchemy deploy --stage prod --profile mujo --env-file infrastructure.env
 ```
 
-The command increments the desired secret version, previews the rotation, and
-requires confirmation. It must support a Cloudflare grace period when the
-provider exposes one. The updated secret is written atomically to the client
-credential file.
+After successful provisioning, install or activate the connector unit and wait
+for it to become active.
 
-## 13. Verification Behavior
+### 9.6 Verify
 
-### 13.1 Public mode
-
-Verification succeeds when:
+For both modes, verify:
 
 - the local origin responds;
-- DNS resolves through Cloudflare;
-- the connector is connected;
-- the public URL returns the expected status;
-- the response is not a Cloudflare tunnel error page.
+- the connector service is active;
+- DNS resolves;
+- the public hostname does not return a tunnel error.
 
-### 13.2 Email mode
+For public mode, verify that an unauthenticated request reaches the application.
 
-Automated verification cannot complete an interactive identity-provider login.
-It must verify that an unauthenticated request receives the expected Access
-redirect or denial and that the Access application covers the exact hostname.
-The CLI then prints a URL for the operator to complete browser verification.
+For Zero Trust mode, verify that an unauthenticated request receives a
+Cloudflare Access login redirect. The agent then gives the user the URL for a
+browser login test; it must not claim that interactive authentication was
+automatically verified.
 
-### 13.3 Service-token mode
+## 10. Routine Operations
 
-Verification performs two requests:
+Cloudflare infrastructure is not redeployed for normal application restarts or
+code changes. Use the application's existing commands for those operations.
 
-1. An unauthenticated request must be rejected by Access.
-2. A request with the selected local service-token credentials must pass Access
-   and reach the origin.
+Connector operations use standard systemd commands:
 
-Credentials are loaded from files and applied as headers without appearing in
-logs or command arguments.
-
-## 14. Output and Automation
-
-Human output should be concise and structured around phases:
-
-```text
-VALIDATE  manifest and origin
-PLAN      5 create, 0 update, 0 delete
-APPLY     Cloudflare resources
-START     origin and connector
-VERIFY    access and endpoint
-READY     https://product-demo.mujo.no
+```bash
+systemctl --user status mujo-<app>-cloudflared.service
+journalctl --user -u mujo-<app>-cloudflared.service
+systemctl --user restart mujo-<app>-cloudflared.service
+systemctl --user stop mujo-<app>-cloudflared.service
 ```
 
-Every non-interactive command supports `--json`. JSON output has a versioned
-schema and writes diagnostics to stderr so stdout remains machine-readable.
+Changes to hostname, origin URL, or access mode require a new Alchemy plan and
+explicit approval before deployment.
 
-Suggested exit codes:
+To remove a publication:
 
-| Code | Meaning |
-| --- | --- |
-| 0 | Success |
-| 2 | Manifest or argument error |
-| 3 | Authentication or authorization failure |
-| 4 | Cloudflare planning or apply failure |
-| 5 | Local runtime failure |
-| 6 | Verification failure |
-| 7 | Resource ownership conflict |
-| 8 | Operation already locked |
+1. Show `alchemy destroy` planning output.
+2. Confirm the exact hostname being removed.
+3. Stop and disable the connector service.
+4. Destroy the project-owned Alchemy stack.
+5. Remove the generated unit and non-secret local state.
+6. Retain the connector token unless the user explicitly approves deleting it.
 
-## 15. OpenCode Skill
+Do not alter the application runtime or its data during Cloudflare teardown.
 
-Provide an optional skill named `publish-cloudflare`.
-
-The skill should:
-
-- detect whether the project is static or already exposes an HTTP server;
-- inspect common build outputs such as `dist`, `build`, and `public`;
-- ask the user to confirm the static source or application port;
-- ask for profile, zone, hostname, stage, and access mode;
-- recommend email access for browser-only private applications;
-- recommend service tokens for APIs and automated consumers;
-- generate the manifest through `cf-publish init` flags;
-- run `cf-publish validate` and `cf-publish plan`;
-- summarize public exposure and destructive changes clearly;
-- invoke `cf-publish up` only after user approval;
-- finish with `cf-publish doctor` and the resulting URL.
-
-The skill must not:
-
-- call Cloudflare APIs directly;
-- write connector or Access secrets itself;
-- invent an email allow-list;
-- infer that an application should be public;
-- use `--adopt`, `--allow-public`, `--yes`, or `--purge-secrets` without explicit
-  user approval;
-- bypass a failed CLI validation.
-
-## 16. Security Requirements
+## 11. Security Requirements
 
 Mandatory controls:
 
-- strict manifest schema with unknown-field rejection;
-- loopback-only managed origins;
-- one connector token per deployment;
-- one Access service token per declared client;
-- connector token passed through a file;
-- atomic secret writes with verified permissions;
-- no secrets in manifest, deployment JSON, logs, plans, or process arguments;
-- explicit protected-to-public confirmation;
-- deny-by-default resource adoption;
-- exact-hostname Access applications;
-- no Access Bypass policy for public mode;
-- static content copied into an isolated snapshot;
-- rejection of unsafe static files and escaping symlinks;
-- bounded network operations and health checks;
-- no arbitrary manifest shell commands;
-- dependency and Nix input pinning;
-- redaction tests for every output mode.
-
-Recommended follow-up controls:
-
-- integration with a password manager for generated Access credentials;
-- service-token expiration notifications;
-- optional Cloudflare rate limiting for public APIs;
-- optional geographic or IP requirements in Access policies;
-- signed release artifacts and a binary cache;
-- an audit record of apply, rotation, and destroy operations without secrets.
-
-## 17. Error Handling and Recovery
-
-Every error must identify:
-
-- the failed phase;
-- the affected deployment ID and stage;
-- whether Cloudflare resources changed;
-- whether local services changed;
-- the exact safe retry command;
-- the relevant log command;
-- whether manual cleanup is required.
-
-Recovery commands:
-
-```bash
-cf-publish status
-cf-publish doctor
-cf-publish logs --all
-cf-publish plan
-cf-publish up
-```
-
-If local secret files are lost but Alchemy state still contains redacted
-resource secrets, provide a bounded `cf-publish recover-secrets` operation. If
-Cloudflare no longer exposes a service-token secret, require rotation rather
-than fabricating or silently replacing credentials.
-
-If local runtime state is lost, reconstruct only non-secret state by observing
-resources owned by the exact Alchemy stack. Do not adopt resources discovered
-only by hostname.
-
-## 18. Testing Strategy
-
-### 18.1 Unit tests
-
-Cover:
-
-- valid manifests for every origin and access mode;
-- rejection of unknown and incompatible fields;
-- hostname and zone validation;
-- deterministic resource names;
-- deterministic port allocation and collision handling;
-- static path canonicalization;
-- unsafe symlink and secret-file rejection;
-- state and secret permission handling;
-- access transition classification;
-- public exposure confirmation requirements;
-- output redaction;
-- JSON output schemas;
-- error-to-exit-code mapping.
-
-### 18.2 Alchemy component tests
-
-Use provider mocks to assert the exact resource graph for:
-
-- public HTTP application;
-- public static site;
-- email-protected site;
-- service-token-protected API with one client;
-- service-token-protected API with multiple clients;
-- adding and removing an Access client;
-- rotating one client without rotating others;
-- switching from public to protected;
-- attempted protected-to-public transition without approval;
-- hostname collision and explicit adoption behavior;
-- resource deletion ordering.
-
-### 18.3 Runtime integration tests
-
-Run isolated systemd user-manager tests that verify:
-
-- generated unit validity through `systemd-analyze verify`;
-- connector token is not present in the unit or process arguments;
-- static Caddy binds only to loopback;
-- connector restart behavior;
-- origin dependency ordering;
-- `up`, `down`, and repeated `up` behavior;
-- stale PID or stale unit recovery;
-- operation locking;
-- logs and status output;
-- static snapshot atomic replacement.
-
-### 18.4 Live Cloudflare tests
-
-Use a dedicated test zone or delegated subdomain. Live tests create unique
-hostnames and always clean them up.
-
-Required live scenarios:
-
-- public static file returns expected content;
-- public HTTP proxy returns expected content;
-- email mode rejects unauthenticated automation;
-- service-token mode rejects unauthenticated requests;
-- service-token mode accepts valid client headers;
-- wrong service token is rejected;
-- tunnel restart reconnects;
-- second deployment is idempotent;
-- destroy removes DNS, Access, service tokens, and tunnel;
-- interrupted deployment can be retried safely.
-
-Live tests must never run from ordinary unit-test commands without an explicit
-environment flag and dedicated Cloudflare profile.
-
-### 18.5 CI checks
-
-CI should run:
-
-```bash
-nix flake check
-pnpm install --frozen-lockfile
-pnpm check
-pnpm test
-pnpm lint
-pnpm format --check
-```
-
-At minimum, build and test on `x86_64-linux` and `aarch64-linux`.
-
-## 19. Implementation Phases
-
-### Phase 1: Architecture and repository skeleton
-
-Deliverables:
-
-- repository and Nix flake;
-- pinned Node.js, Alchemy, Caddy, and cloudflared;
-- TypeScript build, lint, format, and test setup;
-- error model and output abstraction;
-- architecture decision records for tunnel ownership, state, and supervision.
-
-Completion criteria:
-
-- `nix flake check` passes on both Linux architectures;
-- `cf-publish --help` and `cf-publish --version` work through `nix run`.
-
-### Phase 2: Manifest and local state
-
-Deliverables:
-
-- strict versioned manifest schema;
-- global configuration loader and precedence rules;
-- `init` and `validate` commands;
-- XDG state paths and operation locking;
-- atomic non-secret and secret file utilities;
-- human and JSON output modes.
-
-Completion criteria:
-
-- all manifest variants have fixtures;
-- malformed and security-sensitive configurations fail with stable errors;
-- no test output leaks fixture secrets.
-
-### Phase 3: Cloudflare public publishing
-
-Deliverables:
-
-- reusable Alchemy `PublishedApp` component;
-- tunnel and DNS resources;
-- remote Alchemy state;
-- connector-token writer;
-- collision and ownership preflight;
-- `plan` command;
-- public-mode apply logic.
-
-Completion criteria:
-
-- a live test can create and destroy a public tunnel and hostname;
-- a repeated apply causes no Cloudflare API mutation;
-- unowned DNS and tunnel resources fail closed.
-
-### Phase 4: Origin and connector runtime
-
-Deliverables:
-
-- existing HTTP origin preflight;
-- static content staging and scanning;
-- generated Caddy configuration;
-- port allocation;
-- generated systemd user units;
-- `up`, `down`, `status`, and `logs` commands.
-
-Completion criteria:
-
-- static and HTTP origins work through a live tunnel;
-- managed listeners are loopback-only;
-- services recover after user-manager restart when lingering is enabled;
-- repeated `up` is idempotent.
-
-### Phase 5: Cloudflare Access
-
-Deliverables:
-
-- email access mode;
-- service-token access mode;
-- multiple named API clients;
-- protected-to-public safety gate;
-- service-token rotation;
-- credential recovery behavior.
-
-Completion criteria:
-
-- unauthenticated and authenticated live tests pass for each mode;
-- client credentials are mode `0600` and absent from all logs and plans;
-- rotating one client leaves other clients unchanged.
-
-### Phase 6: Verification and lifecycle hardening
-
-Deliverables:
-
-- `doctor` command;
-- bounded retries and timeouts;
-- partial-failure recovery;
-- destructive plan and `destroy` command;
-- JSON schemas and documented exit codes;
-- complete operations and troubleshooting documentation.
-
-Completion criteria:
-
-- failure-injection tests cover each deployment phase;
-- interrupted `up` and `destroy` operations are safely repeatable;
-- live create, stop, resume, rotate, and destroy lifecycle passes.
-
-### Phase 7: OpenCode skill
-
-Deliverables:
-
-- thin `publish-cloudflare` skill;
-- project inspection and manifest recommendation workflow;
-- required confirmation points;
-- CLI error interpretation and recovery guidance;
-- skill tests using fixture projects.
-
-Completion criteria:
-
-- the skill invokes only documented CLI commands;
-- public exposure and destructive operations always require explicit approval;
-- the same generated manifest works without the skill.
-
-## 20. Acceptance Criteria
-
-The first stable release is complete when a user can enter a directory
-containing either a static build or an already-running web application and:
-
-1. Generate a valid manifest interactively or with flags.
-2. Preview every Cloudflare and local runtime change.
-3. Publish through a chosen hostname with one command.
-4. Choose public, email, or service-token access explicitly.
-5. Re-run the command without creating duplicate resources or changing secrets.
-6. Verify access behavior and origin health with `doctor`.
-7. Stop local serving without releasing the hostname.
-8. Resume serving without recreating Cloudflare resources.
-9. Rotate one API client's Access secret safely.
-10. Destroy the deployment without affecting any other project.
-
-All of these operations must work without placing a secret in the project,
-Alchemy arguments, systemd unit, process list, plan output, or normal logs.
-
-## 21. Recommended Initial Decisions
-
-Use these defaults unless implementation work reveals a concrete blocker:
-
-| Decision | Default |
-| --- | --- |
-| Tool name | `cf-publish` |
-| Implementation | TypeScript and Effect |
-| Infrastructure engine | Pinned Alchemy 2.x |
-| Packaging | Nix flake and profile package |
-| State backend | `Cloudflare.state()` |
-| Tunnel ownership | One tunnel per project and stage |
-| Linux supervision | systemd user services |
-| Static origin | Pinned Caddy serving an isolated snapshot |
-| Managed bind address | `127.0.0.1` |
-| Default access mode | No implicit default; user must choose |
-| API authentication | Cloudflare Access service tokens |
-| Browser authentication | Cloudflare Access email policy |
-| Public transition | Requires `--allow-public` |
-| Resource adoption | Disabled unless explicitly requested |
-| Secret location | XDG state directory, mode `0600` |
-| Project file | `.cf-publish.yaml`, safe to commit |
-| Agent automation | Optional skill wrapping the CLI |
-
-These decisions keep the first release narrow enough to implement and test,
-while leaving clear extension points for additional platforms, secret managers,
-Cloudflare policy selectors, and runtime adapters later.
+- access mode has no implicit default;
+- public exposure always requires explicit approval;
+- protected-to-public changes receive a separate warning;
+- only hostnames below `mujo.no` are accepted;
+- only literal loopback HTTP origins are accepted;
+- tunnel ingress ends with `http_status:404`;
+- Zero Trust covers the exact hostname before connector startup;
+- connector tokens remain outside Git and use mode `0600`;
+- connector tokens are read from files, not command-line values;
+- plans, logs, agent messages, and checked-in files contain no secrets;
+- existing unrelated DNS, tunnel, or Access resources are never adopted;
+- failed Zero Trust provisioning never falls back to public access.
+
+## 12. Testing
+
+Keep template testing focused on the small contract:
+
+- TypeScript type checking passes;
+- both access modes produce the expected Alchemy resource graph;
+- public mode contains no Access resources;
+- Zero Trust mode contains the exact-hostname application and email policy;
+- tunnel ingress contains the hostname rule and final 404 rule;
+- invalid hostnames and non-loopback origins fail;
+- connector tokens are redacted and written with mode `0600`;
+- the systemd unit passes `systemd-analyze verify`;
+- the token value is absent from the unit and process arguments.
+
+Perform one explicit live test for each access mode against disposable hostnames
+before treating the template as stable. Live tests must not run as part of
+ordinary checks.
+
+## 13. Implementation Steps
+
+### Step 1: Extract the proven template
+
+- Start from the small Alchemy stacks in the two existing repositories.
+- Keep only tunnel, zone lookup, DNS, optional email Access, and token writing.
+- Add strict validation for the hostname, origin, and required access mode.
+- Add the minimal connector unit template.
+
+### Step 2: Add focused checks
+
+- Test the two resource graphs and secret writer.
+- Validate the systemd unit.
+- Confirm that the template can be copied without changing an application's
+  existing dependencies or runtime.
+
+### Step 3: Add the coding-agent skill
+
+- Document project discovery and the four required questions.
+- Require local-origin verification and Alchemy plan review.
+- Require explicit approval for deployment, public exposure, and teardown.
+- Document standard systemd diagnostics and browser verification.
+
+### Step 4: Prove the workflow
+
+- Publish one disposable public application.
+- Publish one disposable Zero Trust application.
+- Reapply each deployment and confirm no unexpected changes.
+- Change Zero Trust configuration and inspect the plan.
+- Destroy both deployments and confirm that unrelated resources remain intact.
+
+## 14. Acceptance Criteria
+
+The first version is complete when a user can ask a coding agent to publish an
+already-running local application and the agent can:
+
+1. Identify and verify its loopback URL.
+2. Ask for a `mujo.no` hostname and access mode.
+3. Require one allowed email for Zero Trust mode.
+4. Add the small project-local infrastructure template.
+5. Show and explain the Alchemy plan.
+6. Deploy only after approval.
+7. Start a persistent connector without exposing its token.
+8. Verify public access or the Zero Trust login redirect.
+9. Reapply the infrastructure without duplicate resources.
+10. Remove the publication without affecting the application or another project.
+
+The workflow should remain understandable by reading the generated
+`alchemy.run.ts`, environment example, and systemd unit. If implementing a
+requirement needs a generic framework, local database, custom state machine, or
+new CLI command, it is outside version 1 unless a real deployment demonstrates
+the need.

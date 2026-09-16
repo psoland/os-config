@@ -49,3 +49,8 @@ function update() {
 
   nix flake update "$@"
 }
+
+# Send a file to a Tailscale device via Taildrop.
+function drop() {
+  tailscale file cp "$1" "$2:"
+}

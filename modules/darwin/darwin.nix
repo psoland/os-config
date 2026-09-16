@@ -38,6 +38,7 @@
       "Microsoft PowerPoint" = 462062816;
       "Tailscale" = 1475387142;
       "Magnet" = 441258766;
+      "reMarkable desktop" = 1276493162;
     };
   };
 

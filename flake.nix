@@ -22,7 +22,7 @@
 
     # Hunk diff viewer
     hunk = {
-      url = "github:modem-dev/hunk/v0.19.0";
+      url = "github:modem-dev/hunk/v0.22.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 

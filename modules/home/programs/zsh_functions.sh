@@ -54,3 +54,13 @@ function update() {
 function drop() {
   tailscale file cp "$1" "$2:"
 }
+
+# Open a complete file in Hunk so unchanged lines can receive review notes.
+function hda() {
+  if [[ $# -ne 1 || ! -f "$1" ]]; then
+    echo "Usage: hda <file>" >&2
+    return 2
+  fi
+
+  hunk diff --files /dev/null "$1" --watch
+}

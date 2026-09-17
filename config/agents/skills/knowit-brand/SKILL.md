@@ -1,6 +1,9 @@
 ---
 name: knowit-brand
 description: Knowits visuelle identitet "Nordic Skies" – farger, logo, typografi, grafiske elementer, gradienter og bildestil. Bruk ALLTID denne skillen når noe skal lages med Knowit-profil eller for Knowit, slik som HTML-prototyper, nettsider, presentasjoner/slides, Word-/tekstdokumenter, PDF-er, one-pagers, diagrammer, grafer, sosiale medier-bilder, tilbud, rapporter eller maler. Trigger også på "i vår profil", "Knowit-farger", "brand guide", "visuell identitet", "Nordic Skies", eller når brukeren ber om noe som skal "se Knowit ut" – selv om ordet brand ikke nevnes.
+slash: true
+metadata:
+  opencode/autoinvoke: false
 ---
 
 # Knowit Brand – Nordic Skies

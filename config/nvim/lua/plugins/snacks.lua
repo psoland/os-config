@@ -24,6 +24,7 @@ return {
             -- Keep generated/dependency files out of <Space><Space>.
             exclude = {
               "node_modules",
+              ".devenv",
               ".next",
               "build",
               "coverage",

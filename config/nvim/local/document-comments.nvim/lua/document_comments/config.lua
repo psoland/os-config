@@ -5,9 +5,24 @@ local defaults = {
   storage_dir = ".document-comments",
   root = nil,
   highlight_priority = 180,
+  signs = {
+    enabled = true,
+    show_resolved = true,
+    open = "●",
+    problem = "!",
+    resolved = "○",
+    priority = 190,
+  },
+  statusline = {
+    enabled = true,
+    icon = "󰆉",
+  },
   highlights = {
     open = { link = "Visual" },
     resolved = { link = "Comment" },
+    sign_open = { link = "DiagnosticInfo" },
+    sign_problem = { link = "DiagnosticWarn" },
+    sign_resolved = { link = "Comment" },
   },
 }
 
@@ -20,6 +35,8 @@ function M.setup(opts)
     storage_dir = { opts.storage_dir, "string", true },
     root = { opts.root, "function", true },
     highlight_priority = { opts.highlight_priority, "number", true },
+    signs = { opts.signs, "table", true },
+    statusline = { opts.statusline, "table", true },
     highlights = { opts.highlights, "table", true },
   })
   M.options = vim.tbl_deep_extend("force", vim.deepcopy(defaults), opts)
@@ -29,6 +46,16 @@ function M.setup(opts)
   if M.options.storage_dir == "" or M.options.storage_dir:find("[/\\]") then
     error("document-comments: storage_dir must be a directory name")
   end
+  vim.validate({
+    signs_enabled = { M.options.signs.enabled, "boolean" },
+    signs_show_resolved = { M.options.signs.show_resolved, "boolean" },
+    signs_open = { M.options.signs.open, "string" },
+    signs_problem = { M.options.signs.problem, "string" },
+    signs_resolved = { M.options.signs.resolved, "string" },
+    signs_priority = { M.options.signs.priority, "number" },
+    statusline_enabled = { M.options.statusline.enabled, "boolean" },
+    statusline_icon = { M.options.statusline.icon, "string" },
+  })
   return M.options
 end
 

@@ -11,11 +11,17 @@ Markdown text. Comments are stored per project in
 2. Press `<leader>aa`, write the comment in the floating buffer, then use `:w`.
 3. Use `<leader>al` to list comments and `<leader>ar` to resolve or reopen one.
 4. Use `<leader>ax` and then `/comments` in OpenCode to process the export.
-5. Review source changes and resolve comments yourself.
+5. Use `<leader>av` to review changed or detached comments, then resolve them
+   yourself.
 
 The plugin never changes `.gitignore`. Decide whether each project's
 `.document-comments` directory should remain local or be committed. Unwritten
 comment drafts are not crash-recovered.
+
+Open comments are marked in the sign column and counted in the statusline.
+`!` means an open comment is ambiguous, orphaned, or its selected text has
+changed. Source edits never resolve a comment automatically: deletion alone is
+not proof that the feedback was handled correctly.
 
 ## Keymaps
 
@@ -25,10 +31,15 @@ comment drafts are not crash-recovered.
 | `<leader>al` | Normal | List open comments |
 | `<leader>ae` | Normal | Edit comment under cursor |
 | `<leader>ar` | Normal | Resolve or reopen |
+| `<leader>av` | Normal | Review changed or detached comments |
 | `<leader>an` / `<leader>ap` | Normal | Next / previous open comment |
 | `<leader>aR` | Visual | Reattach an ambiguous or orphaned comment |
 | `<leader>ax` | Normal | Export open project comments |
 | `<leader>ad` | Normal | Delete after confirmation |
+
+Edit, resolve, delete, and current-comment export first use a comment containing
+the cursor, then comments on the same line. If neither exists, they offer the
+comments in the current file instead of failing.
 
 Run `:DocumentCommentsList all` to include resolved comments and
 `:DocumentCommentsStorePath` to inspect the active root and store. See command

@@ -21,6 +21,7 @@ local function map_buffer(bufnr)
     },
     { "n", "<leader>ae", commands.edit, "Edit document comment" },
     { "n", "<leader>ar", commands.resolve, "Resolve/reopen document comment" },
+    { "n", "<leader>av", commands.review, "Review changed document comments" },
     { "n", "<leader>an", commands.next, "Next document comment" },
     { "n", "<leader>ap", commands.prev, "Previous document comment" },
     { "x", "<leader>aR", commands.reattach, "Reattach document comment" },
@@ -139,6 +140,10 @@ function M.setup(opts)
   if ok then
     which_key.add({ { "<leader>a", group = "annotations" } })
   end
+end
+
+function M.statusline(bufnr)
+  return require("document_comments.extmarks").statusline(bufnr or 0)
 end
 
 return M

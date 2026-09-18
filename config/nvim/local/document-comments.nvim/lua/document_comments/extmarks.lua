@@ -1,16 +1,25 @@
 local anchor = require("document_comments.anchor")
 local config = require("document_comments.config")
 local model = require("document_comments.model")
+local presentation = require("document_comments.presentation")
 local root = require("document_comments.root")
 local storage = require("document_comments.storage")
 
 local M = {}
 
 M.namespace = vim.api.nvim_create_namespace("document-comments")
+M.sign_namespace = vim.api.nvim_create_namespace("document-comments-signs")
 local buffers = {}
 
 local function notify_error(message)
   vim.notify(message, vim.log.levels.ERROR, { title = "Document comments" })
+end
+
+local function normalize_bufnr(bufnr)
+  if not bufnr or bufnr == 0 then
+    return vim.api.nvim_get_current_buf()
+  end
+  return bufnr
 end
 
 local function same_position(left, right)
@@ -38,16 +47,37 @@ end
 function M.setup_highlights()
   vim.api.nvim_set_hl(0, "DocumentCommentOpen", config.options.highlights.open)
   vim.api.nvim_set_hl(0, "DocumentCommentResolved", config.options.highlights.resolved)
+  vim.api.nvim_set_hl(0, "DocumentCommentSignOpen", config.options.highlights.sign_open)
+  vim.api.nvim_set_hl(0, "DocumentCommentSignProblem", config.options.highlights.sign_problem)
+  vim.api.nvim_set_hl(0, "DocumentCommentSignResolved", config.options.highlights.sign_resolved)
 end
 
 function M.apply(bufnr, ctx, comments)
+  bufnr = normalize_bufnr(bufnr)
   if not vim.api.nvim_buf_is_valid(bufnr) then
     return
   end
   vim.api.nvim_buf_clear_namespace(bufnr, M.namespace, 0, -1)
+  vim.api.nvim_buf_clear_namespace(bufnr, M.sign_namespace, 0, -1)
   local state = buffers[bufnr] or { attached = false, marks = {} }
   state.marks = {}
   state.ctx = ctx
+  local file = presentation.for_file(comments, ctx.source_path)
+  if state.review_initialized and (state.problem_count or 0) == 0 and file.problem > 0 then
+    vim.schedule(function()
+      local current = buffers[bufnr]
+      if vim.api.nvim_buf_is_valid(bufnr) and current and current.problem_count > 0 then
+        vim.notify(
+          ("%d document comment(s) need review — use <leader>av"):format(current.problem_count),
+          vim.log.levels.WARN,
+          { title = "Document comments" }
+        )
+      end
+    end)
+  end
+  state.review_initialized = true
+  state.problem_count = file.problem
+  state.file = file
   for _, comment in ipairs(comments) do
     local position = comment.anchor.current.position
     if
@@ -68,7 +98,21 @@ function M.apply(bufnr, ctx, comments)
       state.marks[id] = comment.id
     end
   end
+  local sign_highlights = {
+    open = "DocumentCommentSignOpen",
+    problem = "DocumentCommentSignProblem",
+    resolved = "DocumentCommentSignResolved",
+  }
+  for _, sign in ipairs(presentation.sign_groups(file, vim.api.nvim_buf_line_count(bufnr), config.options.signs)) do
+    vim.api.nvim_buf_set_extmark(bufnr, M.sign_namespace, sign.row, 0, {
+      sign_text = sign.text,
+      sign_hl_group = sign_highlights[sign.kind],
+      number_hl_group = sign_highlights[sign.kind],
+      priority = config.options.signs.priority,
+    })
+  end
   buffers[bufnr] = state
+  vim.cmd.redrawstatus()
 end
 
 local function reanchor_store(bufnr, ctx, store)
@@ -105,6 +149,7 @@ local function reanchor_store(bufnr, ctx, store)
 end
 
 function M.refresh(bufnr, opts)
+  bufnr = normalize_bufnr(bufnr)
   opts = opts or {}
   if not vim.api.nvim_buf_is_valid(bufnr) or vim.bo[bufnr].filetype ~= "markdown" then
     return
@@ -128,6 +173,7 @@ function M.refresh(bufnr, opts)
 end
 
 function M.sync_on_write(bufnr)
+  bufnr = normalize_bufnr(bufnr)
   local state = buffers[bufnr]
   if not state or not state.ctx then
     M.refresh(bufnr)
@@ -201,14 +247,22 @@ function M.sync_on_write(bufnr)
 end
 
 function M.comments_at_cursor(bufnr, store)
-  bufnr = bufnr or 0
+  bufnr = normalize_bufnr(bufnr)
   local state = buffers[bufnr]
   if not state then
     return {}
   end
   local cursor = vim.api.nvim_win_get_cursor(0)
   local row, column = cursor[1] - 1, cursor[2]
-  local found = {}
+  local containing = {}
+  local on_line = {}
+  local present = {}
+  local function add(target, comment)
+    if comment and not present[comment.id] then
+      present[comment.id] = true
+      table.insert(target, comment)
+    end
+  end
   for mark_id, comment_id in pairs(state.marks) do
     local mark = vim.api.nvim_buf_get_extmark_by_id(bufnr, M.namespace, mark_id, { details = true })
     if #mark > 0 then
@@ -216,20 +270,43 @@ function M.comments_at_cursor(bufnr, store)
       local after_start = row > mark[1] or (row == mark[1] and column >= mark[2])
       local before_end = row < finish_row or (row == finish_row and column < finish_col)
       if after_start and before_end then
-        local comment = model.find(store, comment_id)
-        if comment then
-          table.insert(found, comment)
-        end
+        add(containing, model.find(store, comment_id))
+      elseif row >= mark[1] and row <= finish_row then
+        add(on_line, model.find(store, comment_id))
       end
     end
   end
-  table.sort(found, function(left, right)
+  if #containing > 0 then
+    on_line = containing
+  else
+    for _, comment in ipairs(store.comments) do
+      if
+        comment.source.path == state.ctx.source_path
+        and comment.anchor.state ~= "attached"
+        and math.max(0, math.min(comment.anchor.current.position.start.line, vim.api.nvim_buf_line_count(bufnr) - 1))
+          == row
+      then
+        add(on_line, comment)
+      end
+    end
+  end
+  table.sort(on_line, function(left, right)
     return left.id < right.id
   end)
-  return found
+  return on_line
+end
+
+function M.file_state(bufnr)
+  local state = buffers[normalize_bufnr(bufnr)]
+  return state and state.file or nil
+end
+
+function M.statusline(bufnr)
+  return presentation.statusline(M.file_state(bufnr), config.options.statusline)
 end
 
 function M.attach(bufnr)
+  bufnr = normalize_bufnr(bufnr)
   local state = buffers[bufnr] or { marks = {} }
   if not state.attached then
     vim.api.nvim_buf_attach(bufnr, false, {

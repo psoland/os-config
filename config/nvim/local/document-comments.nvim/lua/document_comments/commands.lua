@@ -2,6 +2,7 @@ local editor = require("document_comments.ui.editor")
 local exporter = require("document_comments.export")
 local extmarks = require("document_comments.extmarks")
 local model = require("document_comments.model")
+local presentation = require("document_comments.presentation")
 local range = require("document_comments.range")
 local root = require("document_comments.root")
 local select_ui = require("document_comments.ui.select")
@@ -9,6 +10,8 @@ local storage = require("document_comments.storage")
 
 local M = {}
 local registered = false
+local edit_comment
+local resolve_comment
 
 local function notify(message, level)
   vim.notify(message, level or vim.log.levels.INFO, { title = "Document comments" })
@@ -44,41 +47,33 @@ local function current_comments(bufnr)
     return nil, load_error
   end
   local comments = extmarks.comments_at_cursor(bufnr, store)
-  local present = {}
-  for _, comment in ipairs(comments) do
-    present[comment.id] = true
-  end
-  local cursor = vim.api.nvim_win_get_cursor(0)
-  for _, comment in ipairs(store.comments) do
-    local position = comment.anchor.current.position.start
-    if
-      not present[comment.id]
-      and comment.source.path == ctx.source_path
-      and comment.anchor.state ~= "attached"
-      and position.line == cursor[1] - 1
-      and position.byte_column == cursor[2]
-    then
-      table.insert(comments, comment)
+  local used_file_fallback = false
+  if #comments == 0 then
+    used_file_fallback = true
+    for _, comment in ipairs(store.comments) do
+      if comment.source.path == ctx.source_path then
+        table.insert(comments, comment)
+      end
     end
   end
-  return comments, ctx, store
+  return comments, ctx, store, used_file_fallback
 end
 
 local function choose_current(prompt, callback)
-  local comments, ctx_or_error, store = current_comments(0)
+  local comments, ctx_or_error, store, used_file_fallback = current_comments(0)
   if not comments then
     notify(ctx_or_error, vim.log.levels.ERROR)
     return
   end
   if #comments == 0 then
-    notify("No document comment under the cursor")
+    notify("No document comments in this file")
     return
   end
   select_ui.comment(comments, prompt, function(comment)
     if comment then
       callback(comment, ctx_or_error, store)
     end
-  end)
+  end, used_file_fallback)
 end
 
 local function jump(ctx, comment)
@@ -167,52 +162,103 @@ function M.list(filter)
   end, true)
 end
 
+function M.review()
+  local source_buffer = vim.api.nvim_get_current_buf()
+  local ctx, ctx_error = context(source_buffer)
+  if not ctx then
+    notify(ctx_error, vim.log.levels.ERROR)
+    return
+  end
+  local store, load_error = storage.load(ctx)
+  if not store then
+    notify(load_error, vim.log.levels.ERROR)
+    return
+  end
+  local comments = presentation.for_file(store.comments, ctx.source_path).review
+  if #comments == 0 then
+    notify("No document comments need review in this file")
+    return
+  end
+  select_ui.comment(comments, "Document comments needing review", function(comment)
+    if not comment then
+      return
+    end
+    local actions = { "Jump", "Resolve", "Edit", "Keep open" }
+    if comment.anchor.state ~= "attached" then
+      table.insert(actions, "Reattach…")
+    end
+    vim.ui.select(actions, { prompt = select_ui.format(comment) }, function(action)
+      if action == "Jump" then
+        jump(ctx, comment)
+      elseif action == "Resolve" then
+        resolve_comment(comment, ctx, source_buffer)
+      elseif action == "Edit" then
+        edit_comment(comment, ctx, source_buffer)
+      elseif action == "Keep open" then
+        notify("Comment kept open")
+      elseif action == "Reattach…" then
+        jump(ctx, comment)
+        notify("Select the replacement text and press <leader>aR")
+      end
+    end)
+  end, true)
+end
+
+edit_comment = function(comment, ctx, source_buffer)
+  editor.open({
+    id = comment.id,
+    body = comment.body,
+    root = ctx.root,
+    title = " Edit " .. comment.id .. " ",
+    save = function(body)
+      local updated, err = storage.mutate(ctx, function(store)
+        local target = model.find(store, comment.id)
+        assert(target, "comment no longer exists")
+        target.body = body
+        target.updated_at = model.now()
+      end)
+      if not updated then
+        return nil, err
+      end
+      refresh(source_buffer)
+      return true
+    end,
+  })
+end
+
+resolve_comment = function(comment, ctx, source_buffer)
+  local updated, err = storage.mutate(ctx, function(store)
+    local target = model.find(store, comment.id)
+    assert(target, "comment no longer exists")
+    if target.status == "open" then
+      target.status = "resolved"
+      target.resolved_at = model.now()
+    else
+      target.status = "open"
+      target.resolved_at = vim.NIL
+    end
+    target.updated_at = model.now()
+  end)
+  if not updated then
+    notify(err, vim.log.levels.ERROR)
+    return false
+  end
+  refresh(source_buffer)
+  notify(comment.status == "open" and "Comment resolved" or "Comment reopened")
+  return true
+end
+
 function M.edit()
   local source_buffer = vim.api.nvim_get_current_buf()
   choose_current("Edit document comment", function(comment, ctx)
-    editor.open({
-      id = comment.id,
-      body = comment.body,
-      root = ctx.root,
-      title = " Edit " .. comment.id .. " ",
-      save = function(body)
-        local updated, err = storage.mutate(ctx, function(store)
-          local target = model.find(store, comment.id)
-          assert(target, "comment no longer exists")
-          target.body = body
-          target.updated_at = model.now()
-        end)
-        if not updated then
-          return nil, err
-        end
-        refresh(source_buffer)
-        return true
-      end,
-    })
+    edit_comment(comment, ctx, source_buffer)
   end)
 end
 
 function M.resolve()
   local source_buffer = vim.api.nvim_get_current_buf()
   choose_current("Resolve or reopen document comment", function(comment, ctx)
-    local updated, err = storage.mutate(ctx, function(store)
-      local target = model.find(store, comment.id)
-      assert(target, "comment no longer exists")
-      if target.status == "open" then
-        target.status = "resolved"
-        target.resolved_at = model.now()
-      else
-        target.status = "open"
-        target.resolved_at = vim.NIL
-      end
-      target.updated_at = model.now()
-    end)
-    if not updated then
-      notify(err, vim.log.levels.ERROR)
-      return
-    end
-    refresh(source_buffer)
-    notify(comment.status == "open" and "Comment resolved" or "Comment reopened")
+    resolve_comment(comment, ctx, source_buffer)
   end)
 end
 
@@ -428,6 +474,9 @@ function M.register()
     complete = function()
       return { "open", "resolved", "all" }
     end,
+  })
+  vim.api.nvim_create_user_command("DocumentCommentsReview", M.review, {
+    desc = "Review changed or detached document comments",
   })
   vim.api.nvim_create_user_command("DocumentCommentsEdit", M.edit, { desc = "Edit comment under cursor" })
   vim.api.nvim_create_user_command("DocumentCommentsResolve", M.resolve, { desc = "Resolve or reopen comment" })

@@ -2,6 +2,7 @@ local anchor = require("document_comments.anchor")
 local config = require("document_comments.config")
 local exporter = require("document_comments.export")
 local model = require("document_comments.model")
+local presentation = require("document_comments.presentation")
 local range = require("document_comments.range")
 local root = require("document_comments.root")
 local storage = require("document_comments.storage")
@@ -310,10 +311,50 @@ test("export contains durable identity and does not mutate store", function()
   eq(before, read(ctx.store_path))
 end)
 
+test("presentation aggregates signs, statusline counts, and review candidates", function()
+  local attached = sample_comment("Attached")
+  local changed = sample_comment("Changed")
+  changed.id = "c_changed"
+  changed.anchor.current.quote.exact = "rewritten"
+  changed.anchor.current.position.start.line = 2
+  changed.anchor.current.position["end"].line = 2
+  local orphaned = sample_comment("Orphaned")
+  orphaned.id = "c_orphaned"
+  orphaned.anchor.state = "orphaned"
+  orphaned.anchor.current.position.start.line = 2
+  orphaned.anchor.current.position["end"].line = 2
+  local resolved = sample_comment("Resolved")
+  resolved.id = "c_resolved"
+  resolved.status = "resolved"
+  resolved.resolved_at = model.now()
+  resolved.anchor.current.position.start.line = 20
+  resolved.anchor.current.position["end"].line = 20
+
+  local file = presentation.for_file({ attached, changed, orphaned, resolved }, "doc.md")
+  eq(3, file.open)
+  eq(1, file.resolved)
+  eq(2, file.problem)
+  eq(2, #file.review)
+  eq("C 3 !2", presentation.statusline(file, { enabled = true, icon = "C" }))
+
+  local signs = presentation.sign_groups(file, 5, {
+    enabled = true,
+    show_resolved = true,
+    open = "●",
+    problem = "!",
+    resolved = "○",
+  })
+  eq(3, #signs)
+  eq({ row = 0, count = 1, kind = "open", text = "●" }, signs[1])
+  eq({ row = 2, count = 2, kind = "problem", text = "2" }, signs[2])
+  eq({ row = 4, count = 1, kind = "resolved", text = "○" }, signs[3])
+end)
+
 test("setup registers commands", function()
   require("document_comments").setup()
   assert(vim.fn.exists(":DocumentCommentsAdd") == 2)
   assert(vim.fn.exists(":DocumentCommentsExport") == 2)
+  assert(vim.fn.exists(":DocumentCommentsReview") == 2)
 end)
 
 test("confirmed comment survives writes and collapsed extmark becomes orphaned", function()
@@ -344,6 +385,27 @@ test("confirmed comment survives writes and collapsed extmark becomes orphaned",
   eq("alpha", store.comments[1].anchor.current.quote.exact)
   local extmarks = require("document_comments.extmarks")
   eq(1, #vim.api.nvim_buf_get_extmarks(source_buffer, extmarks.namespace, 0, -1, {}))
+  eq(1, #vim.api.nvim_buf_get_extmarks(source_buffer, extmarks.sign_namespace, 0, -1, {}))
+  assert(require("document_comments").statusline(source_buffer):match("1"))
+
+  -- Edit and resolve work from elsewhere on the same line, not only inside the range.
+  vim.api.nvim_win_set_cursor(0, { 1, 0 })
+  eq(1, #extmarks.comments_at_cursor(source_buffer, store))
+  require("document_comments.commands").edit()
+  draft_buffer = vim.api.nvim_get_current_buf()
+  assert(draft_buffer ~= source_buffer)
+  vim.api.nvim_buf_set_lines(draft_buffer, 0, -1, false, { "Updated from the same line." })
+  vim.cmd.stopinsert()
+  vim.cmd.write()
+  store = assert(storage.load(ctx))
+  eq("Updated from the same line.", store.comments[1].body)
+  vim.api.nvim_win_set_cursor(0, { 1, 0 })
+  require("document_comments.commands").resolve()
+  store = assert(storage.load(ctx))
+  eq("resolved", store.comments[1].status)
+  require("document_comments.commands").resolve()
+  store = assert(storage.load(ctx))
+  eq("open", store.comments[1].status)
 
   vim.api.nvim_buf_set_text(source_buffer, 0, 0, 0, 0, { "new " })
   vim.cmd.write()
@@ -371,10 +433,25 @@ test("confirmed comment survives writes and collapsed extmark becomes orphaned",
   store = assert(storage.load(ctx))
   eq("orphaned", store.comments[1].anchor.state)
   eq("omega", store.comments[1].anchor.current.quote.exact)
+  eq("open", store.comments[1].status)
+  local signs = vim.api.nvim_buf_get_extmarks(source_buffer, extmarks.sign_namespace, 0, -1, { details = true })
+  eq("!", vim.trim(signs[1][4].sign_text))
+  assert(require("document_comments").statusline(source_buffer):match("!1"))
+  vim.api.nvim_win_set_cursor(0, { 1, 0 })
+  eq(store.comments[1].id, extmarks.comments_at_cursor(source_buffer, store)[1].id)
 
   storage._reset()
   store = assert(storage.load(ctx))
   eq("orphaned", store.comments[1].anchor.state)
+
+  local original_select = vim.ui.select
+  vim.ui.select = function(_, _, callback)
+    callback("Delete")
+  end
+  require("document_comments.commands").delete()
+  vim.ui.select = original_select
+  store = assert(storage.load(ctx))
+  eq(0, #store.comments)
 end)
 
 print(("document-comments: %d tests passed"):format(passed))

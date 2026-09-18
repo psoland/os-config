@@ -21,6 +21,14 @@ return {
           files = {
             hidden = true,
             ignored = true,
+            -- Keep generated/dependency files out of <Space><Space>.
+            exclude = {
+              "node_modules",
+              ".next",
+              "build",
+              "coverage",
+              "dist",
+            },
           },
         },
       },

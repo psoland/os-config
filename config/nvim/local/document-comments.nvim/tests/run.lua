@@ -6,6 +6,7 @@ local presentation = require("document_comments.presentation")
 local range = require("document_comments.range")
 local root = require("document_comments.root")
 local storage = require("document_comments.storage")
+local select_ui = require("document_comments.ui.select")
 
 config.setup()
 
@@ -350,11 +351,90 @@ test("presentation aggregates signs, statusline counts, and review candidates", 
   eq({ row = 4, count = 1, kind = "resolved", text = "○" }, signs[3])
 end)
 
+test("comment list formatting is concise and scope-aware", function()
+  local open = sample_comment("Hva betyr dette?")
+  open.source.path = "produkter/enterprise_ai/enterprise_ai_backup.md"
+  open.anchor.current.position.start.line = 38
+  open.anchor.current.position["end"].line = 38
+  eq("● L39  Hva betyr dette?", select_ui.format_file(open))
+
+  local orphaned = vim.deepcopy(open)
+  orphaned.id = "c_orphaned_format"
+  orphaned.anchor.state = "orphaned"
+  eq("! L39  [orphaned] Hva betyr dette?", select_ui.format_file(orphaned))
+
+  local resolved = vim.deepcopy(open)
+  resolved.id = "c_resolved_format"
+  resolved.status = "resolved"
+  resolved.resolved_at = model.now()
+  eq("○ L39  Hva betyr dette?", select_ui.format_file(resolved))
+
+  local project_format = select_ui.project_formatter({ open, orphaned, resolved })
+  eq("● enterprise_ai_backup.md:39  Hva betyr dette?", project_format(open))
+
+  local collision = vim.deepcopy(open)
+  collision.id = "c_collision"
+  collision.source.path = "arkiv/enterprise_ai_backup.md"
+  project_format = select_ui.project_formatter({ open, collision })
+  assert(project_format(open):match("produkter/enterprise_ai/enterprise_ai_backup%.md:39"))
+  assert(project_format(collision):match("arkiv/enterprise_ai_backup%.md:39"))
+end)
+
 test("setup registers commands", function()
   require("document_comments").setup()
   assert(vim.fn.exists(":DocumentCommentsAdd") == 2)
   assert(vim.fn.exists(":DocumentCommentsExport") == 2)
   assert(vim.fn.exists(":DocumentCommentsReview") == 2)
+  assert(vim.fn.exists(":DocumentCommentsListProject") == 2)
+end)
+
+test("file and project lists use separate scopes", function()
+  storage._reset()
+  local project = tempdir()
+  vim.fn.mkdir(vim.fs.joinpath(project, ".git"), "p", 448)
+  local document = vim.fs.joinpath(project, "scope.md")
+  write(document, "scope text")
+  write(vim.fs.joinpath(project, "other.md"), "other text")
+  vim.cmd.edit(vim.fn.fnameescape(document))
+  vim.bo.filetype = "markdown"
+  local ctx = assert(root.for_buffer(0))
+  assert(storage.mutate(ctx, function(store)
+    local position = { start = { line = 0, byte_column = 0 }, ["end"] = { line = 0, byte_column = 5 } }
+    local current = model.new_comment(
+      "scope.md",
+      position,
+      { exact = "scope", prefix = "", suffix = " text" },
+      model.hash("scope text"),
+      "Current file"
+    )
+    local other = model.new_comment(
+      "other.md",
+      position,
+      { exact = "other", prefix = "", suffix = " text" },
+      model.hash("other text"),
+      "Other file"
+    )
+    table.insert(store.comments, current)
+    table.insert(store.comments, other)
+  end))
+  require("document_comments.extmarks").refresh(0)
+
+  local captured = {}
+  local original_select = vim.ui.select
+  vim.ui.select = function(items, opts, callback)
+    table.insert(captured, { items = items, opts = opts })
+    callback(nil)
+  end
+  require("document_comments.commands").list("open", "file")
+  require("document_comments.commands").list("open", "project")
+  vim.ui.select = original_select
+
+  eq(1, #captured[1].items)
+  assert(captured[1].opts.prompt:match("scope%.md"))
+  eq("● L1  Current file", captured[1].opts.format_item(captured[1].items[1]))
+  eq(2, #captured[2].items)
+  assert(captured[2].opts.prompt:match("project"))
+  assert(captured[2].opts.format_item(captured[2].items[1]):match("%.md:1"))
 end)
 
 test("confirmed comment survives writes and collapsed extmark becomes orphaned", function()
@@ -445,11 +525,22 @@ test("confirmed comment survives writes and collapsed extmark becomes orphaned",
   eq("orphaned", store.comments[1].anchor.state)
 
   local original_select = vim.ui.select
-  vim.ui.select = function(_, _, callback)
-    callback("Delete")
+  local saw_action_menu = false
+  local saw_confirmation = false
+  vim.ui.select = function(items, _, callback)
+    if type(items[1]) == "table" then
+      callback(items[1])
+    elseif vim.list_contains(items, "Delete comment") then
+      saw_action_menu = true
+      callback("Delete comment")
+    else
+      saw_confirmation = true
+      callback("Delete")
+    end
   end
-  require("document_comments.commands").delete()
+  require("document_comments.commands").list("open", "file")
   vim.ui.select = original_select
+  assert(saw_action_menu and saw_confirmation)
   store = assert(storage.load(ctx))
   eq(0, #store.comments)
 end)

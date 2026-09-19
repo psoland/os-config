@@ -15,9 +15,17 @@ local function map_buffer(bufnr)
       "n",
       "<leader>al",
       function()
-        commands.list("open")
+        commands.list("open", "file")
       end,
-      "List document comments",
+      "List file document comments",
+    },
+    {
+      "n",
+      "<leader>aL",
+      function()
+        commands.list("open", "project")
+      end,
+      "List project document comments",
     },
     { "n", "<leader>ae", commands.edit, "Edit document comment" },
     { "n", "<leader>ar", commands.resolve, "Resolve/reopen document comment" },

@@ -12,6 +12,7 @@ local M = {}
 local registered = false
 local edit_comment
 local resolve_comment
+local delete_comment
 
 local function notify(message, level)
   vim.notify(message, level or vim.log.levels.INFO, { title = "Document comments" })
@@ -31,9 +32,25 @@ local function context(bufnr, require_saved)
   return root.for_buffer(bufnr)
 end
 
-local function refresh(bufnr)
-  if vim.api.nvim_buf_is_valid(bufnr) then
-    extmarks.refresh(bufnr)
+local function refresh(bufnr, ctx)
+  local refreshed = {}
+  local function refresh_buffer(buffer)
+    if vim.api.nvim_buf_is_valid(buffer) and vim.api.nvim_buf_is_loaded(buffer) and not refreshed[buffer] then
+      refreshed[buffer] = true
+      extmarks.refresh(buffer)
+    end
+  end
+  refresh_buffer(bufnr)
+  if not ctx then
+    return
+  end
+  for _, buffer in ipairs(vim.api.nvim_list_bufs()) do
+    if not refreshed[buffer] and vim.bo[buffer].filetype == "markdown" and vim.bo[buffer].buftype == "" then
+      local buffer_ctx = root.for_buffer(buffer)
+      if buffer_ctx and buffer_ctx.store_path == ctx.store_path then
+        refresh_buffer(buffer)
+      end
+    end
   end
 end
 
@@ -122,16 +139,22 @@ function M.add(allow_inactive)
       if not updated then
         return nil, err
       end
-      refresh(source_buffer)
+      refresh(source_buffer, ctx)
       return true
     end,
   })
 end
 
-function M.list(filter)
+function M.list(filter, scope)
+  local source_buffer = vim.api.nvim_get_current_buf()
   filter = filter == "" and "open" or filter
+  scope = scope or "file"
   if filter ~= "open" and filter ~= "resolved" and filter ~= "all" then
     notify("List filter must be open, resolved, or all", vim.log.levels.ERROR)
+    return
+  end
+  if scope ~= "file" and scope ~= "project" then
+    notify("List scope must be file or project", vim.log.levels.ERROR)
     return
   end
   local ctx, ctx_error = context(0)
@@ -147,19 +170,66 @@ function M.list(filter)
   local comments = vim
     .iter(store.comments)
     :filter(function(comment)
-      return filter == "all" or comment.status == filter
+      local matches_status = filter == "all" or comment.status == filter
+      return matches_status and (scope == "project" or comment.source.path == ctx.source_path)
     end)
     :totable()
   table.sort(comments, function(left, right)
-    local lf = select_ui.format(left)
-    local rf = select_ui.format(right)
-    return lf < rf
-  end)
-  select_ui.comment(comments, "Document comments (" .. filter .. ")", function(comment)
-    if comment then
-      jump(ctx, comment)
+    if left.source.path ~= right.source.path then
+      return left.source.path < right.source.path
     end
-  end, true)
+    local lp = left.anchor.current.position.start
+    local rp = right.anchor.current.position.start
+    if lp.line ~= rp.line then
+      return lp.line < rp.line
+    end
+    if lp.byte_column ~= rp.byte_column then
+      return lp.byte_column < rp.byte_column
+    end
+    return left.id < right.id
+  end)
+  local prompt
+  local formatter
+  if scope == "file" then
+    prompt = ("Document comments — %s (%s)"):format(vim.fs.basename(ctx.source_path), filter)
+    formatter = select_ui.format_file
+  else
+    prompt = "Document comments — project (" .. filter .. ")"
+    formatter = select_ui.project_formatter(comments)
+  end
+  select_ui.comment(comments, prompt, function(comment)
+    if not comment then
+      return
+    end
+    local actions = {
+      "Jump to comment",
+      "Edit comment",
+      comment.status == "open" and "Resolve comment" or "Reopen comment",
+      "Delete comment",
+    }
+    if comment.anchor.state ~= "attached" then
+      table.insert(actions, "Reattach…")
+    end
+    vim.ui.select(actions, { prompt = formatter(comment) }, function(action)
+      local function reopen()
+        if vim.api.nvim_buf_is_valid(source_buffer) then
+          M.list(filter, scope)
+        end
+      end
+      if action == "Jump to comment" then
+        jump(ctx, comment)
+      elseif action == "Edit comment" then
+        edit_comment(comment, ctx, source_buffer, reopen)
+      elseif action == "Resolve comment" or action == "Reopen comment" then
+        resolve_comment(comment, ctx, source_buffer, reopen)
+      elseif action == "Delete comment" then
+        delete_comment(comment, ctx, source_buffer, reopen)
+      elseif action == "Reattach…" then
+        jump(ctx, comment)
+        notify("Select the replacement text and press <leader>aR")
+      end
+    end)
+  end, true, formatter)
 end
 
 function M.review()
@@ -204,7 +274,7 @@ function M.review()
   end, true)
 end
 
-edit_comment = function(comment, ctx, source_buffer)
+edit_comment = function(comment, ctx, source_buffer, on_done)
   editor.open({
     id = comment.id,
     body = comment.body,
@@ -220,13 +290,16 @@ edit_comment = function(comment, ctx, source_buffer)
       if not updated then
         return nil, err
       end
-      refresh(source_buffer)
+      refresh(source_buffer, ctx)
+      if on_done then
+        vim.schedule(on_done)
+      end
       return true
     end,
   })
 end
 
-resolve_comment = function(comment, ctx, source_buffer)
+resolve_comment = function(comment, ctx, source_buffer, on_done)
   local updated, err = storage.mutate(ctx, function(store)
     local target = model.find(store, comment.id)
     assert(target, "comment no longer exists")
@@ -243,9 +316,34 @@ resolve_comment = function(comment, ctx, source_buffer)
     notify(err, vim.log.levels.ERROR)
     return false
   end
-  refresh(source_buffer)
+  refresh(source_buffer, ctx)
   notify(comment.status == "open" and "Comment resolved" or "Comment reopened")
+  if on_done then
+    vim.schedule(on_done)
+  end
   return true
+end
+
+delete_comment = function(comment, ctx, source_buffer, on_done)
+  vim.ui.select({ "Cancel", "Delete" }, { prompt = "Permanently delete " .. comment.id .. "?" }, function(choice)
+    if choice ~= "Delete" then
+      return
+    end
+    local updated, err = storage.mutate(ctx, function(store)
+      local _, index = model.find(store, comment.id)
+      assert(index, "comment no longer exists")
+      table.remove(store.comments, index)
+    end)
+    if not updated then
+      notify(err, vim.log.levels.ERROR)
+      return
+    end
+    refresh(source_buffer, ctx)
+    notify("Comment deleted")
+    if on_done then
+      vim.schedule(on_done)
+    end
+  end)
 end
 
 function M.edit()
@@ -265,22 +363,7 @@ end
 function M.delete()
   local source_buffer = vim.api.nvim_get_current_buf()
   choose_current("Delete document comment", function(comment, ctx)
-    vim.ui.select({ "Cancel", "Delete" }, { prompt = "Permanently delete " .. comment.id .. "?" }, function(choice)
-      if choice ~= "Delete" then
-        return
-      end
-      local updated, err = storage.mutate(ctx, function(store)
-        local _, index = model.find(store, comment.id)
-        assert(index, "comment no longer exists")
-        table.remove(store.comments, index)
-      end)
-      if not updated then
-        notify(err, vim.log.levels.ERROR)
-        return
-      end
-      refresh(source_buffer)
-      notify("Comment deleted")
-    end)
+    delete_comment(comment, ctx, source_buffer)
   end)
 end
 
@@ -386,9 +469,9 @@ function M.reattach(allow_inactive)
       notify(err, vim.log.levels.ERROR)
       return
     end
-    refresh(source_buffer)
+    refresh(source_buffer, ctx)
     notify("Comment reattached")
-  end)
+  end, false, select_ui.project_formatter(comments))
 end
 
 function M.export(args)
@@ -467,9 +550,18 @@ function M.register()
     M.add(true)
   end, { desc = "Add comment from Visual selection", range = true })
   vim.api.nvim_create_user_command("DocumentCommentsList", function(opts)
-    M.list(opts.args)
+    M.list(opts.args, "file")
   end, {
     desc = "List document comments",
+    nargs = "?",
+    complete = function()
+      return { "open", "resolved", "all" }
+    end,
+  })
+  vim.api.nvim_create_user_command("DocumentCommentsListProject", function(opts)
+    M.list(opts.args, "project")
+  end, {
+    desc = "List project document comments",
     nargs = "?",
     complete = function()
       return { "open", "resolved", "all" }

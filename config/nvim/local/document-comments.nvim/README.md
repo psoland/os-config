@@ -9,7 +9,8 @@ Markdown text. Comments are stored per project in
 
 1. Save a Markdown file and select text characterwise or linewise.
 2. Press `<leader>aa`, write the comment in the floating buffer, then use `:w`.
-3. Use `<leader>al` to list comments and `<leader>ar` to resolve or reopen one.
+3. Use `<leader>al` to list comments in the current file and `<leader>ar` to
+   resolve or reopen one.
 4. Use `<leader>ax` and then `/comments` in OpenCode to process the export.
 5. Use `<leader>av` to review changed or detached comments, then resolve them
    yourself.
@@ -28,7 +29,8 @@ not proof that the feedback was handled correctly.
 | Key | Mode | Action |
 | --- | --- | --- |
 | `<leader>aa` | Visual | Add comment |
-| `<leader>al` | Normal | List open comments |
+| `<leader>al` | Normal | List open comments in the current file |
+| `<leader>aL` | Normal | List open comments in the project |
 | `<leader>ae` | Normal | Edit comment under cursor |
 | `<leader>ar` | Normal | Resolve or reopen |
 | `<leader>av` | Normal | Review changed or detached comments |
@@ -41,8 +43,14 @@ Edit, resolve, delete, and current-comment export first use a comment containing
 the cursor, then comments on the same line. If neither exists, they offer the
 comments in the current file instead of failing.
 
-Run `:DocumentCommentsList all` to include resolved comments and
-`:DocumentCommentsStorePath` to inspect the active root and store. See command
+Selecting a comment in either list opens an action menu for jumping, editing,
+resolving or reopening, deleting, and—when relevant—reattaching it. Delete still
+requires confirmation. After edit, status change, or deletion, the refreshed
+list opens again so several comments can be processed in one pass.
+
+Run `:DocumentCommentsList all` to include resolved comments in the current
+file, or `:DocumentCommentsListProject all` for the whole project.
+`:DocumentCommentsStorePath` shows the active root and store. See command
 completion for the `project`, `file`, and `current` export scopes.
 
 ## Tests

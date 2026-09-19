@@ -4,6 +4,7 @@ local extmarks = require("document_comments.extmarks")
 local model = require("document_comments.model")
 local presentation = require("document_comments.presentation")
 local range = require("document_comments.range")
+local references = require("document_comments.references")
 local root = require("document_comments.root")
 local select_ui = require("document_comments.ui.select")
 local storage = require("document_comments.storage")
@@ -113,6 +114,51 @@ local function jump(ctx, comment)
   end
 end
 
+local function warn_references(messages)
+  if #messages > 0 then
+    notify("Comment saved with reference warnings:\n- " .. table.concat(messages, "\n- "), vim.log.levels.WARN)
+  end
+end
+
+local function copy_comment_id(comment)
+  vim.fn.setreg('"', comment.id)
+  pcall(vim.fn.setreg, "+", comment.id)
+  notify("Copied comment ID: " .. comment.id)
+end
+
+local function notify_reference_issues(issues)
+  if #issues == 0 then
+    return
+  end
+  local messages = {}
+  for _, issue in ipairs(issues) do
+    table.insert(messages, issue.token .. " is " .. issue.state)
+  end
+  notify("Unresolved comment references:\n- " .. table.concat(messages, "\n- "), vim.log.levels.WARN)
+end
+
+local function choose_linked_comment(ctx, comments, prompt)
+  if #comments == 0 then
+    notify("No matching referenced comments")
+    return
+  end
+  select_ui.comment(comments, prompt, function(selected)
+    if selected then
+      jump(ctx, selected)
+    end
+  end, #comments > 1, select_ui.project_formatter(comments))
+end
+
+local function open_references(ctx, store, comment)
+  local targets, issues = references.targets(store, comment.body)
+  notify_reference_issues(issues)
+  choose_linked_comment(ctx, targets, "Referenced document comments")
+end
+
+local function open_backlinks(ctx, store, comment)
+  choose_linked_comment(ctx, references.backlinks(store, comment.id), "Comments referring to " .. comment.id)
+end
+
 function M.add(allow_inactive)
   local source_buffer = vim.api.nvim_get_current_buf()
   local ctx, ctx_error = context(source_buffer, true)
@@ -125,21 +171,30 @@ function M.add(allow_inactive)
     notify(selection_error, vim.log.levels.ERROR)
     return
   end
+  local reference_store, load_error = storage.load(ctx)
+  if not reference_store then
+    notify(load_error, vim.log.levels.ERROR)
+    return
+  end
   local draft_id = "new-" .. model.new_id()
   editor.open({
     id = draft_id,
     root = ctx.root,
     title = " New document comment ",
+    completions = references.completions(reference_store),
     save = function(body)
       local comment =
         model.new_comment(ctx.source_path, selection.position, selection.quote, selection.document_hash, body)
+      local reference_warnings = {}
       local updated, err = storage.mutate(ctx, function(store)
         table.insert(store.comments, comment)
+        reference_warnings = references.warnings(store, body, comment.id)
       end)
       if not updated then
         return nil, err
       end
       refresh(source_buffer, ctx)
+      warn_references(reference_warnings)
       return true
     end,
   })
@@ -205,8 +260,17 @@ function M.list(filter, scope)
       "Jump to comment",
       "Edit comment",
       comment.status == "open" and "Resolve comment" or "Reopen comment",
-      "Delete comment",
     }
+    local reference_tokens = references.tokens(comment.body)
+    local backlinks = references.backlinks(store, comment.id)
+    if #reference_tokens > 0 then
+      table.insert(actions, "Open referenced comment…")
+    end
+    if #backlinks > 0 then
+      table.insert(actions, ("Show backlinks (%d)…"):format(#backlinks))
+    end
+    table.insert(actions, "Copy comment ID")
+    table.insert(actions, "Delete comment")
     if comment.anchor.state ~= "attached" then
       table.insert(actions, "Reattach…")
     end
@@ -222,6 +286,12 @@ function M.list(filter, scope)
         edit_comment(comment, ctx, source_buffer, reopen)
       elseif action == "Resolve comment" or action == "Reopen comment" then
         resolve_comment(comment, ctx, source_buffer, reopen)
+      elseif action == "Open referenced comment…" then
+        open_references(ctx, store, comment)
+      elseif action and action:match("^Show backlinks") then
+        open_backlinks(ctx, store, comment)
+      elseif action == "Copy comment ID" then
+        copy_comment_id(comment)
       elseif action == "Delete comment" then
         delete_comment(comment, ctx, source_buffer, reopen)
       elseif action == "Reattach…" then
@@ -254,6 +324,15 @@ function M.review()
       return
     end
     local actions = { "Jump", "Resolve", "Edit", "Keep open" }
+    local reference_tokens = references.tokens(comment.body)
+    local backlinks = references.backlinks(store, comment.id)
+    if #reference_tokens > 0 then
+      table.insert(actions, "Open referenced comment…")
+    end
+    if #backlinks > 0 then
+      table.insert(actions, ("Show backlinks (%d)…"):format(#backlinks))
+    end
+    table.insert(actions, "Copy comment ID")
     if comment.anchor.state ~= "attached" then
       table.insert(actions, "Reattach…")
     end
@@ -266,6 +345,12 @@ function M.review()
         edit_comment(comment, ctx, source_buffer)
       elseif action == "Keep open" then
         notify("Comment kept open")
+      elseif action == "Open referenced comment…" then
+        open_references(ctx, store, comment)
+      elseif action and action:match("^Show backlinks") then
+        open_backlinks(ctx, store, comment)
+      elseif action == "Copy comment ID" then
+        copy_comment_id(comment)
       elseif action == "Reattach…" then
         jump(ctx, comment)
         notify("Select the replacement text and press <leader>aR")
@@ -275,22 +360,31 @@ function M.review()
 end
 
 edit_comment = function(comment, ctx, source_buffer, on_done)
+  local reference_store, load_error = storage.load(ctx)
+  if not reference_store then
+    notify(load_error, vim.log.levels.ERROR)
+    return
+  end
   editor.open({
     id = comment.id,
     body = comment.body,
     root = ctx.root,
     title = " Edit " .. comment.id .. " ",
+    completions = references.completions(reference_store, comment.id),
     save = function(body)
+      local reference_warnings = {}
       local updated, err = storage.mutate(ctx, function(store)
         local target = model.find(store, comment.id)
         assert(target, "comment no longer exists")
         target.body = body
         target.updated_at = model.now()
+        reference_warnings = references.warnings(store, body, comment.id)
       end)
       if not updated then
         return nil, err
       end
       refresh(source_buffer, ctx)
+      warn_references(reference_warnings)
       if on_done then
         vim.schedule(on_done)
       end
@@ -325,7 +419,13 @@ resolve_comment = function(comment, ctx, source_buffer, on_done)
 end
 
 delete_comment = function(comment, ctx, source_buffer, on_done)
-  vim.ui.select({ "Cancel", "Delete" }, { prompt = "Permanently delete " .. comment.id .. "?" }, function(choice)
+  local store = storage.load(ctx)
+  local backlink_count = store and #references.backlinks(store, comment.id) or 0
+  local prompt = "Permanently delete " .. comment.id .. "?"
+  if backlink_count > 0 then
+    prompt = prompt .. (" It is referenced by %d comment(s)."):format(backlink_count)
+  end
+  vim.ui.select({ "Cancel", "Delete" }, { prompt = prompt }, function(choice)
     if choice ~= "Delete" then
       return
     end

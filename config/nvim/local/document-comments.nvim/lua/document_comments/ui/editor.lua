@@ -17,6 +17,7 @@ function M.open(opts)
     root = { opts.root, "string" },
     title = { opts.title, "string", true },
     save = { opts.save, "function" },
+    completions = { opts.completions, "table", true },
   })
   local buffer = vim.api.nvim_create_buf(false, true)
   vim.bo[buffer].buftype = "acwrite"
@@ -26,7 +27,9 @@ function M.open(opts)
   vim.api.nvim_buf_set_name(buffer, "document-comment://" .. opts.id)
   vim.api.nvim_buf_set_lines(buffer, 0, -1, false, body_lines(opts.body))
   vim.api.nvim_buf_set_extmark(buffer, namespace, math.max(0, vim.api.nvim_buf_line_count(buffer) - 1), 0, {
-    virt_lines = { { { "  :w save  ·  :q cancel (unconfirmed drafts are not crash-recovered)", "Comment" } } },
+    virt_lines = {
+      { { "  :w save  ·  :q cancel  ·  @ reference (unconfirmed drafts are not crash-recovered)", "Comment" } },
+    },
     virt_lines_above = false,
   })
   vim.bo[buffer].modified = false
@@ -46,7 +49,11 @@ function M.open(opts)
   })
   vim.wo[window].wrap = true
   vim.wo[window].linebreak = true
-  drafts[buffer] = { root = opts.root, window = window }
+  drafts[buffer] = { root = opts.root, window = window, completions = opts.completions or {} }
+  vim.bo[buffer].omnifunc = "v:lua.require'document_comments.ui.editor'.complete"
+  vim.keymap.set("i", "@", "@<C-x><C-o>", { buffer = buffer, desc = "Reference document comment" })
+  vim.api.nvim_set_hl(0, "DocumentCommentReference", { link = "Identifier" })
+  vim.fn.matchadd("DocumentCommentReference", [[\v\@c_[0-9a-f]+]])
 
   vim.api.nvim_create_autocmd("BufWriteCmd", {
     buffer = buffer,
@@ -77,6 +84,31 @@ function M.open(opts)
   })
   vim.cmd("startinsert")
   return buffer, window
+end
+
+function M.complete(findstart, base)
+  local buffer = vim.api.nvim_get_current_buf()
+  local draft = drafts[buffer]
+  if not draft then
+    return findstart == 1 and -1 or {}
+  end
+  if findstart == 1 then
+    local cursor = vim.api.nvim_win_get_cursor(0)
+    local line = vim.api.nvim_get_current_line()
+    local before = line:sub(1, cursor[2])
+    local start = before:find("@c_[0-9a-f]*$")
+    if not start and before:sub(-1) == "@" then
+      start = #before
+    end
+    return start and start - 1 or -1
+  end
+  local matches = {}
+  for _, item in ipairs(draft.completions) do
+    if item.word:sub(1, #base) == base then
+      table.insert(matches, item)
+    end
+  end
+  return matches
 end
 
 function M.has_draft(root)

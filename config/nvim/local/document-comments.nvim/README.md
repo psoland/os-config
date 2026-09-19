@@ -48,6 +48,24 @@ resolving or reopening, deleting, and—when relevant—reattaching it. Delete s
 requires confirmation. After edit, status change, or deletion, the refreshed
 list opens again so several comments can be processed in one pass.
 
+## References
+
+Comment bodies can refer to stable project comment IDs:
+
+```text
+As discussed in @c_ab12f3, this should use the same terminology.
+```
+
+Typing `@` in the comment editor opens completion for project comments. Full
+IDs are inserted, while manually written unambiguous prefixes such as
+`@c_ab12` are also accepted. Unknown, ambiguous, and self-references produce a
+warning but do not block saving.
+
+The list action menu can copy an ID, open referenced comments, and show
+backlinks. Deleting a referenced comment warns about the backlinks. Exports
+include referenced comments recursively as context, including resolved
+comments, and safely stop at circular references.
+
 Run `:DocumentCommentsList all` to include resolved comments in the current
 file, or `:DocumentCommentsListProject all` for the whole project.
 `:DocumentCommentsStorePath` shows the active root and store. See command

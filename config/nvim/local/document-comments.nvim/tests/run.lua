@@ -4,6 +4,7 @@ local exporter = require("document_comments.export")
 local model = require("document_comments.model")
 local presentation = require("document_comments.presentation")
 local range = require("document_comments.range")
+local references = require("document_comments.references")
 local root = require("document_comments.root")
 local storage = require("document_comments.storage")
 local select_ui = require("document_comments.ui.select")
@@ -312,6 +313,67 @@ test("export contains durable identity and does not mutate store", function()
   eq(before, read(ctx.store_path))
 end)
 
+test("comment references resolve prefixes, backlinks, cycles, and completion", function()
+  local first = sample_comment("See @c_bbbb1111 and @c_dead")
+  first.id = "c_aaaa1111"
+  local second = sample_comment("Back to @c_aaaa")
+  second.id = "c_bbbb1111"
+  local third = sample_comment("Another B")
+  third.id = "c_bbbb2222"
+  local store = { comments = { first, second, third } }
+
+  eq({ "@c_bbbb1111", "@c_dead" }, references.tokens(first.body))
+  eq(second.id, references.resolve(store, "@c_bbbb1111").comment.id)
+  eq(first.id, references.resolve(store, "@c_aaaa").comment.id)
+  eq("ambiguous", references.resolve(store, "@c_bbbb").state)
+  eq("missing", references.resolve(store, "@c_dead").state)
+  eq(second.id, references.backlinks(store, first.id)[1].id)
+
+  local linked, issues = references.walk(store, first)
+  eq(1, #linked)
+  eq(second.id, linked[1].comment.id)
+  eq(1, #issues)
+  eq("@c_dead", issues[1].token)
+
+  local completions = references.completions(store, first.id)
+  eq(2, #completions)
+  eq("@c_bbbb1111", completions[1].word)
+  eq(1, #references.warnings(store, "Unknown @c_dead", first.id))
+  eq(1, #references.warnings(store, "Self @c_aaaa", first.id))
+
+  local editor = require("document_comments.ui.editor")
+  local completion_buffer, completion_window = editor.open({
+    id = "completion-test",
+    root = "/tmp",
+    completions = references.completions(store),
+    save = function()
+      return true
+    end,
+  })
+  vim.api.nvim_buf_set_lines(completion_buffer, 0, -1, false, { "See @" })
+  vim.api.nvim_win_set_cursor(completion_window, { 1, 5 })
+  eq(4, editor.complete(1, ""))
+  eq(3, #editor.complete(0, "@c_"))
+  vim.cmd.stopinsert()
+  vim.api.nvim_win_close(completion_window, true)
+end)
+
+test("export includes resolved referenced comments without following cycles forever", function()
+  local primary = sample_comment("Use the decision from @c_bbbb1111 and @c_dead")
+  primary.id = "c_aaaa1111"
+  local context_comment = sample_comment("This points back to @c_aaaa1111")
+  context_comment.id = "c_bbbb1111"
+  context_comment.status = "resolved"
+  context_comment.resolved_at = model.now()
+  local store = model.new_store()
+  store.comments = { primary, context_comment }
+  local output = exporter.render(store, { primary }, "hash")
+  assert(output:match("Referenced comments %(context only%)"))
+  assert(output:match("@c_bbbb1111"))
+  assert(output:match("Status: resolved"))
+  assert(output:match("@c_dead` — missing"))
+end)
+
 test("presentation aggregates signs, statusline counts, and review candidates", function()
   local attached = sample_comment("Attached")
   local changed = sample_comment("Changed")
@@ -398,6 +460,8 @@ test("file and project lists use separate scopes", function()
   vim.cmd.edit(vim.fn.fnameescape(document))
   vim.bo.filetype = "markdown"
   local ctx = assert(root.for_buffer(0))
+  local current_id
+  local other_id
   assert(storage.mutate(ctx, function(store)
     local position = { start = { line = 0, byte_column = 0 }, ["end"] = { line = 0, byte_column = 5 } }
     local current = model.new_comment(
@@ -414,6 +478,10 @@ test("file and project lists use separate scopes", function()
       model.hash("other text"),
       "Other file"
     )
+    current.body = "Current file; see @" .. other.id
+    other.body = "Other file; back to @" .. current.id
+    current_id = current.id
+    other_id = other.id
     table.insert(store.comments, current)
     table.insert(store.comments, other)
   end))
@@ -431,10 +499,40 @@ test("file and project lists use separate scopes", function()
 
   eq(1, #captured[1].items)
   assert(captured[1].opts.prompt:match("scope%.md"))
-  eq("● L1  Current file", captured[1].opts.format_item(captured[1].items[1]))
+  assert(captured[1].opts.format_item(captured[1].items[1]):match("● L1  Current file"))
   eq(2, #captured[2].items)
   assert(captured[2].opts.prompt:match("project"))
   assert(captured[2].opts.format_item(captured[2].items[1]):match("%.md:1"))
+
+  local saw_references = false
+  local saw_backlinks = false
+  vim.ui.select = function(items, _, callback)
+    if type(items[1]) == "table" then
+      callback(items[1])
+      return
+    end
+    saw_references = vim.list_contains(items, "Open referenced comment…")
+    for _, item in ipairs(items) do
+      saw_backlinks = saw_backlinks or item:match("^Show backlinks") ~= nil
+    end
+    callback("Copy comment ID")
+  end
+  require("document_comments.commands").list("open", "file")
+  vim.ui.select = original_select
+  assert(saw_references and saw_backlinks)
+  eq(current_id, vim.fn.getreg('"'))
+
+  vim.ui.select = function(items, _, callback)
+    if type(items[1]) == "table" then
+      callback(items[1])
+    else
+      callback("Open referenced comment…")
+    end
+  end
+  require("document_comments.commands").list("open", "file")
+  vim.ui.select = original_select
+  eq(other_id, model.find(assert(storage.load(ctx)), other_id).id)
+  assert(vim.api.nvim_buf_get_name(0):match("other%.md$"))
 end)
 
 test("confirmed comment survives writes and collapsed extmark becomes orphaned", function()

@@ -28,7 +28,7 @@ function M.open(opts)
   vim.api.nvim_buf_set_lines(buffer, 0, -1, false, body_lines(opts.body))
   vim.api.nvim_buf_set_extmark(buffer, namespace, math.max(0, vim.api.nvim_buf_line_count(buffer) - 1), 0, {
     virt_lines = {
-      { { "  :w save  ·  :q cancel  ·  @ reference (unconfirmed drafts are not crash-recovered)", "Comment" } },
+      { { "  :w save  ·  :q cancel  ·  @ reference", "Comment" } },
     },
     virt_lines_above = false,
   })

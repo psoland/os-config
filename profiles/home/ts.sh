@@ -40,13 +40,21 @@ if tmux has-session -t "=$session_name" 2>/dev/null; then
 fi
 
 nvim_pane="$(tmux new-session -d -P -F '#{pane_id}' -s "$session_name" -n nvim -c "$working_dir")"
-tmux new-window -d -t "=$session_name" -n term -c "$working_dir"
 hunk_pane="$(tmux new-window -d -P -F '#{pane_id}' -t "=$session_name" -n hunk -c "$working_dir")"
+tmux new-window -d -t "=$session_name" -n term -c "$working_dir"
 
 nvim_opencode_pane="$(tmux split-window -h -p "$pct_right" -t "$nvim_pane" -P -F '#{pane_id}' -c "$working_dir")"
 hunk_opencode_pane="$(tmux split-window -h -p "$pct_right" -t "$hunk_pane" -P -F '#{pane_id}' -c "$working_dir")"
 tmux resize-pane -t "$nvim_opencode_pane" -x "${pct_right}%" 2>/dev/null || true
 tmux resize-pane -t "$hunk_opencode_pane" -x "${pct_right}%" 2>/dev/null || true
+
+# A detached session is initially laid out using tmux's default window size.
+# Reapply the same 25% sizing as td after attaching or switching at the
+# client's real size.
+tmux set-hook -t "$session_name" client-attached \
+  "resize-pane -t $nvim_opencode_pane -x ${pct_right}%; resize-pane -t $hunk_opencode_pane -x ${pct_right}%"
+tmux set-hook -t "$session_name" client-session-changed \
+  "resize-pane -t $nvim_opencode_pane -x ${pct_right}%; resize-pane -t $hunk_opencode_pane -x ${pct_right}%"
 
 # Run commands in shells so their named windows remain open after they exit.
 tmux send-keys -t "$nvim_opencode_pane" "$opencode_cmd" C-m

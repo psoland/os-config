@@ -26,6 +26,8 @@ test("shared config grants custom agents full access without overriding built-in
   assert.equal(server.permission, undefined)
   assert.equal(server.default_agent, "sol")
   for (const name of ["astra", "sol", "luna", "terra"]) assert.equal(server.agent[name].permission, "allow")
+  assert.equal(server.agent.luna.model, "openai/gpt-6-luna")
+  assert.equal(server.agent.sol.model, "openai/gpt-6-sol")
   assert.equal(server.agent.sol.variant, "medium")
   assert.equal(server.agent.astra.variant, "medium")
   assert.equal(server.agent.luna.variant, "max")

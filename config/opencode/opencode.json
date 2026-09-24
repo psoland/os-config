@@ -56,16 +56,16 @@
       "permission": "allow"
     },
     "luna": {
-      "description": "Development agent and subagent using GPT-5.6 Luna with max reasoning.",
+      "description": "Development agent and subagent using GPT-6 Luna with max reasoning.",
       "mode": "all",
-      "model": "openai/gpt-5.6-luna",
+      "model": "openai/gpt-6-luna",
       "variant": "max",
       "permission": "allow"
     },
     "sol": {
-      "description": "Development agent using GPT-5.6 Sol with medium reasoning.",
+      "description": "Development agent using GPT-6 Sol with medium reasoning.",
       "mode": "primary",
-      "model": "openai/gpt-5.6-sol",
+      "model": "openai/gpt-6-sol",
       "variant": "medium",
       "permission": "allow"
     },

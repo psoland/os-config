@@ -27,6 +27,11 @@ working_dir="$(cd -- "$requested_dir" && pwd -P)"
 pct_right=25
 printf -v opencode_cmd 'opencode2 %q' "$working_dir"
 
+resize_right_panes() {
+  tmux resize-pane -t "$nvim_opencode_pane" -x "${pct_right}%" 2>/dev/null || true
+  tmux resize-pane -t "$hunk_opencode_pane" -x "${pct_right}%" 2>/dev/null || true
+}
+
 case "$session_name" in
   *[.:]*)
     echo "Session name cannot contain '.' or ':'." >&2
@@ -45,15 +50,12 @@ tmux new-window -d -t "=$session_name" -n term -c "$working_dir"
 
 nvim_opencode_pane="$(tmux split-window -h -p "$pct_right" -t "$nvim_pane" -P -F '#{pane_id}' -c "$working_dir")"
 hunk_opencode_pane="$(tmux split-window -h -p "$pct_right" -t "$hunk_pane" -P -F '#{pane_id}' -c "$working_dir")"
-tmux resize-pane -t "$nvim_opencode_pane" -x "${pct_right}%" 2>/dev/null || true
-tmux resize-pane -t "$hunk_opencode_pane" -x "${pct_right}%" 2>/dev/null || true
+resize_right_panes
 
 # A detached session is initially laid out using tmux's default window size.
 # Reapply the same 25% sizing as td after attaching or switching at the
 # client's real size.
 tmux set-hook -t "$session_name" client-attached \
-  "resize-pane -t $nvim_opencode_pane -x ${pct_right}%; resize-pane -t $hunk_opencode_pane -x ${pct_right}%"
-tmux set-hook -t "$session_name" client-session-changed \
   "resize-pane -t $nvim_opencode_pane -x ${pct_right}%; resize-pane -t $hunk_opencode_pane -x ${pct_right}%"
 
 # Run commands in shells so their named windows remain open after they exit.
@@ -67,7 +69,9 @@ tmux send-keys -t "$nvim_pane" 'nvim' C-m
 tmux select-pane -t "$nvim_pane"
 
 if [ -n "${TMUX:-}" ]; then
-  exec tmux switch-client -t "=$session_name"
+  tmux switch-client -t "=$session_name"
+  resize_right_panes
+  exit 0
 else
   exec tmux attach-session -t "=$session_name"
 fi

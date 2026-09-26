@@ -78,6 +78,9 @@ in
       # Rename window to folder name
       bind-key R rename-window "#{b:pane_current_path}"
 
+      # Restore a left/right split to 75/25 from either pane
+      bind-key T if-shell -F '#{pane_at_right}' 'resize-pane -x 25%' 'resize-pane -t "{right}" -x 25%'
+
       # Move the current window after the last window in a session, e.g. "work"
       bind-key m command-prompt -F -p "Move window to session:" "move-window -a -t '%1:{end}' \; switch-client -t '%1' \; select-window -t '#{window_id}'"
 

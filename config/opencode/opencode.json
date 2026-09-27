@@ -64,7 +64,7 @@
     },
     "sol": {
       "description": "Development agent using GPT-6 Sol with medium reasoning.",
-      "mode": "primary",
+      "mode": "all",
       "model": "openai/gpt-6-sol",
       "variant": "medium",
       "permission": "allow"

@@ -1,45 +1,20 @@
-# Knowit AI Services model discovery for OpenCode V2
+# Knowit AI gateway models in OpenCode V2
 
-The repository's `config/opencode/opencode.json` already loads this plugin and defines the provider. Apply the Home Manager configuration to link the updated config into `~/.config/opencode/`. `AGW_API_KEY` must be available to the OpenCode **server**, for both model discovery and requests.
+The provider is configured in `config/opencode/opencode.json`. OpenCode beta `19271` cannot add models through a plugin transform, so the `voc2` launcher discovers the current model IDs and writes a generated overlay to `~/.config/opencode/opencode.jsonc` before starting OpenCode. It refreshes on each `voc2`, `voc2-start`, or `voc2-reload` invocation, and retains the last successful list if the gateway is temporarily unavailable. Model capabilities and token limits use OpenCode's defaults; `/v1/models` does not reliably report them.
 
-## Using Varlock
+## Setup
 
-Varlock is installed by Home Manager from `profiles/home/common.nix`. The adjacent `.env.schema` marks the key required and sensitive and reads the **password** field of the Bitwarden Password Manager item named `knowit-ai-services-api-key`. Install this plugin directory's npm dependencies with `npm ci`, and sign in to the Bitwarden CLI with `bw login` once. Run `varlock load -p ~/.dotfiles/config/opencode-knowit-ai-gateway-plugin --agent` from a terminal to unlock Bitwarden and validate the resolution without printing the key. If the item stores the key in a custom field rather than its password, set `field="<field-name>"` on the `bwp()` call in `.env.schema`.
-
-After applying Home Manager, use the `oc2` alias to launch OpenCode V2 with a private server under Varlock. You can use it from any directory and pass normal OpenCode arguments. The existing shared-server helpers `oc2-start` and `oc2-reload` also resolve the key via Varlock; `oc2-stop` and `oc2-status` do not need it.
-
-Equivalent manual command for a private server:
+Apply Home Manager to install Varlock and the `voc2` aliases. Then install the Bitwarden resolver package and authenticate the Bitwarden CLI:
 
 ```sh
-varlock run -p ~/.dotfiles/config/opencode-knowit-ai-gateway-plugin --inject vars -- opencode2 --standalone
+cd ~/.dotfiles/config/opencode-knowit-ai-gateway-plugin
+npm ci
+bw login # only if not already logged in
+varlock load -p . --agent
 ```
 
-For the shared background service, stop the existing server first and start it under Varlock so the **server process** inherits the variable:
+The `.env.schema` resolves the **password** field of the Bitwarden Password Manager item `knowit-ai-services-api-key` into `AGW_API_KEY`. If the value is a custom field, add `field="<field-name>"` to `bwp()` instead. `--agent` redacts the sensitive value in validation output.
 
-```sh
-opencode2 service stop
-varlock run -p ~/.dotfiles/config/opencode-knowit-ai-gateway-plugin --inject vars -- opencode2 service start
-```
+From any working directory, use `voc2` to run OpenCode V2 with a private server carrying the key. The plain `oc2` and `oc2-*` aliases remain ordinary OpenCode commands. For the shared service, use `oc2-stop` followed by `voc2-start` (or use `voc2-reload`) so the server, not only a client, inherits the key. A server later started by plain `oc2` will not receive the key.
 
-Launching only the client under `varlock run` does not change the environment of an existing shared server. A later server restart must likewise be launched under Varlock. Avoid using `varlock load --format shell` or `varlock printenv` in commands whose output gets logged, because those formats reveal raw secrets.
-
-```jsonc
-{
-  "$schema": "https://opencode.ai/config.json",
-  "plugins": ["/home/psoland/.dotfiles/config/opencode-knowit-ai-gateway-plugin"],
-  "providers": {
-    "knowit-ai-gateway": {
-      "name": "Knowit AI Services",
-      "env": ["AGW_API_KEY"],
-      "package": "@opencode/ai/providers/openai-compatible",
-      "settings": {
-        "baseURL": "https://ai.aiservices.knowit.no/v1"
-      }
-    }
-  }
-}
-```
-
-If using the plugin outside this dotfiles checkout, merge these entries into your existing config and change the path to the plugin directory on the machine running the OpenCode server. Restart the service after setting the environment variable (`opencode2 service restart`), then use `/models` and select `knowit-ai-gateway/<model-id>`.
-
-The plugin fetches `https://ai.aiservices.knowit.no/v1/models` with bearer authentication on startup and every five minutes. A failed refresh retains the most recent successful model list. Without a key, the plugin does not contact the gateway. The `providers.knowit-ai-gateway` entry lets OpenCode resolve the same environment key for model requests, without storing the key in plugin-created provider metadata. Model names and IDs come from the gateway; model capabilities and token limits use OpenCode's defaults because the standard OpenAI `/models` response does not describe them reliably. Configure known limits or capabilities separately with `providers.knowit-ai-gateway.models` in your config if needed.
+The generated JSONC file contains model names and IDs only, never the API key. The launcher refuses to overwrite a pre-existing `~/.config/opencode/opencode.jsonc` that it did not create. After starting, select `knowit-ai-gateway/<model-id>` in `/models`.

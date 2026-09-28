@@ -31,7 +31,6 @@
   //  }
   //},
   "default_agent": "sol",
-  "plugins": ["/home/psoland/.dotfiles/config/opencode-knowit-ai-gateway-plugin"],
   "providers": {
     "knowit-ai-gateway": {
       "name": "Knowit AI Services",

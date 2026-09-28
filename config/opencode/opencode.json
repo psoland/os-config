@@ -33,7 +33,7 @@
   "default_agent": "sol",
   "providers": {
     "knowit-ai-gateway": {
-      "name": "Knowit AI Services",
+      "name": "Knowit AI Gateway",
       "env": ["AGW_API_KEY"],
       "package": "@opencode/ai/providers/openai-compatible",
       "settings": {

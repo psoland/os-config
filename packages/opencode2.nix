@@ -5,17 +5,17 @@
 }:
 
 let
-  version = "0.0.0-beta-19271";
+  version = "2.0.18";
   platform =
     if stdenvNoCC.hostPlatform.isAarch64 then
       {
         name = "linux-arm64";
-        hash = "sha256-AHyVbwo1pBgGfnlu9hHA10noO0OV5bDlFxst8wRzdZs=";
+        hash = "sha256-3cmOXHicSW2toez66f5OCTHHrEOkbaVDa5fs2lzQul0=";
       }
     else if stdenvNoCC.hostPlatform.isx86_64 then
       {
         name = "linux-x64-baseline";
-        hash = "sha256-DQBzdC6NU/8wK+/rCmXon8nreSiSAWZPbZmvb3cEDu8=";
+        hash = "sha256-VItwnvqCKfl8NffMa6Y1QlxAfFszgqdDXpKoDOAGz80=";
       }
     else
       throw "opencode2 is unsupported on ${stdenvNoCC.hostPlatform.system}";
@@ -25,7 +25,7 @@ stdenvNoCC.mkDerivation {
   inherit version;
 
   src = fetchurl {
-    url = "https://registry.npmjs.org/@opencode-ai/cli-${platform.name}/-/cli-${platform.name}-${version}.tgz";
+    url = "https://registry.npmjs.org/@opencode/cli-${platform.name}/-/cli-${platform.name}-${version}.tgz";
     inherit (platform) hash;
   };
 
@@ -34,12 +34,12 @@ stdenvNoCC.mkDerivation {
 
   installPhase = ''
     runHook preInstall
-    install -Dm755 bin/opencode2 "$out/bin/opencode2"
+    install -Dm755 bin/opencode "$out/bin/opencode2"
     runHook postInstall
   '';
 
   meta = {
-    description = "Beta version of the OpenCode coding agent";
+    description = "OpenCode V2 coding agent";
     homepage = "https://opencode.ai/v2/docs";
     license = lib.licenses.mit;
     mainProgram = "opencode2";

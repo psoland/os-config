@@ -31,6 +31,17 @@
   //  }
   //},
   "default_agent": "sol",
+  "plugins": ["/home/psoland/.dotfiles/config/opencode-knowit-ai-gateway-plugin"],
+  "providers": {
+    "knowit-ai-gateway": {
+      "name": "Knowit AI Services",
+      "env": ["AGW_API_KEY"],
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": {
+        "baseURL": "https://ai.aiservices.knowit.no/v1"
+      }
+    }
+  },
   "permission": {
     "read": {
       "*": "allow",

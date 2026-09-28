@@ -29,10 +29,12 @@
   '';
 
   programs.zsh.shellAliases = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
-    oc2 = "opencode2";
-    oc2-start = "opencode2 service start";
+    # The private server inherits the Bitwarden key; a previously running
+    # shared server would not inherit variables from a newly launched client.
+    oc2 = "varlock run -p \"$HOME/.dotfiles/config/opencode-knowit-ai-gateway-plugin\" --inject vars -- opencode2 --standalone";
+    oc2-start = "varlock run -p \"$HOME/.dotfiles/config/opencode-knowit-ai-gateway-plugin\" --inject vars -- opencode2 service start";
     oc2-stop = "opencode2 service stop";
-    oc2-reload = "opencode2 service restart";
+    oc2-reload = "varlock run -p \"$HOME/.dotfiles/config/opencode-knowit-ai-gateway-plugin\" --inject vars -- opencode2 service restart";
     oc2-status = "opencode2 service status";
   };
 }

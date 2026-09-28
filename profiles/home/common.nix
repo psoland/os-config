@@ -11,6 +11,14 @@ let
   deepseek-harness = pkgs.callPackage ../../packages/deepseek-harness.nix {
     src = inputs.deepseek-harness;
   };
+  varlock = pkgs.runCommand "varlock-1.21.0" { nativeBuildInputs = [ pkgs.makeWrapper ]; } ''
+    mkdir -p "$out/lib/varlock" "$out/bin"
+    tar -xzf ${pkgs.fetchurl {
+      url = "https://registry.npmjs.org/varlock/-/varlock-1.21.0.tgz";
+      sha256 = "09yxqn03xi6796xg7401sgb6mg1kgjyla0mcxqqb5cpabdh19mzm";
+    }} -C "$out/lib/varlock" --strip-components=1
+    makeWrapper ${pkgs.nodejs}/bin/node "$out/bin/varlock" --add-flags "$out/lib/varlock/bin/cli.js"
+  '';
 in
 {
 
@@ -57,6 +65,7 @@ in
       devpod
       cloudflared
       bitwarden-cli
+      varlock
       nodejs
       inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.herdr
     ]

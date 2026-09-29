@@ -39,9 +39,9 @@ writeShellApplication {
 
     # Preserve any additional font directories configured by the caller.
     export TYPST_FONT_PATHS="${corefonts}/share/fonts/truetype''${TYPST_FONT_PATHS:+:$TYPST_FONT_PATHS}"
-    export KNOWIT_PDF_INPUT_DIR="$input_dir"
-    export KNOWIT_PDF_CALLER_DIR="$caller_dir"
-    export KNOWIT_PDF_ASSETS_DIR="${./knowit-pdf}"
+    export MARKDOWN_PDF_INPUT_DIR="$input_dir"
+    export MARKDOWN_PDF_CALLER_DIR="$caller_dir"
+    export MARKDOWN_PDF_ASSETS_DIR="${./knowit-pdf}"
 
     cd "$input_dir"
     pandoc "$input" \
@@ -49,7 +49,7 @@ writeShellApplication {
       --to typst \
       --template ${template} \
       --resource-path "$input_dir:$caller_dir:${./knowit-pdf}" \
-      --lua-filter ${./knowit-pdf/resolve-images.lua} \
+      --lua-filter ${./pdf/resolve-images.lua} \
       --pdf-engine typst \
       --pdf-engine-opt=--root=/ \
       --output "$output"

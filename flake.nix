@@ -255,9 +255,18 @@
       };
 
       # Reusable command-line tools
-      packages = forAllSystems (system: {
-        knowit-pdf = nixpkgsFor.${system}.callPackage ./packages/knowit-pdf.nix { };
-      });
+      packages = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgsFor.${system};
+          markdown-pdf = pkgs.callPackage ./packages/markdown-pdf.nix { };
+        in
+        {
+          knowit-pdf = pkgs.callPackage ./packages/knowit-pdf.nix { };
+          pdf = markdown-pdf;
+          inherit markdown-pdf;
+        }
+      );
 
       # Development shells for this repository
       devShells = forAllSystems (

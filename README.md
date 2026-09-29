@@ -259,6 +259,21 @@ darwin-rebuild switch --flake .#pettersoland-mac
 
 ## Common Operations
 
+### Render Markdown as a standard PDF
+
+`pdf` converts Markdown to PDF using Pandoc's default Typst layout and
+Liberation Serif, without the Knowit template or branding. It is installed
+by the shared Home Manager profile (`markdown-pdf` remains an alias):
+
+```bash
+pdf path/to/notes.md                   # PDF beside the Markdown file
+pdf path/to/notes.md path/to/notes.pdf # choose an output path
+```
+
+Images are resolved relative to the Markdown file or the directory where you
+run the command. For one-off use without activating Home Manager, run
+`nix run path:$HOME/.dotfiles#pdf -- path/to/notes.md`.
+
 ### Render Markdown with the Knowit proposal template
 
 The shared Home Manager profile installs `knowit-pdf`, including Pandoc, Typst,

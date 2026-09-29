@@ -9,6 +9,7 @@
 let
   open-computer-use = pkgs.callPackage ../../packages/open-computer-use.nix { };
   knowit-pdf = pkgs.callPackage ../../packages/knowit-pdf.nix { };
+  markdown-pdf = pkgs.callPackage ../../packages/markdown-pdf.nix { };
   deepseek-harness = pkgs.callPackage ../../packages/deepseek-harness.nix {
     src = inputs.deepseek-harness;
   };
@@ -61,6 +62,7 @@ in
       #      deepseek-harness
       open-computer-use
       knowit-pdf
+      markdown-pdf
       gh
       git-lfs
       lsof

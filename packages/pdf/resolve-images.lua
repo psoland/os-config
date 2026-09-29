@@ -5,11 +5,16 @@ function Image(image)
     return nil
   end
 
-  for _, root in ipairs({
-    os.getenv("KNOWIT_PDF_INPUT_DIR"),
-    os.getenv("KNOWIT_PDF_CALLER_DIR"),
-    os.getenv("KNOWIT_PDF_ASSETS_DIR"),
-  }) do
+  local roots = {
+    os.getenv("MARKDOWN_PDF_INPUT_DIR"),
+    os.getenv("MARKDOWN_PDF_CALLER_DIR"),
+  }
+  local assets = os.getenv("MARKDOWN_PDF_ASSETS_DIR")
+  if assets then
+    roots[#roots + 1] = assets
+  end
+
+  for _, root in ipairs(roots) do
     local candidate = root .. "/" .. image.src
     local file = io.open(candidate, "rb")
     if file then

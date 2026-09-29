@@ -45,7 +45,7 @@ if tmux has-session -t "=$session_name" 2>/dev/null; then
 fi
 
 nvim_pane="$(tmux new-session -d -P -F '#{pane_id}' -s "$session_name" -n nvim -c "$working_dir")"
-hunk_pane="$(tmux new-window -d -P -F '#{pane_id}' -t "=$session_name" -n hunk -c "$working_dir")"
+hunk_pane="$(tmux new-window -d -P -F '#{pane_id}' -t "=$session_name" -n diff -c "$working_dir")"
 tmux new-window -d -t "=$session_name" -n term -c "$working_dir"
 
 nvim_opencode_pane="$(tmux split-window -h -p "$pct_right" -t "$nvim_pane" -P -F '#{pane_id}' -c "$working_dir")"

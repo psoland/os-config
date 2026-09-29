@@ -50,8 +50,8 @@ in
       bind '"' split-window -v -c "#{pane_current_path}"
       bind %   split-window -h -c "#{pane_current_path}"
 
-      # Start a new session at the filesystem root
-      bind N new-session -c /
+      # Start a new session in the home directory
+      bind N new-session -c "$HOME"
 
       # Vim navigation
       bind-key h select-pane -L

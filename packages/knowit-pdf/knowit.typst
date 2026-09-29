@@ -1,0 +1,251 @@
+// Knowit proposal template for Pandoc and Typst.
+//
+// The template follows the elegant end of Knowit's Nordic Skies identity for
+// formal proposals. Styling is scoped to one document function while the cover
+// remains a one-off page layout.
+
+#let knowit_black = rgb("#0B0B26")
+#let knowit_purple = rgb("#CFCEFF")
+#let knowit_white = rgb("#FEFBE6")
+#let knowit_blue = rgb("#372BC5")
+#let knowit_light_purple = rgb("#F7F6FF")
+#let table_rule = knowit_black.transparentize(82%)
+
+// Pandoc emits this helper for Markdown thematic breaks.
+#let horizontalrule = line(length: 100%, stroke: 0.6pt + table_rule)
+
+#let proposal_title = [$title$]
+$if(subtitle)$#let proposal_subtitle = [$subtitle$]$endif$
+$if(client)$#let proposal_client = [$client$]$endif$
+$if(date)$#let proposal_date = [$date$]$endif$
+$if(proposal-id)$#let proposal_id = [$proposal-id$]$endif$
+$if(contact-name)$#let contact_name = [$contact-name$]$endif$
+$if(contact-email)$#let contact_email = [$contact-email$]$endif$
+// Keep existing proposal metadata working when rendered outside its repository.
+#let requested_logo = "$if(logo)$$logo$$else$KnowitBrand/Logotype/Digital/Still/SVG/Logotype-Knowit-Digital-Black.svg$endif$"
+#let logo_path = if requested_logo == "KnowitBrand/Logotype/Digital/Still/SVG/Logotype-Knowit-Digital-Black.svg" {
+  "@KNOWIT_LOGO@"
+} else {
+  requested_logo
+}
+
+#let running_header = context {
+  if here().page() > 1 {
+    grid(
+      columns: (1fr, auto),
+      align: (left, right),
+      text(size: 8pt, fill: knowit_black)[
+        $if(client)$#proposal_client$else$Proposal$endif$
+      ],
+      text(size: 8pt, fill: knowit_black)[Knowit],
+    )
+  }
+}
+
+#let running_footer = context {
+  if here().page() > 1 {
+    grid(
+      columns: (1fr, auto),
+      align: (left, right),
+      text(size: 8pt, fill: knowit_black)[
+        $if(proposal-id)$#proposal_id$else$Knowit proposal$endif$
+      ],
+      text(size: 8pt, fill: knowit_black)[
+        Page #counter(page).display("1 / 1", both: true)
+      ],
+    )
+  }
+}
+
+#let proposal_cover = page(
+  paper: "a4",
+  margin: 0mm,
+  fill: knowit_white,
+  header: none,
+  footer: none,
+)[
+  #block(
+    width: 100%,
+    height: 100%,
+    inset: (top: 21mm, right: 22mm, bottom: 18mm, left: 22mm),
+  )[
+    #align(right)[
+      #image(logo_path, width: 31mm)
+    ]
+
+    #v(82mm)
+
+    #block(width: 150mm, breakable: false)[
+      #set par(leading: 0.08em)
+      #text(size: 32pt, weight: "regular", fill: knowit_black)[#proposal_title]
+      $if(subtitle)$
+      #v(6mm)
+      #text(size: 14pt, weight: "regular", fill: knowit_black)[#proposal_subtitle]
+      $endif$
+    ]
+
+    #v(10mm)
+    #line(length: 30mm, stroke: 1.2pt + knowit_blue)
+    #v(13mm)
+
+    #grid(
+      columns: (1fr, 1fr),
+      gutter: 12mm,
+      [
+        #text(size: 8pt, tracking: 0.06em, fill: knowit_blue)[PREPARED FOR]
+        #v(3mm)
+        $if(client)$#text(size: 14pt, weight: "regular")[#proposal_client]$endif$
+      ],
+      [
+        #text(size: 8pt, tracking: 0.06em, fill: knowit_blue)[PROPOSAL DETAILS]
+        #v(3mm)
+        $if(proposal-id)$#text(size: 10pt)[#proposal_id]#linebreak()$endif$
+        $if(date)$#text(size: 10pt)[#proposal_date]$endif$
+      ],
+    )
+
+    #v(1fr)
+    #line(length: 100%, stroke: 0.6pt + table_rule)
+    #v(4mm)
+    #grid(
+      columns: (1fr, auto),
+      align: (left, right),
+      text(size: 8.5pt, fill: knowit_black)[
+        $if(contact-name)$$contact-name$$endif$
+        $if(contact-email)$ | $contact-email$$endif$
+      ],
+      text(size: 8.5pt, fill: knowit_black)[knowit.no],
+    )
+  ]
+]
+
+#let knowit_proposal(body) = {
+  set document(title: proposal_title, author: "$author$")
+  set text(
+    font: "Arial",
+    size: 10pt,
+    weight: "regular",
+    style: "normal",
+    fill: knowit_black,
+    hyphenate: true,
+  )
+  set page(
+    paper: "a4",
+    fill: knowit_white,
+    margin: (top: 22mm, bottom: 20mm, x: 23mm),
+    header: running_header,
+    footer: running_footer,
+  )
+  set par(
+    leading: 0.5em,
+    spacing: 0.7em,
+    justify: false,
+  )
+  set heading(numbering: none)
+  set strong(delta: 0)
+  set raw(theme: none)
+  set table(
+    align: left,
+    inset: (x: 4pt, y: 3.5pt),
+    fill: (_, row) => if row == 0 {
+      knowit_purple
+    } else if calc.rem(row, 2) == 0 {
+      knowit_light_purple
+    },
+    stroke: 0.4pt + table_rule,
+  )
+  set table.cell(align: left)
+  set figure(gap: 5pt)
+  set list(
+    marker: depth => text(size: 0.67em, fill: knowit_blue)[•],
+    indent: 1.15em,
+    body-indent: 0.5em,
+    spacing: 0.28em,
+  )
+  set enum(indent: 1.15em, body-indent: 0.5em, spacing: 0.28em)
+  set quote(block: true)
+
+  show emph: it => text(style: "normal", it.body)
+  show raw: set text(font: "Arial", weight: "regular", style: "normal")
+  show heading.where(level: 1): it => block(
+    sticky: true,
+    above: 1.8em,
+    below: 0.7em,
+  )[
+    #set par(leading: 0.08em)
+    #text(size: 20pt, weight: "regular", fill: knowit_black)[#it.body]
+    #v(2.5pt)
+    #line(length: 22mm, stroke: 1.2pt + knowit_blue)
+  ]
+  show heading.where(level: 2): it => block(
+    sticky: true,
+    above: 1.45em,
+    below: 0.5em,
+  )[
+    #text(size: 15pt, weight: "regular", fill: knowit_black)[#it.body]
+  ]
+  show heading.where(level: 3): it => block(
+    sticky: true,
+    above: 1.15em,
+    below: 0.35em,
+  )[
+    #text(size: 10pt, weight: "regular", fill: knowit_blue)[#it.body]
+  ]
+  show heading.where(level: 4): it => block(
+    sticky: true,
+    above: 1em,
+    below: 0.3em,
+  )[
+    #text(size: 10pt, weight: "regular", fill: knowit_black)[#it.body]
+  ]
+  show heading.where(level: 5): it => block(
+    sticky: true,
+    above: 0.9em,
+    below: 0.3em,
+  )[
+    #text(size: 9pt, weight: "regular", fill: knowit_black)[#it.body]
+  ]
+  show heading.where(level: 6): it => block(
+    sticky: true,
+    above: 0.8em,
+    below: 0.25em,
+  )[
+    #text(size: 8pt, weight: "regular", fill: knowit_black)[#it.body]
+  ]
+  show table: it => block(
+    above: 0.8em,
+    below: 0.9em,
+  )[
+    #set text(size: 8.25pt, weight: "regular", style: "normal", hyphenate: true)
+    #set par(leading: 0.42em, spacing: 0.25em)
+    #it
+  ]
+  show table.header: it => {
+    set text(weight: "regular", style: "normal", fill: knowit_black)
+    set table.cell(fill: knowit_purple, inset: (x: 4pt, y: 4pt))
+    it
+  }
+  show link: it => text(fill: knowit_blue, it)
+  show quote: it => block(
+    fill: knowit_light_purple,
+    stroke: (left: 2pt + knowit_blue),
+    inset: (x: 10pt, y: 8pt),
+    above: 0.8em,
+    below: 0.8em,
+  )[#it.body]
+  show raw.where(block: true): it => block(
+    fill: knowit_light_purple,
+    inset: 8pt,
+    radius: 8pt,
+    above: 0.8em,
+    below: 0.8em,
+  )[#it]
+
+  proposal_cover
+  counter(page).update(1)
+  body
+}
+
+#show: knowit_proposal
+
+$body$

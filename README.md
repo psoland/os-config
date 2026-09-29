@@ -259,6 +259,28 @@ darwin-rebuild switch --flake .#pettersoland-mac
 
 ## Common Operations
 
+### Render Markdown with the Knowit proposal template
+
+The shared Home Manager profile installs `knowit-pdf`, including Pandoc, Typst,
+the proposal template, the approved black Knowit logo, and Arial. After applying
+the Home Manager configuration, use it from any directory:
+
+```bash
+knowit-pdf path/to/proposal.md                    # PDF beside the Markdown file
+knowit-pdf path/to/proposal.md path/to/output.pdf # choose an output path
+```
+
+The command reads `title`, `subtitle`, `author`, `client`, `date`, `proposal-id`,
+`contact-name`, and `contact-email` from YAML front matter. Without a `logo`
+field it uses the bundled logo; the original proposals' default `logo` path is
+also recognized. A different `logo` path should be absolute or relative to the
+Markdown file. Markdown images are resolved relative to the Markdown file,
+then the invocation directory, then the bundled assets.
+
+For one-off use without activating Home Manager, run
+`nix run path:$HOME/.dotfiles#knowit-pdf -- path/to/proposal.md`.
+The packaged template and logo are in `packages/knowit-pdf/`.
+
 ### Manage Tailscale Serve routes
 
 The personal Spark and Oracle profiles manage Tailscale Serve routes. The work

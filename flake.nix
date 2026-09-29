@@ -254,6 +254,11 @@
         };
       };
 
+      # Reusable command-line tools
+      packages = forAllSystems (system: {
+        knowit-pdf = nixpkgsFor.${system}.callPackage ./packages/knowit-pdf.nix { };
+      });
+
       # Development shells for this repository
       devShells = forAllSystems (
         system:

@@ -50,6 +50,9 @@ in
       bind '"' split-window -v -c "#{pane_current_path}"
       bind %   split-window -h -c "#{pane_current_path}"
 
+      # Start a new session at the filesystem root
+      bind N new-session -c /
+
       # Vim navigation
       bind-key h select-pane -L
       bind-key j select-pane -D

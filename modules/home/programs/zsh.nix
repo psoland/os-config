@@ -84,6 +84,9 @@
       source ${./zsh_devenv.sh}
       source ${./zsh_wt.sh}
 
+      # Resolve project names such as knowit and mujo with `cd <name>`.
+      cdpath=("$HOME/workspace/github")
+
       # In zsh, IGNOREEOF env var is ignored; use shell option instead
       setopt IGNORE_EOF
 

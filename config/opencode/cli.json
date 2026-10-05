@@ -17,6 +17,7 @@
     "scrollbar": true,
     "thinking": "show"
   },
+  "plugins": ["./plugins/worktree-session-picker"],
   "animations": true,
   "tabs": {
     "mode": "off"

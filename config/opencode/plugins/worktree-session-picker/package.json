@@ -1,0 +1,7 @@
+{
+  "name": "worktree-session-picker",
+  "type": "module",
+  "exports": {
+    "./tui": "./tui.js"
+  }
+}

@@ -4,16 +4,19 @@ import test from "node:test"
 
 const root = new URL("../../config/opencode/", import.meta.url)
 const cli = JSON.parse(await readFile(new URL("cli.json", root), "utf8"))
+const pickerPackage = JSON.parse(await readFile(new URL("plugins/worktree-session-picker/package.json", root), "utf8"))
 // This repository's server config uses full-line comments, not inline comments.
 const server = JSON.parse((await readFile(new URL("opencode.json", root), "utf8")).replace(/^\s*\/\/.*$/gm, ""))
 
-test("V2 preferences use native built-in key IDs and do not migrate the V1 plugin", () => {
+test("V2 preferences use native key IDs and load the worktree picker as a CLI plugin", async () => {
   assert.deepEqual(cli.keybinds, {
     leader: "ctrl+x",
     "app.exit": "ctrl+q",
     "input.newline": "shift+return,ctrl+return,alt+return",
   })
-  assert.equal(cli.plugins, undefined)
+  assert.deepEqual(cli.plugins, ["./plugins/worktree-session-picker"])
+  assert.equal(pickerPackage.exports["./tui"], "./tui.js")
+  assert.match(await readFile(new URL("plugins/worktree-session-picker/tui.js", root), "utf8"), /@opencode\/plugin\/tui/)
   assert.equal(cli.theme.name, "catppuccin")
   assert.equal(cli.diffs.wrap, "word")
   assert.deepEqual(cli.session, { sidebar: "hide", scrollbar: true, thinking: "show" })

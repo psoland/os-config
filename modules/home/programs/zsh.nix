@@ -80,13 +80,13 @@
 
     # Injecting extra configs
     initContent = ''
-      source ${./zsh_functions.sh}
-      source ${./zsh_devenv.sh}
-      source ${./zsh_wt.sh}
-
       if [[ -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]]; then
         alias tailscale='TAILSCALE_BE_CLI=1 /Applications/Tailscale.app/Contents/MacOS/Tailscale'
       fi
+
+      source ${./zsh_functions.sh}
+      source ${./zsh_devenv.sh}
+      source ${./zsh_wt.sh}
 
       # Resolve project names such as knowit and mujo with `cd <name>`.
       cdpath=("$HOME/workspace/github")

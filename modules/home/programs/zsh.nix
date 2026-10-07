@@ -80,7 +80,9 @@
 
     # Injecting extra configs
     initContent = ''
-      if [[ -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]]; then
+      if [[ -x /usr/local/bin/tailscale ]]; then
+        alias tailscale='/usr/local/bin/tailscale'
+      elif [[ -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]]; then
         alias tailscale='TAILSCALE_BE_CLI=1 /Applications/Tailscale.app/Contents/MacOS/Tailscale'
       fi
 

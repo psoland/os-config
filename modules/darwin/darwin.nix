@@ -27,6 +27,7 @@
       "codex-app"
       "claude"
       "raspberry-pi-imager"
+      "tailscale-app"
       #"visual-studio-code"
     ];
     masApps = {
@@ -36,7 +37,6 @@
       "Microsoft Excel" = 462058435;
       "Microsoft Word" = 462054704;
       "Microsoft PowerPoint" = 462062816;
-      "Tailscale" = 1475387142;
       "Magnet" = 441258766;
       "reMarkable desktop" = 1276493162;
     };

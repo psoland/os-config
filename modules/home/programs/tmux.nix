@@ -1,6 +1,16 @@
 { pkgs, ... }:
 
 let
+  agentHelper = pkgs.writeShellApplication {
+    name = "tmux-agent";
+    runtimeInputs = [
+      pkgs.python3
+      pkgs.tmux
+    ];
+    text = ''
+      exec python3 ${../../../config/tmux/agent.py} "$@"
+    '';
+  };
   tmux-floax = pkgs.tmuxPlugins.mkTmuxPlugin {
     pluginName = "floax";
     version = "unstable-2024-01-01";
@@ -13,6 +23,8 @@ let
   };
 in
 {
+  home.packages = [ agentHelper ];
+
   programs.tmux = {
     enable = true;
 
@@ -69,8 +81,22 @@ in
       bind-key -r [ swap-window -t -1 \; select-window -t -1
       bind-key -r ] swap-window -t +1 \; select-window -t +1
 
-      # Group sessions by project name in the session overview
-      bind-key s choose-tree -Zs -O name
+      # Agent state: unread input > unread completion > running. Keep a blank
+      # indicator cell for quiet sessions, and pad names when opening the tree.
+      set -ogq @agent_running_color '#f9e2af'
+      set -ogq @agent_finished_color '#a6e3a1'
+      set -ogq @agent_input_color '#89b4fa'
+      set -g @agent_indicator '#{?#{==:#{@agent_status},needs-input},#[fg=#{@agent_input_color}]●#[default] ,#{?#{==:#{@agent_status},finished},#[fg=#{@agent_finished_color}]●#[default] ,#{?#{==:#{@agent_status},running},#[fg=#{@agent_running_color}]●#[default] ,  }}}'
+
+      # Indexed hooks coexist with other integrations. client-session-changed
+      # also runs on attach, without replacing ts's session-local resize hook.
+      set-hook -g client-session-changed[90] 'run-shell -b "${agentHelper}/bin/tmux-agent --socket #{q:socket_path} acknowledge #{q:session_id}"'
+      set-hook -g pane-exited[90] 'run-shell -b "${agentHelper}/bin/tmux-agent --socket #{q:socket_path} refresh"'
+      set-hook -g window-linked[90] 'run-shell -b "${agentHelper}/bin/tmux-agent --socket #{q:socket_path} refresh"'
+      set-hook -g window-unlinked[90] 'run-shell -b "${agentHelper}/bin/tmux-agent --socket #{q:socket_path} refresh"'
+
+      # Group sessions by project name in the native session overview.
+      bind-key s run-shell -b '${agentHelper}/bin/tmux-agent --socket #{q:socket_path} picker #{pane_id}'
 
       # Vim-like copy mode
       bind-key v copy-mode

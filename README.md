@@ -10,6 +10,9 @@ Declarative machine setup with:
 - Users configured by bootstrap: `psoland` (personal), `pettersoland` (work)
 - Home Manager targets in this repo: `psoland-vm`, `psoland-vm-arm`, `spark`, `psoland-work-spark`, `psoland-mac`, and `pettersoland-mac`
 
+Tmux's session picker also supports unobtrusive, aligned
+[agent-state indicators](config/tmux/README.md), initially integrated with OpenCode V2.
+
 ## Repository Layout
 
 ```

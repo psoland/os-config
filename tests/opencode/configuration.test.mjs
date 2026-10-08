@@ -12,15 +12,25 @@ test("V2 preferences use native key IDs and load the worktree picker as a CLI pl
   assert.deepEqual(cli.keybinds, {
     leader: "ctrl+x",
     "app.exit": "ctrl+q",
+    "session.list": "none",
     "input.newline": "shift+return,ctrl+return,alt+return",
   })
-  assert.deepEqual(cli.plugins, ["./plugins/worktree-session-picker"])
+  assert.deepEqual(cli.plugins, ["./plugins/worktree-session-picker", "./plugins/tmux-agent"])
   assert.equal(pickerPackage.exports["./tui"], "./tui.js")
   assert.match(await readFile(new URL("plugins/worktree-session-picker/tui.js", root), "utf8"), /@opencode\/plugin\/tui/)
   assert.equal(cli.theme.name, "catppuccin")
   assert.equal(cli.diffs.wrap, "word")
   assert.deepEqual(cli.session, { sidebar: "hide", scrollbar: true, thinking: "show" })
   assert.equal(cli.animations, true)
+})
+
+test("tmux attention is a CLI-only plugin with a portable runtime entrypoint", async () => {
+  const manifest = JSON.parse(await readFile(new URL("plugins/tmux-agent/package.json", root), "utf8"))
+  assert.equal(manifest.exports["./tui"], "./tui.js")
+  assert.equal(manifest.exports["."], undefined)
+  const entry = await readFile(new URL("plugins/tmux-agent/tui.js", root), "utf8")
+  assert.match(entry, /@opencode\/plugin\/tui/)
+  assert.match(entry, /createEffect/)
 })
 
 test("shared config grants custom agents full access without overriding built-in permissions", () => {

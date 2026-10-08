@@ -7,6 +7,7 @@
   "keybinds": {
     "leader": "ctrl+x",
     "app.exit": "ctrl+q",
+    "session.list": "none",
     "input.newline": "shift+return,ctrl+return,alt+return"
   },
   "diffs": {
@@ -17,7 +18,7 @@
     "scrollbar": true,
     "thinking": "show"
   },
-  "plugins": ["./plugins/worktree-session-picker"],
+  "plugins": ["./plugins/worktree-session-picker", "./plugins/tmux-agent"],
   "animations": true,
   "tabs": {
     "mode": "off"

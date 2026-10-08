@@ -109,7 +109,7 @@ export function setup(context) {
           id: command,
           title: "Switch session (current worktree)",
           group: "Session",
-          bind: "<leader>w",
+          bind: "<leader>l",
           palette: true,
           slash: { name: "worktree-sessions" },
           run: show,

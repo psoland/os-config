@@ -97,11 +97,11 @@ test("groups by local calendar day and supplies a title for untitled sessions", 
   ])
 })
 
-test("registers palette, slash command and a dedicated binding without reusing display shortcuts", () => {
+test("registers palette, slash command and the session-list binding without reusing display shortcuts", () => {
   const h = harness()
   const { command, cleanup } = h.start()
   assert.equal(command.id, "session.list.worktree")
-  assert.equal(command.bind, "<leader>w")
+  assert.equal(command.bind, "<leader>l")
   assert.equal(command.palette, true)
   assert.equal(command.slash.name, "worktree-sessions")
   assert.equal(typeof cleanup, "function")

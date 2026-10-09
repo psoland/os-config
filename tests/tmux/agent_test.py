@@ -195,11 +195,11 @@ class TrackerTests(unittest.TestCase):
             )
 
         self.assertIn("agents: 0", bar())
-        self.assertIn("bg=#6c7086]●", bar())
+        self.assertIn("bg=#a6e3a1]●", bar())
         self.state("running", "one")
         self.state("running", "two")
         self.assertIn("agents: 2", bar())
-        self.assertIn("bg=#f9e2af]●", bar())
+        self.assertIn("bg=#a6e3a1]●", bar())
         self.assertIn("agents: 0", bar(self.b))
         self.state("finished", "two")
         self.assertIn("agents: 1", bar())
@@ -208,7 +208,7 @@ class TrackerTests(unittest.TestCase):
         self.assertIn("bg=#89b4fa]●", bar())
         self.helper("acknowledge", self.a)
         self.assertIn("agents: 1", bar())
-        self.assertIn("bg=#f9e2af]●", bar())
+        self.assertIn("bg=#a6e3a1]●", bar())
 
     def test_acknowledgement_is_scoped_and_new_events_reappear(self):
         self.state("finished", "one")

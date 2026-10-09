@@ -55,6 +55,29 @@ function drop() {
   tailscale file cp "$1" "$2:"
 }
 
+# Copy a file or directory from a remote machine with rsync over SSH.
+# If the remote username is omitted, use the current local username.
+function rcopy() {
+  if [[ $# -lt 1 || $# -gt 2 || "$1" != *:* ]]; then
+    echo "Usage: rcopy [user@]machine:/path/to/source [destination]" >&2
+    return 2
+  fi
+
+  if ! command -v rsync >/dev/null 2>&1; then
+    echo "rcopy requires rsync to be installed." >&2
+    return 1
+  fi
+
+  local source="$1"
+  local destination="${2:-.}"
+
+  if [[ "$source" != *@*:* ]]; then
+    source="${USER}@${source}"
+  fi
+
+  rsync -av -- "$source" "$destination"
+}
+
 # Open a complete file in Hunk so unchanged lines can receive review notes.
 function hda() {
   if [[ $# -ne 1 || ! -f "$1" ]]; then

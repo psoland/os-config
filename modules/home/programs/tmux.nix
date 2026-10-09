@@ -78,6 +78,9 @@ in
 
       bind -r C-p previous-window
       bind -r C-n next-window
+      # Switch windows without the prefix; requires distinct extended key codes.
+      bind-key -n C-S-h previous-window
+      bind-key -n C-S-l next-window
       bind-key -r [ swap-window -t -1 \; select-window -t -1
       bind-key -r ] swap-window -t +1 \; select-window -t +1
 
@@ -89,7 +92,7 @@ in
       set -g @agent_indicator '#{?#{==:#{@agent_status},needs-input},#[fg=#{@agent_input_color}]●#[default] ,#{?#{==:#{@agent_status},finished},#[fg=#{@agent_finished_color}]●#[default] ,#{?#{==:#{@agent_status},running},#[fg=#{@agent_running_color}]●#[default] ,  }}}'
 
       # Indexed hooks coexist with other integrations. client-session-changed
-      # also runs on attach, without replacing ts's session-local resize hook.
+      # also runs on attach.
       set-hook -g client-session-changed[90] 'run-shell -b "${agentHelper}/bin/tmux-agent --socket #{q:socket_path} acknowledge #{q:session_id}"'
       set-hook -g pane-exited[90] 'run-shell -b "${agentHelper}/bin/tmux-agent --socket #{q:socket_path} refresh"'
       set-hook -g window-linked[90] 'run-shell -b "${agentHelper}/bin/tmux-agent --socket #{q:socket_path} refresh"'

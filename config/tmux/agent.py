@@ -13,6 +13,7 @@ from pathlib import Path
 
 RECORDS = "@agent_records"
 STATUS = "@agent_status"
+RUNNING_COUNT = "@agent_running_count"
 ACK = "@agent_ack"
 STATES = ("running", "finished", "needs-input", "idle")
 SESSION_FORMAT = (
@@ -116,9 +117,14 @@ class Tracker:
             sessions[session].extend(live.values())
         commands = []
         for session, records in sessions.items():
-            if commands:
-                commands.append(";")
-            commands.extend(["set-option", "-t", session, STATUS, aggregate(records)])
+            options = {
+                STATUS: aggregate(records),
+                RUNNING_COUNT: str(sum(record["state"] == "running" for record in records)),
+            }
+            for option, value in options.items():
+                if commands:
+                    commands.append(";")
+                commands.extend(["set-option", "-t", session, option, value])
         if commands:
             self.tmux(*commands)
 

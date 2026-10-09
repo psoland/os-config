@@ -97,6 +97,8 @@ in
       set-hook -g pane-exited[90] 'run-shell -b "${agentHelper}/bin/tmux-agent --socket #{q:socket_path} refresh"'
       set-hook -g window-linked[90] 'run-shell -b "${agentHelper}/bin/tmux-agent --socket #{q:socket_path} refresh"'
       set-hook -g window-unlinked[90] 'run-shell -b "${agentHelper}/bin/tmux-agent --socket #{q:socket_path} refresh"'
+      # Populate counts for existing agents when loading/reloading the config.
+      run-shell -b '${agentHelper}/bin/tmux-agent --socket #{q:socket_path} refresh'
 
       # Group sessions by project name in the native session overview.
       bind-key s run-shell -b '${agentHelper}/bin/tmux-agent --socket #{q:socket_path} picker #{pane_id}'
@@ -159,8 +161,14 @@ in
 
           set -g @catppuccin_directory_text '#(echo "#{pane_current_path}" | sed -E "s|.*/([^/]+/[^/]+)$|\1|")'
 
+          # Session-local running count, with the same attention colours as the
+          # session picker. Quiet sessions show a muted dot and zero.
+          set -g @agent_bar_color '#{?#{==:#{@agent_status},needs-input},#{@agent_input_color},#{?#{==:#{@agent_status},finished},#{@agent_finished_color},#{?#{==:#{@agent_status},running},#{@agent_running_color},#{@thm_overlay_0}}}}'
+          set -g @catppuccin_status_agents '#[fg=#{E:@agent_bar_color}]#{E:@catppuccin_status_left_separator}#[fg=#{@thm_crust},bg=#{E:@agent_bar_color}]● #[fg=#{@thm_fg},bg=#{E:@catppuccin_status_module_text_bg}] agents: #{?@agent_running_count,#{@agent_running_count},0}#[fg=#{E:@catppuccin_status_module_text_bg}]#{E:@catppuccin_status_right_separator}#[default]'
+
           set -g status-right "#{E:@catppuccin_status_directory}"
           set -agF status-right "#{E:@catppuccin_status_cpu}"
+          set -ag status-right "#{E:@catppuccin_status_agents}"
           set -ag status-right "#{E:@catppuccin_status_session}"
           set -ag status-right "#{E:@catppuccin_status_host}"
         '';

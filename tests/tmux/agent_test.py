@@ -86,12 +86,17 @@ class TrackerTests(unittest.TestCase):
     def status(self, session=None):
         return self.tmux("show-options", "-qv", "-t", session or self.a, agent.STATUS)
 
+    def running_count(self, session=None):
+        return self.tmux(
+            "show-options", "-qv", "-t", session or self.a, agent.RUNNING_COUNT
+        )
+
     def records(self, pane=None):
         return json.loads(
             self.tmux("show-options", "-pv", "-t", pane or self.pane, agent.RECORDS)
         )
 
-    def configure(self):
+    def configure(self, status_bar=False):
         # Parse the actual module's extraConfig, substituting only its Nix helper
         # path. This tests real bindings/hooks/styles, not a test-only equivalent.
         executable = self.path / "bin/tmux-agent"
@@ -103,6 +108,12 @@ class TrackerTests(unittest.TestCase):
         module = (ROOT / "modules/home/programs/tmux.nix").read_text()
         config = module.split("extraConfig = ''", 1)[1].split("'';", 1)[0]
         config = config.replace("${agentHelper}", str(self.path))
+        if status_bar:
+            config += (
+                module.split("plugin = cpu;", 1)[1]
+                .split("extraConfig = ''", 1)[1]
+                .split("'';", 1)[0]
+            )
         target = self.path / "tmux.conf"
         target.write_text(config)
         self.tmux("source-file", str(target))
@@ -150,6 +161,55 @@ class TrackerTests(unittest.TestCase):
         self.assertEqual(self.records()["second"]["state"], "finished")
         self.assertFalse(self.records()["second"]["unread"])
 
+    def test_running_count_is_session_local_and_survives_acknowledgement(self):
+        split = self.tmux(
+            "split-window", "-d", "-t", self.pane, "-P", "-F", "#{pane_id}", "sleep 300"
+        )
+        self.state("running", "one")
+        self.state("running", "two", split)
+        self.state("running", "other", self.other)
+        self.assertEqual(self.running_count(), "2")
+        self.assertEqual(self.running_count(self.b), "1")
+        self.state("needs-input", "two", split)
+        self.helper("acknowledge", self.a)
+        self.assertEqual(self.running_count(), "1")
+        self.state("finished", "one")
+        self.assertEqual(self.running_count(), "0")
+        self.assertEqual(self.running_count(self.b), "1")
+
+    def test_status_bar_count_and_colours_follow_session_state(self):
+        self.configure(status_bar=True)
+        for option, value in {
+            "@thm_overlay_0": "#6c7086",
+            "@thm_crust": "#11111b",
+            "@thm_fg": "#cdd6f4",
+            "@catppuccin_status_module_text_bg": "#313244",
+            "@catppuccin_status_left_separator": "\ue0b6",
+            "@catppuccin_status_right_separator": " ",
+        }.items():
+            self.tmux("set-option", "-g", option, value)
+
+        def bar(session=None):
+            return self.tmux(
+                "display-message", "-p", "-t", session or self.a, "#{E:status-right}"
+            )
+
+        self.assertIn("agents: 0", bar())
+        self.assertIn("bg=#6c7086]●", bar())
+        self.state("running", "one")
+        self.state("running", "two")
+        self.assertIn("agents: 2", bar())
+        self.assertIn("bg=#f9e2af]●", bar())
+        self.assertIn("agents: 0", bar(self.b))
+        self.state("finished", "two")
+        self.assertIn("agents: 1", bar())
+        self.assertIn("bg=#a6e3a1]●", bar())
+        self.state("needs-input", "three")
+        self.assertIn("bg=#89b4fa]●", bar())
+        self.helper("acknowledge", self.a)
+        self.assertIn("agents: 1", bar())
+        self.assertIn("bg=#f9e2af]●", bar())
+
     def test_acknowledgement_is_scoped_and_new_events_reappear(self):
         self.state("finished", "one")
         self.state("needs-input", "two", self.other)
@@ -195,6 +255,7 @@ class TrackerTests(unittest.TestCase):
         self.helper("refresh")
         self.assertEqual(self.records(), {})
         self.assertEqual(self.status(), "")
+        self.assertEqual(self.running_count(), "0")
         split = self.tmux(
             "split-window", "-d", "-t", self.pane, "-P", "-F", "#{pane_id}", "sleep 300"
         )

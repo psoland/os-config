@@ -150,6 +150,8 @@ in
           set -g @catppuccin_window_text "#W"
           set -g @catppuccin_window_current_text "#W"
           set -g @catppuccin_session_color '#{?client_prefix,#{E:@thm_red},#{E:@thm_lavender}}'
+          # Catppuccin caches this separately; override it on config reload too.
+          set -g @catppuccin_status_session_icon_bg '#{E:@catppuccin_session_color}'
         '';
       }
       {

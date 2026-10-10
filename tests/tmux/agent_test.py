@@ -233,6 +233,33 @@ class TrackerTests(unittest.TestCase):
         self.assertIn("agents: 1", bar())
         self.assertIn("bg=#a6e3a1]●", bar())
 
+    def test_rendered_session_colour_replaces_catppuccin_cached_green(self):
+        installed = Path.home() / ".config/tmux/tmux.conf"
+        match = re.search(
+            r"run-shell (\S+/catppuccin)/catppuccin\.tmux",
+            installed.read_text() if installed.exists() else "",
+        )
+        if not match or not Path(match[1]).is_dir():
+            self.skipTest("an installed Catppuccin plugin is required")
+        plugin = Path(match[1])
+
+        def load_theme():
+            for name in ("catppuccin_options_tmux.conf", "catppuccin_tmux.conf"):
+                self.tmux("source-file", str(plugin / name))
+
+        def segment():
+            return self.tmux(
+                "display-message", "-p", "-t", self.a, "#{E:@catppuccin_status_session}"
+            )
+
+        load_theme()
+        self.assertIn("bg=#a6e3a1]", segment())
+        for _ in range(2):
+            self.configure(status_bar=True)
+            load_theme()
+            self.assertIn("bg=#b4befe]", segment())
+            self.assertNotIn("bg=#a6e3a1]", segment())
+
     def test_acknowledgement_is_scoped_and_new_events_reappear(self):
         self.state("finished", "one")
         self.state("needs-input", "two", self.other)

@@ -59,31 +59,31 @@
       "disable": true
     },
     "astra": {
-      "description": "Development agent using GPT-5.6 Astra with medium reasoning.",
+      "description": "Most capable agent for orchestration, ambiguous goals, architecture, and difficult reasoning. Use to decompose work and resolve conflicting evidence; delegate routine execution.",
       "mode": "all",
       "model": "openai/gpt-6-astra",
       "variant": "medium",
       "permission": "allow"
     },
     "luna": {
-      "description": "Development agent and subagent using GPT-6 Luna with max reasoning.",
-      "mode": "all",
+      "description": "Primary development agent with max reasoning. For delegated execution, use luna-worker instead.",
+      "mode": "primary",
       "model": "openai/gpt-6-luna",
       "variant": "max",
       "permission": "allow"
     },
+    "luna-worker": {
+      "description": "Low-cost worker for precise, easily verified tasks: mechanical edits, bounded lookups, extraction, specified checks, and authorized commits. Report unexpected complexity for escalation to Sol.",
+      "mode": "subagent",
+      "model": "openai/gpt-6-luna",
+      "variant": "low",
+      "permission": "allow"
+    },
     "sol": {
-      "description": "Development agent using GPT-6 Sol with medium reasoning.",
+      "description": "Research, debugging, and development requiring discovery, evidence synthesis, or implementation decisions. Use when the goal is clear but the approach or solution is not.",
       "mode": "all",
       "model": "openai/gpt-6.1-sol",
       "variant": "medium",
-      "permission": "allow"
-    },
-    "terra": {
-      "description": "Development agent and subagent using GPT-5.6 Terra with high reasoning.",
-      "mode": "all",
-      "model": "openai/gpt-5.6-terra",
-      "variant": "high",
       "permission": "allow"
     }
   },

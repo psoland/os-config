@@ -149,6 +149,7 @@ in
           set -g @catppuccin_window_default_text "#W"
           set -g @catppuccin_window_text "#W"
           set -g @catppuccin_window_current_text "#W"
+          set -g @catppuccin_session_color '#{?client_prefix,#{E:@thm_red},#{E:@thm_lavender}}'
         '';
       }
       {
@@ -166,9 +167,9 @@ in
           set -g @agent_bar_color '#{?#{==:#{@agent_status},needs-input},#{@agent_input_color},#{@agent_finished_color}}'
           set -g @catppuccin_status_agents '#[fg=#{E:@agent_bar_color}]#{E:@catppuccin_status_left_separator}#[fg=#{@thm_crust},bg=#{E:@agent_bar_color}]● #[fg=#{@thm_fg},bg=#{E:@catppuccin_status_module_text_bg}] agents: #{?@agent_running_count,#{@agent_running_count},0}#[fg=#{E:@catppuccin_status_module_text_bg}]#{E:@catppuccin_status_right_separator}#[default]'
 
-          set -g status-right "#{E:@catppuccin_status_directory}"
+          set -g status-right "#{E:@catppuccin_status_agents}"
           set -agF status-right "#{E:@catppuccin_status_cpu}"
-          set -ag status-right "#{E:@catppuccin_status_agents}"
+          set -ag status-right "#{E:@catppuccin_status_directory}"
           set -ag status-right "#{E:@catppuccin_status_session}"
           set -ag status-right "#{E:@catppuccin_status_host}"
         '';

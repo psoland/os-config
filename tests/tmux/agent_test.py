@@ -109,11 +109,12 @@ class TrackerTests(unittest.TestCase):
         config = module.split("extraConfig = ''", 1)[1].split("'';", 1)[0]
         config = config.replace("${agentHelper}", str(self.path))
         if status_bar:
-            config += (
-                module.split("plugin = cpu;", 1)[1]
-                .split("extraConfig = ''", 1)[1]
-                .split("'';", 1)[0]
-            )
+            for plugin in ("catppuccin", "cpu"):
+                config += (
+                    module.split(f"plugin = {plugin};", 1)[1]
+                    .split("extraConfig = ''", 1)[1]
+                    .split("'';", 1)[0]
+                )
         target = self.path / "tmux.conf"
         target.write_text(config)
         self.tmux("source-file", str(target))
@@ -176,6 +177,28 @@ class TrackerTests(unittest.TestCase):
         self.state("finished", "one")
         self.assertEqual(self.running_count(), "0")
         self.assertEqual(self.running_count(self.b), "1")
+
+    def test_status_bar_order_and_session_colour(self):
+        for option, value in {
+            "@catppuccin_status_cpu": "cpu",
+            "@catppuccin_status_directory": "folder",
+            "@catppuccin_status_session": "session",
+            "@catppuccin_status_host": "host",
+            "@thm_lavender": "#b4befe",
+        }.items():
+            self.tmux("set-option", "-g", option, value)
+        self.configure(status_bar=True)
+        bar = self.tmux("display-message", "-p", "-t", self.a, "#{E:status-right}")
+        positions = [
+            bar.index(label) for label in ("agents:", "cpu", "folder", "session", "host")
+        ]
+        self.assertEqual(positions, sorted(positions))
+        self.assertEqual(
+            self.tmux(
+                "display-message", "-p", "-t", self.a, "#{E:@catppuccin_session_color}"
+            ),
+            "#b4befe",
+        )
 
     def test_status_bar_count_and_colours_follow_session_state(self):
         self.configure(status_bar=True)

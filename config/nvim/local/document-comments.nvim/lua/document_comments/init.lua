@@ -4,13 +4,47 @@ local group
 local prompting_reload = {}
 
 local function notify_error(message)
-  vim.notify(message, vim.log.levels.ERROR, { title = "Document comments" })
+  vim.schedule(function()
+    vim.notify(message, vim.log.levels.ERROR, { title = "Document comments" })
+  end)
 end
 
 local function map_buffer(bufnr)
   local commands = require("document_comments.commands")
   local mappings = {
     { "x", "<leader>aa", commands.add, "Add document comment" },
+    {
+      "x",
+      "<leader>ad",
+      function()
+        commands.add(false, "delete")
+      end,
+      "Add delete annotation",
+    },
+    {
+      "x",
+      "<leader>ag",
+      function()
+        commands.add(false, "looks_good")
+      end,
+      "Add looks-good annotation",
+    },
+    {
+      "n",
+      "<leader>as",
+      function()
+        require("document_comments.ui.sidebar").toggle()
+      end,
+      "Document comment sidebar",
+    },
+    {
+      "n",
+      "<leader>ab",
+      function()
+        vim.cmd.DocumentCommentsBatches()
+      end,
+      "Document comment export batches",
+    },
     {
       "n",
       "<leader>al",
@@ -37,9 +71,17 @@ local function map_buffer(bufnr)
       "n",
       "<leader>ax",
       function()
-        commands.export("project")
+        commands.export("new project")
       end,
-      "Export document comments",
+      "Export new/edited document comments",
+    },
+    {
+      "n",
+      "<leader>aX",
+      function()
+        commands.export("all project")
+      end,
+      "Export all open document comments",
     },
     { "n", "<leader>ad", commands.delete, "Delete document comment" },
   }
@@ -138,6 +180,11 @@ function M.setup(opts)
       local bufnr = vim.api.nvim_get_current_buf()
       if vim.bo[bufnr].filetype == "markdown" then
         check_external_change(bufnr)
+      else
+        local sidebar = package.loaded["document_comments.ui.sidebar"]
+        if sidebar then
+          sidebar.check_external_change()
+        end
       end
     end,
   })

@@ -5,10 +5,13 @@ local defaults = {
   storage_dir = ".document-comments",
   root = nil,
   highlight_priority = 180,
+  sidebar = { width = 48 },
   signs = {
     enabled = true,
     show_resolved = true,
     open = "●",
+    delete = "−",
+    looks_good = "✓",
     problem = "!",
     resolved = "○",
     priority = 190,
@@ -19,6 +22,8 @@ local defaults = {
   },
   highlights = {
     open = { link = "Visual" },
+    delete = { link = "DiffDelete" },
+    looks_good = { link = "DiffAdd" },
     resolved = { link = "Comment" },
     sign_open = { link = "DiagnosticInfo" },
     sign_problem = { link = "DiagnosticWarn" },
@@ -38,6 +43,7 @@ function M.setup(opts)
     signs = { opts.signs, "table", true },
     statusline = { opts.statusline, "table", true },
     highlights = { opts.highlights, "table", true },
+    sidebar = { opts.sidebar, "table", true },
   })
   M.options = vim.tbl_deep_extend("force", vim.deepcopy(defaults), opts)
   if M.options.context_chars < 0 or M.options.context_chars > 128 or M.options.context_chars % 1 ~= 0 then
@@ -46,10 +52,15 @@ function M.setup(opts)
   if M.options.storage_dir == "" or M.options.storage_dir:find("[/\\]") then
     error("document-comments: storage_dir must be a directory name")
   end
+  if type(M.options.sidebar.width) ~= "number" or M.options.sidebar.width < 20 or M.options.sidebar.width % 1 ~= 0 then
+    error("document-comments: sidebar.width must be an integer of at least 20")
+  end
   vim.validate({
     signs_enabled = { M.options.signs.enabled, "boolean" },
     signs_show_resolved = { M.options.signs.show_resolved, "boolean" },
     signs_open = { M.options.signs.open, "string" },
+    signs_delete = { M.options.signs.delete, "string" },
+    signs_looks_good = { M.options.signs.looks_good, "string" },
     signs_problem = { M.options.signs.problem, "string" },
     signs_resolved = { M.options.signs.resolved, "string" },
     signs_priority = { M.options.signs.priority, "number" },

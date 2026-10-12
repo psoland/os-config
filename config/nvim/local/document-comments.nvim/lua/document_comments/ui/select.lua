@@ -1,4 +1,5 @@
 local presentation = require("document_comments.presentation")
+local model = require("document_comments.model")
 
 local M = {}
 
@@ -18,13 +19,15 @@ local function marker(comment)
 end
 
 local function qualifier(comment)
+  local kind = model.kind(comment)
+  local label = kind == "comment" and "" or "[" .. model.kind_labels[kind] .. "] "
   if comment.anchor.state ~= "attached" then
-    return "[" .. comment.anchor.state .. "] "
+    return label .. "[" .. comment.anchor.state .. "] "
   end
   if presentation.needs_review(comment) then
-    return "[changed] "
+    return label .. "[changed] "
   end
-  return ""
+  return label
 end
 
 function M.format_file(comment)

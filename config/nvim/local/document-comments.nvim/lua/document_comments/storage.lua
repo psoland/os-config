@@ -197,7 +197,7 @@ function M.load(ctx, opts)
       cache[ctx.store_path] = { error = message, write_blocked = true, raw_hash = hash }
       return nil, message
     end
-    store = decoded
+    store = model.migrate(decoded)
     cleanup_temporary_files(ctx.store_path)
   end
   local entry = { store = store, raw_hash = hash, write_blocked = false }
@@ -243,6 +243,10 @@ function M.mutate(ctx, mutation)
   entry.store = next_store
   entry.raw_hash = model.hash(raw)
   entry.error = nil
+  local sidebar = package.loaded["document_comments.ui.sidebar"]
+  if sidebar then
+    sidebar.refresh(ctx)
+  end
   return next_store, entry
 end
 

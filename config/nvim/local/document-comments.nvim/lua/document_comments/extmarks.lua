@@ -12,7 +12,10 @@ M.sign_namespace = vim.api.nvim_create_namespace("document-comments-signs")
 local buffers = {}
 
 local function notify_error(message)
-  vim.notify(message, vim.log.levels.ERROR, { title = "Document comments" })
+  -- Reporting a corrupt store during BufEnter must not abort a window switch.
+  vim.schedule(function()
+    vim.notify(message, vim.log.levels.ERROR, { title = "Document comments" })
+  end)
 end
 
 local function normalize_bufnr(bufnr)
@@ -46,6 +49,8 @@ end
 
 function M.setup_highlights()
   vim.api.nvim_set_hl(0, "DocumentCommentOpen", config.options.highlights.open)
+  vim.api.nvim_set_hl(0, "DocumentCommentDelete", config.options.highlights.delete)
+  vim.api.nvim_set_hl(0, "DocumentCommentLooksGood", config.options.highlights.looks_good)
   vim.api.nvim_set_hl(0, "DocumentCommentResolved", config.options.highlights.resolved)
   vim.api.nvim_set_hl(0, "DocumentCommentSignOpen", config.options.highlights.sign_open)
   vim.api.nvim_set_hl(0, "DocumentCommentSignProblem", config.options.highlights.sign_problem)
@@ -57,12 +62,18 @@ function M.apply(bufnr, ctx, comments)
   if not vim.api.nvim_buf_is_valid(bufnr) then
     return
   end
-  vim.api.nvim_buf_clear_namespace(bufnr, M.namespace, 0, -1)
   vim.api.nvim_buf_clear_namespace(bufnr, M.sign_namespace, 0, -1)
   local state = buffers[bufnr] or { attached = false, marks = {} }
+  local previous_marks = state.marks
+  local ids_by_comment = {}
+  for mark_id, comment_id in pairs(previous_marks) do
+    ids_by_comment[comment_id] = mark_id
+  end
   state.marks = {}
   state.ctx = ctx
   local file = presentation.for_file(comments, ctx.source_path)
+  local type_highlights =
+    { comment = "DocumentCommentOpen", delete = "DocumentCommentDelete", looks_good = "DocumentCommentLooksGood" }
   if state.review_initialized and (state.problem_count or 0) == 0 and file.problem > 0 then
     vim.schedule(function()
       local current = buffers[bufnr]
@@ -80,15 +91,28 @@ function M.apply(bufnr, ctx, comments)
   state.file = file
   for _, comment in ipairs(comments) do
     local position = comment.anchor.current.position
+    local mark_id = ids_by_comment[comment.id]
+    -- Entering the document from the sidebar must not reset an unsaved range to
+    -- its last saved coordinates. Reuse the mark (and its undo history).
+    if mark_id and vim.bo[bufnr].modified then
+      local live = vim.api.nvim_buf_get_extmark_by_id(bufnr, M.namespace, mark_id, { details = true })
+      if #live > 0 then
+        position = {
+          start = { line = live[1], byte_column = live[2] },
+          ["end"] = { line = live[3].end_row, byte_column = live[3].end_col },
+        }
+      end
+    end
     if
       comment.source.path == ctx.source_path
       and comment.anchor.state == "attached"
       and valid_position(bufnr, position)
     then
       local id = vim.api.nvim_buf_set_extmark(bufnr, M.namespace, position.start.line, position.start.byte_column, {
+        id = mark_id,
         end_row = position["end"].line,
         end_col = position["end"].byte_column,
-        hl_group = comment.status == "open" and "DocumentCommentOpen" or "DocumentCommentResolved",
+        hl_group = comment.status == "open" and type_highlights[model.kind(comment)] or "DocumentCommentResolved",
         priority = config.options.highlight_priority,
         right_gravity = false,
         end_right_gravity = true,
@@ -96,6 +120,11 @@ function M.apply(bufnr, ctx, comments)
         undo_restore = true,
       })
       state.marks[id] = comment.id
+    end
+  end
+  for mark_id in pairs(previous_marks) do
+    if not state.marks[mark_id] then
+      vim.api.nvim_buf_del_extmark(bufnr, M.namespace, mark_id)
     end
   end
   local sign_highlights = {
@@ -112,6 +141,10 @@ function M.apply(bufnr, ctx, comments)
     })
   end
   buffers[bufnr] = state
+  local sidebar = package.loaded["document_comments.ui.sidebar"]
+  if sidebar then
+    sidebar.refresh(ctx)
+  end
   vim.cmd.redrawstatus()
 end
 
@@ -299,6 +332,20 @@ end
 function M.file_state(bufnr)
   local state = buffers[normalize_bufnr(bufnr)]
   return state and state.file or nil
+end
+
+-- Preview the live extmark rather than stale saved coordinates while editing.
+function M.comment_position(bufnr, comment)
+  bufnr = normalize_bufnr(bufnr)
+  local state = buffers[bufnr]
+  for mark_id, id in pairs(state and state.marks or {}) do
+    if id == comment.id then
+      local mark = vim.api.nvim_buf_get_extmark_by_id(bufnr, M.namespace, mark_id, { details = true })
+      if #mark > 0 then
+        return mark
+      end
+    end
+  end
 end
 
 function M.statusline(bufnr)

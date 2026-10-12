@@ -14,6 +14,7 @@ local registered = false
 local edit_comment
 local resolve_comment
 local delete_comment
+local pending_reattach
 
 local function notify(message, level)
   vim.notify(message, level or vim.log.levels.INFO, { title = "Document comments" })
@@ -159,7 +160,12 @@ local function open_backlinks(ctx, store, comment)
   choose_linked_comment(ctx, references.backlinks(store, comment.id), "Comments referring to " .. comment.id)
 end
 
-function M.add(allow_inactive)
+function M.add(allow_inactive, kind)
+  kind = kind or "comment"
+  if not model.kind_labels[kind] then
+    notify("Annotation type must be comment, delete, or looks_good", vim.log.levels.ERROR)
+    return
+  end
   local source_buffer = vim.api.nvim_get_current_buf()
   local ctx, ctx_error = context(source_buffer, true)
   if not ctx then
@@ -176,27 +182,37 @@ function M.add(allow_inactive)
     notify(load_error, vim.log.levels.ERROR)
     return
   end
-  local draft_id = "new-" .. model.new_id()
+  local function save(body)
+    local comment =
+      model.new_comment(ctx.source_path, selection.position, selection.quote, selection.document_hash, body, kind)
+    local reference_warnings = {}
+    local updated, err = storage.mutate(ctx, function(store)
+      table.insert(store.comments, comment)
+      reference_warnings = references.warnings(store, body, comment.id)
+    end)
+    if not updated then
+      return nil, err
+    end
+    refresh(source_buffer, ctx)
+    warn_references(reference_warnings)
+    return true
+  end
+  if kind ~= "comment" then
+    vim.api.nvim_feedkeys(vim.keycode("<Esc>"), "nx", false)
+    local ok, err = save("")
+    if not ok then
+      notify(err, vim.log.levels.ERROR)
+    else
+      notify(model.kind_labels[kind] .. " annotation added; use <leader>ae to add a note")
+    end
+    return
+  end
   editor.open({
-    id = draft_id,
+    id = "new-" .. model.new_id(),
     root = ctx.root,
     title = " New document comment ",
     completions = references.completions(reference_store),
-    save = function(body)
-      local comment =
-        model.new_comment(ctx.source_path, selection.position, selection.quote, selection.document_hash, body)
-      local reference_warnings = {}
-      local updated, err = storage.mutate(ctx, function(store)
-        table.insert(store.comments, comment)
-        reference_warnings = references.warnings(store, body, comment.id)
-      end)
-      if not updated then
-        return nil, err
-      end
-      refresh(source_buffer, ctx)
-      warn_references(reference_warnings)
-      return true
-    end,
+    save = save,
   })
 end
 
@@ -270,13 +286,14 @@ function M.list(filter, scope)
       table.insert(actions, ("Show backlinks (%d)…"):format(#backlinks))
     end
     table.insert(actions, "Copy comment ID")
+    table.insert(actions, "Change annotation type…")
     table.insert(actions, "Delete comment")
     if comment.anchor.state ~= "attached" then
       table.insert(actions, "Reattach…")
     end
     vim.ui.select(actions, { prompt = formatter(comment) }, function(action)
       local function reopen()
-        if vim.api.nvim_buf_is_valid(source_buffer) then
+        if vim.api.nvim_buf_is_valid(source_buffer) and vim.api.nvim_get_current_buf() == source_buffer then
           M.list(filter, scope)
         end
       end
@@ -292,6 +309,8 @@ function M.list(filter, scope)
         open_backlinks(ctx, store, comment)
       elseif action == "Copy comment ID" then
         copy_comment_id(comment)
+      elseif action == "Change annotation type…" then
+        M.change_kind(comment, ctx, source_buffer, reopen)
       elseif action == "Delete comment" then
         delete_comment(comment, ctx, source_buffer, reopen)
       elseif action == "Reattach…" then
@@ -359,7 +378,7 @@ function M.review()
   end, true)
 end
 
-edit_comment = function(comment, ctx, source_buffer, on_done)
+edit_comment = function(comment, ctx, source_buffer, on_done, kind)
   local reference_store, load_error = storage.load(ctx)
   if not reference_store then
     notify(load_error, vim.log.levels.ERROR)
@@ -369,7 +388,8 @@ edit_comment = function(comment, ctx, source_buffer, on_done)
     id = comment.id,
     body = comment.body,
     root = ctx.root,
-    title = " Edit " .. comment.id .. " ",
+    title = " " .. model.kind_labels[kind or model.kind(comment)] .. " — " .. comment.id .. " ",
+    allow_empty = (kind or model.kind(comment)) ~= "comment",
     completions = references.completions(reference_store, comment.id),
     save = function(body)
       local reference_warnings = {}
@@ -377,6 +397,7 @@ edit_comment = function(comment, ctx, source_buffer, on_done)
         local target = model.find(store, comment.id)
         assert(target, "comment no longer exists")
         target.body = body
+        target.kind = kind or model.kind(target)
         target.updated_at = model.now()
         reference_warnings = references.warnings(store, body, comment.id)
       end)
@@ -391,6 +412,70 @@ edit_comment = function(comment, ctx, source_buffer, on_done)
       return true
     end,
   })
+end
+
+function M.change_kind(comment, ctx, source_buffer, on_done)
+  vim.ui.select({ "comment", "delete", "looks_good" }, {
+    prompt = "Annotation type",
+    format_item = function(kind)
+      return model.kind_labels[kind]
+    end,
+  }, function(kind)
+    if not kind or kind == model.kind(comment) then
+      return
+    end
+    if kind == "comment" and vim.trim(comment.body) == "" then
+      edit_comment(comment, ctx, source_buffer, on_done, kind)
+      return
+    end
+    local updated, err = storage.mutate(ctx, function(store)
+      local target = assert(model.find(store, comment.id), "comment no longer exists")
+      target.kind = kind
+      target.updated_at = model.now()
+    end)
+    if not updated then
+      notify(err, vim.log.levels.ERROR)
+      return
+    end
+    refresh(source_buffer, ctx)
+    if on_done then
+      vim.schedule(on_done)
+    end
+  end)
+end
+
+-- Shared actions for the persistent sidebar; existing list menus remain available.
+function M.perform(action, comment, ctx, source_buffer, on_done)
+  local store, err = storage.load(ctx)
+  local current = store and model.find(store, comment.id)
+  if not current then
+    notify(store and "Comment no longer exists" or err, vim.log.levels.ERROR)
+    return
+  end
+  if action == "jump" then
+    jump(ctx, current)
+  elseif action == "edit" then
+    edit_comment(current, ctx, source_buffer, on_done)
+  elseif action == "resolve" then
+    resolve_comment(current, ctx, source_buffer, on_done)
+  elseif action == "delete" then
+    delete_comment(current, ctx, source_buffer, on_done)
+  elseif action == "type" then
+    M.change_kind(current, ctx, source_buffer, on_done)
+  elseif action == "reattach" then
+    pending_reattach = { id = current.id, store_path = ctx.store_path }
+    jump(ctx, current)
+    notify("Select the replacement text and press <leader>aR")
+  elseif action == "copy" then
+    copy_comment_id(current)
+    if on_done then
+      on_done()
+    end
+  elseif action == "references" then
+    open_references(ctx, store, current)
+  elseif action == "backlinks" then
+    open_backlinks(ctx, store, current)
+  end
 end
 
 resolve_comment = function(comment, ctx, source_buffer, on_done)
@@ -543,9 +628,19 @@ function M.reattach(allow_inactive)
     notify(load_error, vim.log.levels.ERROR)
     return
   end
+  if
+    pending_reattach
+    and pending_reattach.store_path == ctx.store_path
+    and not model.find(store, pending_reattach.id)
+  then
+    pending_reattach = nil
+  end
   local comments = vim
     .iter(store.comments)
     :filter(function(comment)
+      if pending_reattach and pending_reattach.store_path == ctx.store_path then
+        return comment.id == pending_reattach.id
+      end
       return comment.anchor.state == "ambiguous" or comment.anchor.state == "orphaned"
     end)
     :totable()
@@ -570,6 +665,7 @@ function M.reattach(allow_inactive)
       return
     end
     refresh(source_buffer, ctx)
+    pending_reattach = nil
     notify("Comment reattached")
   end, false, select_ui.project_formatter(comments))
 end
@@ -580,6 +676,12 @@ function M.export(args)
     notify(ctx_error, vim.log.levels.ERROR)
     return
   end
+  args = args or ""
+  local mode = "new"
+  local first, rest = args:match("^(%S+)%s*(.*)$")
+  if first == "new" or first == "all" then
+    mode, args = first, rest
+  end
   local scope, path = args:match("^(%S+)%s*(.*)$")
   scope = scope or "project"
   path = path ~= "" and path or nil
@@ -588,12 +690,12 @@ function M.export(args)
     return
   end
   local function write(current)
-    local destination, count_or_error = exporter.write(ctx, scope, path, current)
+    local destination, count_or_error, batch_id = exporter.write(ctx, scope, path, current, mode)
     if not destination then
       notify(count_or_error, vim.log.levels.ERROR)
       return
     end
-    notify(("Exported %d comment(s) to %s"):format(count_or_error, destination))
+    notify(("Exported %d annotation(s) to %s (batch %s)"):format(count_or_error, destination, batch_id))
   end
   if scope == "current" then
     choose_current("Export document comment", function(comment)
@@ -647,8 +749,26 @@ function M.register()
       notify("DocumentCommentsAdd must be started from Visual mode", vim.log.levels.ERROR)
       return
     end
-    M.add(true)
-  end, { desc = "Add comment from Visual selection", range = true })
+    M.add(true, opts.args ~= "" and opts.args or "comment")
+  end, {
+    desc = "Add annotation from Visual selection",
+    range = true,
+    nargs = "?",
+    complete = function()
+      return { "comment", "delete", "looks_good" }
+    end,
+  })
+  vim.api.nvim_create_user_command("DocumentCommentsSidebar", function()
+    require("document_comments.ui.sidebar").toggle()
+  end, { desc = "Toggle document comment sidebar" })
+  vim.api.nvim_create_user_command("DocumentCommentsBatches", function()
+    local ctx, err = context(0)
+    if not ctx then
+      notify(err, vim.log.levels.ERROR)
+      return
+    end
+    require("document_comments.ui.sidebar").batches(ctx)
+  end, { desc = "View document comment export batches" })
   vim.api.nvim_create_user_command("DocumentCommentsList", function(opts)
     M.list(opts.args, "file")
   end, {
@@ -688,13 +808,15 @@ function M.register()
   vim.api.nvim_create_user_command("DocumentCommentsExport", function(opts)
     M.export(opts.args)
   end, {
-    desc = "Export open document comments",
+    desc = "Export new/edited or all open annotations",
     nargs = "*",
     complete = function(_, line)
-      if not line:match("DocumentCommentsExport%s+%S+%s+") then
-        return { "project", "file", "current" }
+      local args = line:match("DocumentCommentsExport%s+(.*)$") or ""
+      local mode, rest = args:match("^(%S+)%s+(.*)$")
+      if mode == "new" or mode == "all" then
+        return rest:match("^%S+%s+") and {} or { "project", "file", "current" }
       end
-      return {}
+      return mode and {} or { "new", "all", "project", "file", "current" }
     end,
   })
   vim.api.nvim_create_user_command("DocumentCommentsReload", M.reload, { desc = "Reload document comment store" })

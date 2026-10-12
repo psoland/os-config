@@ -1,3 +1,5 @@
+local model = require("document_comments.model")
+
 local M = {}
 
 function M.needs_review(comment)
@@ -63,7 +65,7 @@ function M.sign_groups(file, line_count, opts)
       end
       local group = groups[row]
       if not group then
-        group = { row = row, count = 0, kind = kind }
+        group = { row = row, count = 0, kind = kind, annotation_kind = model.kind(comment) }
         groups[row] = group
       end
       group.count = group.count + 1
@@ -75,13 +77,15 @@ function M.sign_groups(file, line_count, opts)
   local result = {}
   for _, group in pairs(groups) do
     if group.count == 1 then
-      group.text = opts[group.kind]
+      group.text = group.kind == "open" and opts[group.annotation_kind] or nil
+      group.text = group.text or opts[group.kind]
     elseif group.count < 10 then
       group.text = tostring(group.count)
     else
       group.text = "+"
     end
     table.insert(result, group)
+    group.annotation_kind = nil
   end
   table.sort(result, function(left, right)
     return left.row < right.row

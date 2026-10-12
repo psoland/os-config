@@ -59,7 +59,7 @@ function M.open(opts)
     buffer = buffer,
     callback = function()
       local body = table.concat(vim.api.nvim_buf_get_lines(buffer, 0, -1, false), "\n")
-      if vim.trim(body) == "" then
+      if vim.trim(body) == "" and not opts.allow_empty then
         vim.notify("A document comment cannot be empty", vim.log.levels.ERROR, { title = "Document comments" })
         return
       end

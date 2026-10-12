@@ -295,22 +295,27 @@ test("extmark gravity follows edits and permits overlap", function()
   eq(14, mark[3].end_col)
 end)
 
-test("export contains durable identity and does not mutate store", function()
+test("export contains durable identity and records a batch without resolving comments", function()
   storage._reset()
   local project = tempdir()
   local ctx = context(project)
   assert(storage.mutate(ctx, function(store)
     table.insert(store.comments, sample_comment("Presiser dette."))
   end))
-  local before = read(ctx.store_path)
-  local path, count = exporter.write(ctx, "project")
+  local before = vim.deepcopy(assert(storage.load(ctx)).comments)
+  local path, count, batch_id = exporter.write(ctx, "project")
   eq(1, count)
   local output = read(path)
   assert(output:match("c_[0-9a-f]+"))
   assert(output:match("doc%.md"))
   assert(output:match("Anchor: attached"))
   assert(output:match("Presiser dette"))
-  eq(before, read(ctx.store_path))
+  local after = assert(storage.load(ctx))
+  eq(before, after.comments)
+  eq(1, #after.export_batches)
+  eq(batch_id, after.export_batches[1].id)
+  eq(before, after.export_batches[1].comments)
+  eq(output, after.export_batches[1].markdown)
 end)
 
 test("comment references resolve prefixes, backlinks, cycles, and completion", function()
@@ -448,6 +453,8 @@ test("setup registers commands", function()
   assert(vim.fn.exists(":DocumentCommentsExport") == 2)
   assert(vim.fn.exists(":DocumentCommentsReview") == 2)
   assert(vim.fn.exists(":DocumentCommentsListProject") == 2)
+  assert(vim.fn.exists(":DocumentCommentsSidebar") == 2)
+  assert(vim.fn.exists(":DocumentCommentsBatches") == 2)
 end)
 
 test("file and project lists use separate scopes", function()
@@ -641,6 +648,652 @@ test("confirmed comment survives writes and collapsed extmark becomes orphaned",
   assert(saw_action_menu and saw_confirmation)
   store = assert(storage.load(ctx))
   eq(0, #store.comments)
+end)
+
+test("v1 stores migrate in memory and persist v2 only on a successful write", function()
+  storage._reset()
+  local ctx = context(tempdir())
+  local legacy = model.new_store()
+  legacy.schema_version = 1
+  legacy.export_batches = nil
+  local comment = sample_comment("Legacy feedback")
+  comment.kind = nil
+  comment.status = "resolved"
+  comment.resolved_at = model.now()
+  legacy.comments = { comment }
+  local raw = vim.json.encode(legacy)
+  write(ctx.store_path, raw)
+  local loaded = assert(storage.load(ctx))
+  eq(2, loaded.schema_version)
+  eq("comment", loaded.comments[1].kind)
+  eq("resolved", loaded.comments[1].status)
+  eq({}, loaded.export_batches)
+  eq(raw, read(ctx.store_path))
+  local saved = assert(storage.mutate(ctx, function(store)
+    store.comments[1].body = "Updated legacy feedback"
+  end))
+  storage._reset()
+  eq(saved, assert(storage.load(ctx)))
+  eq(2, vim.json.decode(read(ctx.store_path)).schema_version)
+end)
+
+test("typed annotations permit empty notes but comments and invalid kinds are rejected", function()
+  local store = model.new_store()
+  local comment = sample_comment()
+  comment.body = ""
+  store.comments = { comment }
+  assert(not model.validate(store))
+  for _, kind in ipairs({ "delete", "looks_good" }) do
+    comment.kind = kind
+    assert(model.validate(store))
+  end
+  comment.kind = "unknown"
+  local valid, err = model.validate(store)
+  assert(not valid and err:match("invalid annotation kind"))
+  comment.kind = "comment"
+  comment.body = "Valid comment"
+  assert(model.validate(store))
+  store.export_batches = "invalid"
+  assert(not model.validate(store))
+end)
+
+test("exports use adaptive fences and explicit delete/positive-feedback instructions", function()
+  local comment = sample_comment("Review this Markdown")
+  comment.anchor.current.quote.exact = "```lua\nprint('hello')\n```\n````"
+  comment.anchor.original.quote.exact = comment.anchor.current.quote.exact
+  local deletion = sample_comment()
+  deletion.kind, deletion.body = "delete", ""
+  local approval = sample_comment()
+  approval.kind, approval.body = "looks_good", ""
+  local store = model.new_store()
+  store.comments = { comment, deletion, approval }
+  local output = exporter.render(store, store.comments, "hash")
+  assert(output:find("`````text\n" .. comment.anchor.current.quote.exact .. "\n`````", 1, true))
+  assert(output:find("- Type: delete", 1, true))
+  assert(output:find("Remove the selected text", 1, true))
+  assert(output:find("- Type: looks_good", 1, true))
+  assert(output:find("do not change this text solely", 1, true))
+end)
+
+test("incremental exports survive restart, preserve versions, and ignore anchor movement", function()
+  storage._reset()
+  local ctx = context(tempdir())
+  local first = sample_comment("Original feedback")
+  local second = sample_comment("Other file feedback")
+  second.source.path = "other.md"
+  assert(storage.mutate(ctx, function(store)
+    store.comments = { first, second }
+  end))
+  local _, count = exporter.write(ctx, "project", nil, nil, "new")
+  eq(2, count)
+  local previous_export = read(ctx.export_path)
+  local previous_revision = assert(storage.load(ctx)).store_revision
+  local path, err = exporter.write(ctx, "project", nil, nil, "new")
+  assert(not path and err:match("no new or edited"))
+  eq(previous_export, read(ctx.export_path))
+  eq(previous_revision, assert(storage.load(ctx)).store_revision)
+
+  assert(storage.mutate(ctx, function(store)
+    local target = model.find(store, first.id)
+    target.anchor.current.position.start.line = 3
+    target.anchor.current.position["end"].line = 3
+    target.anchor.current.document_hash = model.hash("moved document")
+    target.anchor.current.quote.prefix = "Moved context"
+    target.updated_at = "2026-10-12T00:01:00Z"
+  end))
+  storage._reset()
+  local loaded = assert(storage.load(ctx))
+  assert(not model.is_pending(model.find(loaded, first.id), model.exported_fingerprints(loaded)))
+  assert(storage.mutate(ctx, function(store)
+    model.find(store, first.id).body = "Edited feedback"
+  end))
+  path, count = exporter.write(ctx, "file", nil, nil, "new")
+  assert(path)
+  eq(1, count)
+  loaded = assert(storage.load(ctx))
+  eq(2, #loaded.export_batches)
+  eq("Original feedback", loaded.export_batches[1].comments[1].body)
+  eq("Edited feedback", loaded.export_batches[2].comments[1].body)
+  eq("open", model.find(loaded, first.id).status)
+  assert(read(path):find(first.id, 1, true))
+  assert(not read(path):find(second.id, 1, true))
+
+  assert(storage.mutate(ctx, function(store)
+    model.find(store, second.id).body = "Other file edited"
+  end))
+  local current = model.find(assert(storage.load(ctx)), first.id)
+  path, err = exporter.write(ctx, "current", nil, current, "new")
+  assert(not path and err:match("no new or edited"))
+  _, count = exporter.write(ctx, "project", nil, nil, "new")
+  eq(1, count)
+  _, count = exporter.write(ctx, "project", nil, nil, "all")
+  eq(2, count)
+  storage._reset()
+  loaded = assert(storage.load(ctx))
+  eq(4, #loaded.export_batches)
+  eq("all", loaded.export_batches[4].mode)
+  assert(not model.is_pending(loaded.comments[1], model.exported_fingerprints(loaded)))
+end)
+
+test("kind, selected text, and anchor safety changes are new feedback but resolved notes are excluded", function()
+  storage._reset()
+  local ctx = context(tempdir())
+  local comment = sample_comment()
+  assert(storage.mutate(ctx, function(store)
+    store.comments = { comment }
+  end))
+  assert(exporter.write(ctx, "project", nil, nil, "new"))
+  for _, change in ipairs({
+    function(target)
+      target.kind = "delete"
+    end,
+    function(target)
+      target.anchor.current.quote.exact = "new selection"
+    end,
+    function(target)
+      target.anchor.state = "orphaned"
+    end,
+  }) do
+    assert(storage.mutate(ctx, function(store)
+      change(store.comments[1])
+    end))
+    local loaded = assert(storage.load(ctx))
+    assert(model.is_pending(loaded.comments[1], model.exported_fingerprints(loaded)))
+    local _, count = exporter.write(ctx, "project", nil, nil, "new")
+    eq(1, count)
+  end
+  assert(storage.mutate(ctx, function(store)
+    store.comments[1].body = "Edited but resolved"
+    store.comments[1].status = "resolved"
+    store.comments[1].resolved_at = model.now()
+  end))
+  assert(not exporter.write(ctx, "project", nil, nil, "new"))
+  assert(not exporter.write(ctx, "project", nil, nil, "all"))
+end)
+
+test("export failures never mark feedback exported and cannot overwrite the store", function()
+  storage._reset()
+  local ctx = context(tempdir())
+  assert(storage.mutate(ctx, function(store)
+    store.comments = { sample_comment() }
+  end))
+  local before = read(ctx.store_path)
+  local path, err = exporter.write(ctx, "project", ctx.store_path, nil, "new")
+  assert(not path and err:match("cannot overwrite"))
+  eq(before, read(ctx.store_path))
+  path, err = exporter.write(ctx, "project", ctx.storage_dir, nil, "new")
+  assert(not path)
+  eq(before, read(ctx.store_path))
+  eq(0, #assert(storage.load(ctx)).export_batches)
+  local original_io = storage.io
+  storage.io = vim.tbl_extend("force", {}, original_io, {
+    fs_rename = function(from, to)
+      if to == ctx.store_path then
+        return nil, "injected batch-record failure"
+      end
+      return original_io.fs_rename(from, to)
+    end,
+  })
+  path, err = exporter.write(ctx, "project", nil, nil, "new")
+  storage.io = original_io
+  assert(not path and err:match("batch could not be recorded"))
+  eq(before, read(ctx.store_path))
+  assert(read(ctx.export_path):match("Export batch: b_"))
+  local loaded = assert(storage.load(ctx))
+  eq(0, #loaded.export_batches)
+  assert(model.is_pending(loaded.comments[1], model.exported_fingerprints(loaded)))
+  assert(exporter.write(ctx, "project", nil, nil, "new"))
+
+  write(ctx.store_path, read(ctx.store_path) .. " ")
+  local export_before = read(ctx.export_path)
+  path, err = exporter.write(ctx, "project", nil, nil, "all")
+  assert(not path and err:match("conflict"))
+  eq(export_before, read(ctx.export_path))
+end)
+
+test("visual shortcuts create typed annotations without changing the source or normal delete mapping", function()
+  storage._reset()
+  local project = tempdir()
+  vim.fn.mkdir(vim.fs.joinpath(project, ".git"), "p", 448)
+  local document = vim.fs.joinpath(project, "typed.md")
+  write(document, "alpha beta")
+  vim.cmd.edit(vim.fn.fnameescape(document))
+  vim.bo.filetype = "markdown"
+  local buffer = vim.api.nvim_get_current_buf()
+  local ctx = assert(root.for_buffer(buffer))
+  eq("", vim.fn.maparg("<leader>d", "x"))
+  eq("", vim.fn.maparg("<leader>g", "x"))
+  for _, item in ipairs({ { "<leader>ad", "delete" }, { "<leader>ag", "looks_good" } }) do
+    vim.api.nvim_win_set_cursor(0, { 1, 0 })
+    vim.cmd("normal! v")
+    vim.api.nvim_win_set_cursor(0, { 1, 4 })
+    local mapping = vim.fn.maparg(item[1], "x", false, true)
+    assert(mapping.buffer == 1 and type(mapping.callback) == "function")
+    mapping.callback()
+    eq(buffer, vim.api.nvim_get_current_buf())
+    local loaded = assert(storage.load(ctx))
+    eq(item[2], loaded.comments[#loaded.comments].kind)
+    eq("", loaded.comments[#loaded.comments].body)
+    eq("alpha", loaded.comments[#loaded.comments].anchor.current.quote.exact)
+    assert(not vim.bo[buffer].modified)
+    eq("alpha beta", read(document))
+  end
+  eq("Delete document comment", vim.fn.maparg("<leader>ad", "n", false, true).desc)
+  eq("Add delete annotation", vim.fn.maparg("<leader>ad", "x", false, true).desc)
+  local original_select = vim.ui.select
+  vim.ui.select = function(items, _, callback)
+    callback(items[1])
+  end
+  require("document_comments.commands").edit()
+  vim.ui.select = original_select
+  local draft = vim.api.nvim_get_current_buf()
+  if draft ~= buffer then
+    vim.cmd.stopinsert()
+    vim.cmd.write()
+  end
+  local saved
+  local draft_buffer, draft_window = require("document_comments.ui.editor").open({
+    id = "empty-typed-test",
+    root = ctx.root,
+    allow_empty = true,
+    save = function(body)
+      saved = body
+      return true
+    end,
+  })
+  vim.cmd.stopinsert()
+  vim.cmd.write()
+  eq("", saved)
+  assert(not vim.api.nvim_win_is_valid(draft_window))
+  assert(not vim.api.nvim_buf_is_valid(draft_buffer))
+end)
+
+test("export commands default to incremental and accept explicit all with scope and path", function()
+  storage._reset()
+  local project = tempdir()
+  vim.fn.mkdir(vim.fs.joinpath(project, ".git"), "p", 448)
+  local document = vim.fs.joinpath(project, "commands.md")
+  write(document, "æ😊 suffix")
+  vim.cmd.edit(vim.fn.fnameescape(document))
+  vim.bo.filetype = "markdown"
+  local ctx = assert(root.for_buffer(0))
+  assert(storage.mutate(ctx, function(store)
+    local comment = sample_comment()
+    comment.source.path = "commands.md"
+    store.comments = { comment }
+  end))
+  local commands = require("document_comments.commands")
+  commands.export("")
+  eq("new", assert(storage.load(ctx)).export_batches[1].mode)
+  commands.export("project")
+  eq(1, #assert(storage.load(ctx)).export_batches)
+  local custom = vim.fs.joinpath(project, "custom export.md")
+  commands.export("all file " .. custom)
+  eq(custom, assert(storage.load(ctx)).export_batches[2].path)
+  assert(read(custom):match("Type: comment"))
+  eq("open", assert(storage.load(ctx)).comments[1].status)
+end)
+
+test("sidebar previews selections, filters scopes, refreshes actions, and keeps manual resolution", function()
+  storage._reset()
+  local sidebar = require("document_comments.ui.sidebar")
+  sidebar.close()
+  local project = tempdir()
+  vim.fn.mkdir(vim.fs.joinpath(project, ".git"), "p", 448)
+  local document = vim.fs.joinpath(project, "doc.md")
+  write(document, "æ😊 suffix")
+  write(vim.fs.joinpath(project, "other.md"), "æ😊 suffix")
+  vim.cmd.edit(vim.fn.fnameescape(document))
+  vim.bo.filetype = "markdown"
+  local source_window, source_buffer = vim.api.nvim_get_current_win(), vim.api.nvim_get_current_buf()
+  local ctx = assert(root.for_buffer(source_buffer))
+  local open = sample_comment("Visible feedback")
+  local resolved = sample_comment("Resolved feedback")
+  resolved.status, resolved.resolved_at = "resolved", model.now()
+  local detached = sample_comment("Detached feedback")
+  detached.source.path, detached.anchor.state = "other.md", "orphaned"
+  detached.anchor.current.quote.exact = "absent quote"
+  assert(storage.mutate(ctx, function(store)
+    store.comments = { open, resolved, detached }
+  end))
+  require("document_comments.extmarks").refresh(source_buffer)
+  sidebar.toggle()
+  local panel_window, panel_buffer = vim.api.nvim_get_current_win(), vim.api.nvim_get_current_buf()
+  local function panel_text()
+    return table.concat(vim.api.nvim_buf_get_lines(panel_buffer, 0, -1, false), "\n")
+  end
+  assert(panel_window ~= source_window)
+  assert(panel_text():find("Visible feedback", 1, true))
+  assert(not panel_text():find("Resolved feedback", 1, true))
+  assert(panel_text():find("not exported", 1, true))
+  local preview_ns = vim.api.nvim_create_namespace("document-comments-preview")
+  eq(1, #vim.api.nvim_buf_get_extmarks(source_buffer, preview_ns, 0, -1, {}))
+  sidebar.set_filter("resolved")
+  assert(panel_text():find("Resolved feedback", 1, true))
+  assert(not panel_text():find("Visible feedback", 1, true))
+  sidebar.set_filter("all")
+  sidebar.set_scope("project")
+  assert(panel_text():find("Detached feedback", 1, true))
+  sidebar.set_filter("review")
+  assert(panel_text():find("Detached feedback", 1, true))
+  assert(not panel_text():find("Visible feedback", 1, true))
+  sidebar.set_scope("file")
+  sidebar.set_filter("new")
+  assert(panel_text():find("Visible feedback", 1, true))
+  assert(exporter.write(ctx, "file", nil, nil, "new"))
+  assert(panel_text():find("No annotations match", 1, true))
+  sidebar.set_filter("open")
+  assert(panel_text():find("exported", 1, true))
+  assert(storage.mutate(ctx, function(store)
+    model.find(store, open.id).body = "Edited in place"
+  end))
+  assert(panel_text():find("Edited in place", 1, true))
+  assert(panel_text():find("edited since export", 1, true))
+  vim.api.nvim_set_current_win(panel_window)
+  vim.fn.maparg("r", "n", false, true).callback()
+  eq("resolved", model.find(assert(storage.load(ctx)), open.id).status)
+  assert(not panel_text():find("Edited in place", 1, true))
+  sidebar.set_filter("resolved")
+  assert(panel_text():find("Edited in place", 1, true))
+  vim.api.nvim_set_current_win(panel_window)
+  for row, line in ipairs(vim.api.nvim_buf_get_lines(panel_buffer, 0, -1, false)) do
+    if line:find("Edited in place", 1, true) then
+      vim.api.nvim_win_set_cursor(panel_window, { row, 0 })
+      break
+    end
+  end
+  vim.fn.maparg("r", "n", false, true).callback()
+  eq("open", model.find(assert(storage.load(ctx)), open.id).status)
+  sidebar.close()
+  assert(not vim.api.nvim_win_is_valid(panel_window))
+  eq(0, #vim.api.nvim_buf_get_extmarks(source_buffer, preview_ns, 0, -1, {}))
+end)
+
+test("sidebar window switches preserve unsaved extmark movement and undo", function()
+  storage._reset()
+  local sidebar = require("document_comments.ui.sidebar")
+  sidebar.close()
+  local project = tempdir()
+  vim.fn.mkdir(vim.fs.joinpath(project, ".git"), "p", 448)
+  local document = vim.fs.joinpath(project, "live.md")
+  write(document, "alpha beta")
+  vim.cmd.edit(vim.fn.fnameescape(document))
+  vim.bo.filetype = "markdown"
+  local source_window, buffer = vim.api.nvim_get_current_win(), vim.api.nvim_get_current_buf()
+  local ctx = assert(root.for_buffer(buffer))
+  local comment = model.new_comment("live.md", {
+    start = { line = 0, byte_column = 6 },
+    ["end"] = { line = 0, byte_column = 10 },
+  }, { exact = "beta", prefix = "alpha ", suffix = "" }, model.hash("alpha beta"), "Keep tracking beta")
+  assert(storage.mutate(ctx, function(store)
+    store.comments = { comment }
+  end))
+  local extmarks = require("document_comments.extmarks")
+  extmarks.refresh(buffer)
+  vim.api.nvim_buf_set_text(buffer, 0, 0, 0, 0, { "new " })
+  eq(10, extmarks.comment_position(buffer, comment)[2])
+  sidebar.toggle()
+  local panel_window = vim.api.nvim_get_current_win()
+  eq(10, extmarks.comment_position(buffer, comment)[2])
+  vim.api.nvim_set_current_win(source_window)
+  eq(10, extmarks.comment_position(buffer, comment)[2])
+  vim.cmd.undo()
+  eq(6, extmarks.comment_position(buffer, comment)[2])
+  vim.cmd.redo()
+  eq(10, extmarks.comment_position(buffer, comment)[2])
+  vim.cmd.write()
+  eq(10, assert(storage.load(ctx)).comments[1].anchor.current.position.start.byte_column)
+  vim.api.nvim_set_current_win(panel_window)
+  sidebar.close()
+end)
+
+test("sidebar batch history shows the exact original export after edits and deletion", function()
+  storage._reset()
+  local ctx = context(tempdir())
+  local comment = sample_comment("Original batch body")
+  assert(storage.mutate(ctx, function(store)
+    store.comments = { comment }
+  end))
+  assert(exporter.write(ctx, "project", nil, nil, "new"))
+  local original = assert(storage.load(ctx)).export_batches[1].markdown
+  assert(storage.mutate(ctx, function(store)
+    store.comments = {}
+  end))
+  storage._reset()
+  local original_select = vim.ui.select
+  vim.ui.select = function(items, opts, callback)
+    eq(1, #items)
+    assert(opts.format_item(items[1]):match("1 annotations"))
+    callback(items[1])
+  end
+  require("document_comments.ui.sidebar").batches(ctx)
+  vim.ui.select = original_select
+  local buffer = vim.api.nvim_get_current_buf()
+  eq(original, table.concat(vim.api.nvim_buf_get_lines(buffer, 0, -1, false), "\n"))
+  assert(not vim.bo[buffer].modifiable)
+  vim.fn.maparg("q", "n", false, true).callback()
+end)
+
+test("typed source annotations have distinct highlights and single-annotation signs", function()
+  local buffer = vim.api.nvim_create_buf(true, false)
+  vim.api.nvim_buf_set_lines(buffer, 0, -1, false, { "æ😊 suffix", "æ😊 suffix", "æ😊 suffix" })
+  vim.bo[buffer].modified = false
+  local ctx = context(tempdir())
+  local comments = {}
+  for row, kind in ipairs({ "comment", "delete", "looks_good" }) do
+    local comment = sample_comment(kind == "comment" and "Note" or "")
+    comment.kind = kind
+    comment.anchor.current.position.start.line = row - 1
+    comment.anchor.current.position["end"].line = row - 1
+    table.insert(comments, comment)
+  end
+  local extmarks = require("document_comments.extmarks")
+  extmarks.apply(buffer, ctx, comments)
+  local marks = vim.api.nvim_buf_get_extmarks(buffer, extmarks.namespace, 0, -1, { details = true })
+  eq("DocumentCommentOpen", marks[1][4].hl_group)
+  eq("DocumentCommentDelete", marks[2][4].hl_group)
+  eq("DocumentCommentLooksGood", marks[3][4].hl_group)
+  local signs = vim.api.nvim_buf_get_extmarks(buffer, extmarks.sign_namespace, 0, -1, { details = true })
+  eq("●", vim.trim(signs[1][4].sign_text))
+  eq("−", vim.trim(signs[2][4].sign_text))
+  eq("✓", vim.trim(signs[3][4].sign_text))
+end)
+
+test("sidebar type conversion requires a comment body and editing returns to the panel", function()
+  storage._reset()
+  local sidebar = require("document_comments.ui.sidebar")
+  sidebar.close()
+  local project = tempdir()
+  vim.fn.mkdir(vim.fs.joinpath(project, ".git"), "p", 448)
+  local document = vim.fs.joinpath(project, "convert.md")
+  write(document, "æ😊 suffix")
+  vim.cmd.edit(vim.fn.fnameescape(document))
+  vim.bo.filetype = "markdown"
+  local ctx = assert(root.for_buffer(0))
+  local annotation = sample_comment()
+  annotation.kind, annotation.body, annotation.source.path = "looks_good", "", "convert.md"
+  assert(storage.mutate(ctx, function(store)
+    store.comments = { annotation }
+  end))
+  require("document_comments.extmarks").refresh(0)
+  sidebar.toggle()
+  local panel_window, panel_buffer = vim.api.nvim_get_current_win(), vim.api.nvim_get_current_buf()
+  local original_select = vim.ui.select
+  vim.ui.select = function(_, _, callback)
+    callback("comment")
+  end
+  vim.fn.maparg("t", "n", false, true).callback()
+  vim.ui.select = original_select
+  local draft = vim.api.nvim_get_current_buf()
+  assert(draft ~= panel_buffer)
+  eq("looks_good", assert(storage.load(ctx)).comments[1].kind)
+  vim.api.nvim_buf_set_lines(draft, 0, -1, false, { "Please clarify this." })
+  vim.cmd.stopinsert()
+  vim.cmd.write()
+  assert(vim.wait(1000, function()
+    return vim.api.nvim_get_current_win() == panel_window
+  end))
+  local saved = assert(storage.load(ctx)).comments[1]
+  eq("comment", saved.kind)
+  eq("Please clarify this.", saved.body)
+  local text = table.concat(vim.api.nvim_buf_get_lines(panel_buffer, 0, -1, false), "\n")
+  assert(text:find("Please clarify this.", 1, true))
+  sidebar.close()
+end)
+
+test("sidebar reattachment targets only the selected annotation and permanent deletion confirms", function()
+  storage._reset()
+  local sidebar = require("document_comments.ui.sidebar")
+  sidebar.close()
+  local project = tempdir()
+  vim.fn.mkdir(vim.fs.joinpath(project, ".git"), "p", 448)
+  local document = vim.fs.joinpath(project, "reattach.md")
+  write(document, "alpha beta gamma")
+  vim.cmd.edit(vim.fn.fnameescape(document))
+  vim.bo.filetype = "markdown"
+  local ctx = assert(root.for_buffer(0))
+  local first, second = sample_comment("First detached"), sample_comment("Second detached")
+  for _, comment in ipairs({ first, second }) do
+    comment.source.path = "reattach.md"
+    comment.anchor.current.quote.exact = "absent"
+    comment.anchor.state = "orphaned"
+  end
+  assert(storage.mutate(ctx, function(store)
+    store.comments = { first, second }
+  end))
+  require("document_comments.extmarks").refresh(0)
+  sidebar.toggle()
+  local panel_window, panel_buffer = vim.api.nvim_get_current_win(), vim.api.nvim_get_current_buf()
+  for row, line in ipairs(vim.api.nvim_buf_get_lines(panel_buffer, 0, -1, false)) do
+    if line:find("Second detached", 1, true) then
+      vim.api.nvim_win_set_cursor(panel_window, { row, 0 })
+      break
+    end
+  end
+  vim.fn.maparg("a", "n", false, true).callback()
+  vim.api.nvim_win_set_cursor(0, { 1, 6 })
+  vim.cmd("normal! v")
+  vim.api.nvim_win_set_cursor(0, { 1, 9 })
+  require("document_comments.commands").reattach()
+  vim.api.nvim_feedkeys(vim.keycode("<Esc>"), "nx", false)
+  local saved = assert(storage.load(ctx))
+  eq("orphaned", model.find(saved, first.id).anchor.state)
+  eq("attached", model.find(saved, second.id).anchor.state)
+  eq("beta", model.find(saved, second.id).anchor.current.quote.exact)
+  vim.api.nvim_set_current_win(panel_window)
+  for row, line in ipairs(vim.api.nvim_buf_get_lines(panel_buffer, 0, -1, false)) do
+    if line:find("Second detached", 1, true) then
+      vim.api.nvim_win_set_cursor(panel_window, { row, 0 })
+      break
+    end
+  end
+  local original_select = vim.ui.select
+  local saw_confirmation = false
+  vim.ui.select = function(items, opts, callback)
+    eq({ "Cancel", "Delete" }, items)
+    assert(opts.prompt:find(second.id, 1, true))
+    saw_confirmation = true
+    callback("Delete")
+  end
+  vim.fn.maparg("d", "n", false, true).callback()
+  vim.ui.select = original_select
+  assert(saw_confirmation)
+  assert(not model.find(assert(storage.load(ctx)), second.id))
+  assert(model.find(assert(storage.load(ctx)), first.id))
+  assert(vim.api.nvim_win_is_valid(panel_window))
+  sidebar.close()
+end)
+
+test("sidebar external-store reload preserves drafts and shows corrupt-store errors", function()
+  storage._reset()
+  local sidebar = require("document_comments.ui.sidebar")
+  sidebar.close()
+  local project = tempdir()
+  vim.fn.mkdir(vim.fs.joinpath(project, ".git"), "p", 448)
+  local document = vim.fs.joinpath(project, "external.md")
+  write(document, "æ😊 suffix")
+  vim.cmd.edit(vim.fn.fnameescape(document))
+  vim.bo.filetype = "markdown"
+  local ctx = assert(root.for_buffer(0))
+  local annotation = sample_comment("Initial feedback")
+  annotation.source.path = "external.md"
+  assert(storage.mutate(ctx, function(store)
+    store.comments = { annotation }
+  end))
+  require("document_comments.extmarks").refresh(0)
+  sidebar.toggle()
+  local panel_window, panel_buffer = vim.api.nvim_get_current_win(), vim.api.nvim_get_current_buf()
+  local updated = vim.deepcopy(assert(storage.load(ctx)))
+  updated.comments[1].body = "External edit"
+  write(ctx.store_path, vim.json.encode(updated))
+  sidebar.check_external_change()
+  eq("External edit", assert(storage.load(ctx)).comments[1].body)
+  local text = table.concat(vim.api.nvim_buf_get_lines(panel_buffer, 0, -1, false), "\n")
+  assert(text:find("External edit", 1, true))
+  local draft_buffer, draft_window = require("document_comments.ui.editor").open({
+    id = "external-sidebar-draft",
+    root = ctx.root,
+    body = "Unsaved draft",
+    save = function()
+      return true
+    end,
+  })
+  updated.comments[1].body = "Another external edit"
+  write(ctx.store_path, vim.json.encode(updated))
+  vim.cmd.stopinsert()
+  vim.api.nvim_set_current_win(panel_window)
+  sidebar.check_external_change()
+  eq("External edit", assert(storage.load(ctx)).comments[1].body)
+  eq({ "Unsaved draft" }, vim.api.nvim_buf_get_lines(draft_buffer, 0, -1, false))
+  vim.api.nvim_win_close(draft_window, true)
+  sidebar.check_external_change()
+  eq("Another external edit", assert(storage.load(ctx)).comments[1].body)
+  write(ctx.store_path, "invalid json")
+  sidebar.check_external_change()
+  text = table.concat(vim.api.nvim_buf_get_lines(panel_buffer, 0, -1, false), "\n")
+  assert(text:find("Store error:", 1, true))
+  assert(text:find("invalid JSON", 1, true))
+  sidebar.close()
+end)
+
+test("sidebar can close safely after its source window has been closed", function()
+  storage._reset()
+  local sidebar = require("document_comments.ui.sidebar")
+  sidebar.close()
+  local project = tempdir()
+  local document = vim.fs.joinpath(project, "last-window.md")
+  write(document, "A saved document")
+  vim.cmd.edit(vim.fn.fnameescape(document))
+  vim.bo.filetype = "markdown"
+  vim.wo.number = true
+  local source_window, source_buffer = vim.api.nvim_get_current_win(), vim.api.nvim_get_current_buf()
+  sidebar.toggle()
+  local panel_window = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_close(source_window, true)
+  sidebar.close()
+  assert(vim.api.nvim_win_is_valid(panel_window))
+  eq(source_buffer, vim.api.nvim_win_get_buf(panel_window))
+  assert(vim.wo[panel_window].number)
+end)
+
+test("Visual Ex command accepts annotation types and export command completion offers valid scopes", function()
+  storage._reset()
+  local project = tempdir()
+  local document = vim.fs.joinpath(project, "ex-command.md")
+  write(document, "alpha beta")
+  vim.cmd.edit(vim.fn.fnameescape(document))
+  vim.bo.filetype = "markdown"
+  vim.api.nvim_win_set_cursor(0, { 1, 0 })
+  vim.cmd("normal! v")
+  vim.api.nvim_win_set_cursor(0, { 1, 4 })
+  vim.api.nvim_feedkeys(vim.keycode("<Esc>"), "nx", false)
+  vim.cmd("'<,'>DocumentCommentsAdd delete")
+  local ctx = assert(root.for_buffer(0))
+  local stored = assert(storage.load(ctx))
+  eq(1, #stored.comments)
+  eq("delete", stored.comments[1].kind)
+  eq("alpha", stored.comments[1].anchor.current.quote.exact)
+  eq({ "project", "file", "current" }, vim.fn.getcompletion("DocumentCommentsExport new ", "cmdline"))
 end)
 
 print(("document-comments: %d tests passed"):format(passed))

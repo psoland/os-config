@@ -1,9 +1,16 @@
 local config = require("document_comments.config")
 
-local M = { schema_version = 1 }
+local M = { schema_version = 2 }
 
 local statuses = { open = true, resolved = true }
 local anchor_states = { attached = true, ambiguous = true, orphaned = true }
+local kinds = { comment = true, delete = true, looks_good = true }
+
+M.kind_labels = { comment = "Comment", delete = "Delete", looks_good = "Looks good" }
+
+function M.kind(comment)
+  return comment.kind or "comment"
+end
 
 local function is_integer(value)
   return type(value) == "number" and value >= 0 and value % 1 == 0
@@ -93,6 +100,7 @@ end
 function M.new_store()
   return {
     comments = {},
+    export_batches = {},
     schema_version = M.schema_version,
     store_revision = 0,
     updated_at = M.now(),
@@ -119,7 +127,7 @@ function M.quote(text, start_byte, end_byte)
   }
 end
 
-function M.new_comment(source_path, position, quote, document_hash, body)
+function M.new_comment(source_path, position, quote, document_hash, body, kind)
   local timestamp = M.now()
   local snapshot = {
     document_hash = document_hash,
@@ -135,6 +143,7 @@ function M.new_comment(source_path, position, quote, document_hash, body)
     body = body,
     created_at = timestamp,
     id = M.new_id(),
+    kind = kind or "comment",
     resolved_at = vim.NIL,
     source = { path = source_path },
     status = "open",
@@ -142,30 +151,12 @@ function M.new_comment(source_path, position, quote, document_hash, body)
   }
 end
 
-function M.validate(store)
-  if type(store) ~= "table" then
-    return nil, "store root must be an object"
-  end
-  if store.schema_version ~= M.schema_version then
-    if type(store.schema_version) == "number" and store.schema_version > M.schema_version then
-      return nil,
-        ("schema version %s is newer than supported version %d; store is read-only"):format(
-          tostring(store.schema_version),
-          M.schema_version
-        )
-    end
-    return nil, ("unsupported schema version %s"):format(tostring(store.schema_version))
-  end
-  if
-    not is_integer(store.store_revision)
-    or not valid_timestamp(store.updated_at)
-    or type(store.comments) ~= "table"
-    or not vim.islist(store.comments)
-  then
-    return nil, "store metadata is invalid"
+local function validate_comments(comments, legacy)
+  if type(comments) ~= "table" or not vim.islist(comments) then
+    return nil, "comments must be an array"
   end
   local ids = {}
-  for index, comment in ipairs(store.comments) do
+  for index, comment in ipairs(comments) do
     local prefix = "comment " .. index
     if type(comment) ~= "table" or type(comment.id) ~= "string" or comment.id == "" then
       return nil, prefix .. " has an invalid id"
@@ -188,7 +179,10 @@ function M.validate(store)
     if type(comment.source) ~= "table" or not valid_relative_path(comment.source.path) then
       return nil, prefix .. " has an invalid source path"
     end
-    if type(comment.body) ~= "string" or vim.trim(comment.body) == "" then
+    if not kinds[comment.kind or (legacy and "comment")] then
+      return nil, prefix .. " has an invalid annotation kind"
+    end
+    if type(comment.body) ~= "string" or (M.kind(comment) == "comment" and vim.trim(comment.body) == "") then
       return nil, prefix .. " has an empty body"
     end
     if not valid_timestamp(comment.created_at) or not valid_timestamp(comment.updated_at) then
@@ -202,6 +196,97 @@ function M.validate(store)
     end
   end
   return true
+end
+
+function M.validate(store)
+  if type(store) ~= "table" then
+    return nil, "store root must be an object"
+  end
+  if store.schema_version ~= 1 and store.schema_version ~= M.schema_version then
+    if type(store.schema_version) == "number" and store.schema_version > M.schema_version then
+      return nil,
+        ("schema version %s is newer than supported version %d; store is read-only"):format(
+          tostring(store.schema_version),
+          M.schema_version
+        )
+    end
+    return nil, ("unsupported schema version %s"):format(tostring(store.schema_version))
+  end
+  if not is_integer(store.store_revision) or not valid_timestamp(store.updated_at) then
+    return nil, "store metadata is invalid"
+  end
+  local valid, err = validate_comments(store.comments, store.schema_version == 1)
+  if not valid then
+    return nil, err
+  end
+  if store.schema_version == 1 then
+    return true
+  end
+  if type(store.export_batches) ~= "table" or not vim.islist(store.export_batches) then
+    return nil, "export batches must be an array"
+  end
+  local ids = {}
+  for _, batch in ipairs(store.export_batches) do
+    if type(batch) ~= "table" or type(batch.id) ~= "string" or batch.id == "" or ids[batch.id] then
+      return nil, "export batch has an invalid or duplicate id"
+    end
+    ids[batch.id] = true
+    if
+      not valid_timestamp(batch.exported_at)
+      or not is_integer(batch.store_revision)
+      or type(batch.path) ~= "string"
+      or batch.path == ""
+      or type(batch.markdown) ~= "string"
+      or (batch.mode ~= "new" and batch.mode ~= "all")
+      or (batch.scope ~= "project" and batch.scope ~= "file" and batch.scope ~= "current")
+    then
+      return nil, "export batch metadata is invalid"
+    end
+    valid, err = validate_comments(batch.comments, false)
+    if not valid or #batch.comments == 0 then
+      return nil, "export batch: " .. (err or "no comments")
+    end
+  end
+  return true
+end
+
+-- Loading an old store upgrades only the in-memory copy. The next successful write
+-- persists v2; the original disk hash still protects against concurrent changes.
+function M.migrate(store)
+  if store.schema_version == 1 then
+    store.schema_version = M.schema_version
+    store.export_batches = {}
+    for _, comment in ipairs(store.comments) do
+      comment.kind = comment.kind or "comment"
+    end
+  end
+  return store
+end
+
+-- Position, surrounding context, document hashes and timestamps deliberately do
+-- not count as changed feedback. Rewritten selections and unsafe anchors do.
+function M.feedback_fingerprint(comment)
+  return M.hash(vim.json.encode({
+    M.kind(comment),
+    comment.body,
+    comment.source.path,
+    comment.anchor.current.quote.exact,
+    comment.anchor.state,
+  }))
+end
+
+function M.exported_fingerprints(store)
+  local result = {}
+  for _, batch in ipairs(store.export_batches or {}) do
+    for _, comment in ipairs(batch.comments) do
+      result[comment.id] = M.feedback_fingerprint(comment)
+    end
+  end
+  return result
+end
+
+function M.is_pending(comment, fingerprints)
+  return comment.status == "open" and fingerprints[comment.id] ~= M.feedback_fingerprint(comment)
 end
 
 function M.find(store, id)

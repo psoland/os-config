@@ -91,9 +91,12 @@ in
       set -ogq @agent_input_color '#89b4fa'
       set -g @agent_indicator '#{?#{==:#{@agent_status},needs-input},#[fg=#{@agent_input_color}]●#[default] ,#{?#{==:#{@agent_status},finished},#[fg=#{@agent_finished_color}]●#[default] ,#{?#{==:#{@agent_status},running},#[fg=#{@agent_running_color}]●#[default] ,  }}}'
 
-      # Indexed hooks coexist with other integrations. client-session-changed
-      # also runs on attach.
-      set-hook -g client-session-changed[90] 'run-shell -b "${agentHelper}/bin/tmux-agent --socket #{q:socket_path} acknowledge #{q:session_id}"'
+      # A visit acknowledges only the active pane's displayed conversations.
+      # Notification hooks cover keyboard/mouse navigation and session attach;
+      # indexed hooks coexist with other integrations.
+      set-hook -g client-session-changed[90] 'run-shell -b "${agentHelper}/bin/tmux-agent --socket #{q:socket_path} acknowledge --if-visible #{q:pane_id}"'
+      set-hook -g session-window-changed[90] 'run-shell -b "${agentHelper}/bin/tmux-agent --socket #{q:socket_path} acknowledge --if-visible #{q:pane_id}"'
+      set-hook -g window-pane-changed[90] 'run-shell -b "${agentHelper}/bin/tmux-agent --socket #{q:socket_path} acknowledge --if-visible #{q:pane_id}"'
       set-hook -g pane-exited[90] 'run-shell -b "${agentHelper}/bin/tmux-agent --socket #{q:socket_path} refresh"'
       set-hook -g window-linked[90] 'run-shell -b "${agentHelper}/bin/tmux-agent --socket #{q:socket_path} refresh"'
       set-hook -g window-unlinked[90] 'run-shell -b "${agentHelper}/bin/tmux-agent --socket #{q:socket_path} refresh"'

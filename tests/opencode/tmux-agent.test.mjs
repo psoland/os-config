@@ -39,6 +39,31 @@ function harness({ status = "idle", permissions = [], forms = [] } = {}) {
 
 const tick = () => new Promise(setImmediate)
 const states = (h) => h.calls.filter((call) => call.command === "state")
+const views = (h) => h.calls.filter((call) => call.command === "view")
+
+test("reports only the displayed conversation, retaining background groups", async () => {
+  const h = harness()
+  h.event("session.execution.succeeded")
+  const first = states(h)[0]
+  assert.equal(views(h).at(-1).group, first.group)
+  h.route({ type: "session", sessionID: "another-root" })
+  h.event("session.execution.succeeded", { sessionID: "another-root" })
+  const second = states(h).at(-1)
+  assert.notEqual(first.group, second.group)
+  assert.equal(views(h).at(-1).group, second.group)
+  h.event("permission.asked", { sessionID: "child", id: "p" })
+  assert.equal(states(h).at(-1).group, first.group)
+  h.route({ type: "session", sessionID: "root" })
+  assert.equal(views(h).at(-1).group, first.group)
+  const count = views(h).length
+  h.remount()
+  assert.equal(views(h).length, count)
+  h.route({ type: "home" })
+  assert.equal(views(h).at(-1).group, "")
+  h.cleanup()
+  assert.equal(views(h).at(-1).group, "")
+  await tick()
+})
 
 test("idle at startup is not a completion; running, finished and input are distinct", async () => {
   const h = harness()
@@ -140,6 +165,10 @@ test("cleanup unregisters listeners/sources and ignores late snapshots/events", 
   h.event("session.execution.succeeded")
   await tick()
   assert.deepEqual(states(h).map((call) => call.state), ["running"])
+  const count = views(h).length
+  h.route({ type: "session", sessionID: "late-route" })
+  h.remount()
+  assert.equal(views(h).length, count)
   assert.equal(h.calls.filter((call) => call.command === "remove").length, 1)
   assert.equal(h.calls.filter((call) => call.unsubscribe || call.unregister).length, 2)
 })
@@ -160,6 +189,7 @@ test("helper transport uses the client socket/pane, argument arrays and serializ
   await Promise.all([first, second])
   assert.deepEqual(calls[0][1], [
     "--socket", "/tmp/socket,with-comma", "state", "finished", "--event", "done", "--at", "123", "--pid", "99",
+    "--group", "",
     "--pane", "%42", "--source", "agent; not a shell command",
   ])
   assert.equal(calls[1][1][2], "remove")
@@ -175,4 +205,17 @@ test("missing tmux or a failed helper does not break the CLI or stop subsequent 
   await assert.rejects(sender({ command: "remove", source: "one" }))
   await sender({ command: "remove", source: "two" })
   assert.equal(count, 2)
+})
+
+test("helper transport carries conversation groups and timestamped views", async () => {
+  const calls = []
+  const sender = createSender({ TMUX: "/tmp/socket,123,0", TMUX_PANE: "%42" }, 99, async (...args) => {
+    calls.push(args)
+  })
+  await sender({ command: "view", source: "client", group: "conversation", at: 123 })
+  await sender({ command: "state", state: "finished", source: "execution", group: "conversation", event: "done", at: 124 })
+  assert.deepEqual(calls[0][1], [
+    "--socket", "/tmp/socket", "view", "--group", "conversation", "--at", "123", "--pane", "%42", "--source", "client",
+  ])
+  assert.equal(calls[1][1][calls[1][1].indexOf("--group") + 1], "conversation")
 })

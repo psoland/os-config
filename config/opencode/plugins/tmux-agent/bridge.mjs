@@ -14,6 +14,10 @@ export function createSender(env = process.env, pid = process.pid, execute = pro
     if (message.command === "state") {
       args.push(message.state, "--event", message.event, "--at", String(message.at), "--pid", String(pid))
     }
+    if (message.command === "state" || message.command === "view") {
+      args.push("--group", message.group ?? "")
+    }
+    if (message.command === "view") args.push("--at", String(message.at))
     args.push("--pane", pane, "--source", message.source)
     const next = tail.then(() => execute("tmux-agent", args, { timeout: 10000, windowsHide: true }))
     // Preserve ordering even if tmux exited or the helper is not installed yet.
@@ -32,6 +36,7 @@ export function setup(context, {
   const tracked = new Set()
   const sources = new Map()
   const settled = new Set()
+  let displayed
 
   function emit(message) {
     // Indicators must never interfere with the agent if tmux/helper is absent.
@@ -41,7 +46,7 @@ export function setup(context, {
   function state(root, source, value, event) {
     if (stopped) return
     sources.set(source, root)
-    emit({ command: "state", source, state: value, event, at: Date.now() })
+    emit({ command: "state", source, group: execution(root), state: value, event, at: Date.now() })
   }
 
   function remove(source) {
@@ -129,7 +134,14 @@ export function setup(context, {
     append: "app",
     render: () => {
       effect(() => {
+        if (stopped) return
         const route = context.ui.router.current()
+        const sessionID = route.type === "session" ? route.sessionID : ""
+        if (sessionID !== displayed) {
+          displayed = sessionID
+          const root = sessionID ? context.data.session.root(sessionID) : undefined
+          emit({ command: "view", source: owner, group: root ? execution(root) : "", at: Date.now() })
+        }
         if (route.type === "session") void observe(route.sessionID).catch(() => {})
       })
       return null
@@ -140,6 +152,7 @@ export function setup(context, {
     stopped = true
     unsubscribe()
     unregister()
+    emit({ command: "view", source: owner, group: "", at: Date.now() })
     for (const source of [...sources.keys()]) remove(source)
   }
 }

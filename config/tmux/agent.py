@@ -15,6 +15,7 @@ RECORDS = "@agent_records"
 STATUS = "@agent_status"
 RUNNING_COUNT = "@agent_running_count"
 ACK = "@agent_ack"
+VIEWS = "@agent_views"
 STATES = ("running", "finished", "needs-input", "idle")
 SESSION_FORMAT = (
     "#{R: ,#{e|-:#{@agent_name_width},#{w:session_name}}}"
@@ -101,6 +102,33 @@ class Tracker:
             json.dumps(records, separators=(",", ":")),
         )
 
+    def pane_option(self, pane, option):
+        raw = self.tmux("show-options", "-pqv", "-t", pane, option)
+        try:
+            value = json.loads(raw) if raw else {}
+            return value if isinstance(value, dict) else {}
+        except json.JSONDecodeError:
+            return {}
+
+    def save_option(self, pane, option, value):
+        self.tmux(
+            "set-option",
+            "-p",
+            "-t",
+            pane,
+            option,
+            json.dumps(value, separators=(",", ":")),
+        )
+
+    def visible(self, pane):
+        # A remembered active pane in an unattached/hidden window is not a visit.
+        clients = self.tmux("list-clients", "-F", "#{pane_id}").splitlines()
+        return (
+            pane in clients
+            and self.tmux("display-message", "-p", "-t", pane, "#{pane_mode}")
+            in ("", "copy-mode")
+        )
+
     def refresh(self):
         sessions = {
             row: []
@@ -128,7 +156,7 @@ class Tracker:
         if commands:
             self.tmux(*commands)
 
-    def state(self, pane, source, state, event, at, pid):
+    def state(self, pane, source, state, event, at, pid, group=""):
         rows = [
             (session, records)
             for session, target, records in self.panes()
@@ -136,38 +164,57 @@ class Tracker:
         ]
         if not rows:
             return  # The agent's pane may have closed before its final event.
-        session, records = rows[0]
+        _, records = rows[0]
         previous = records.get(source)
         # Replayed/duplicated events must not light up an acknowledged dot.
         if previous and (
             at < previous["at"] or (event and event == previous.get("event"))
         ):
             return
-        ack = self.tmux("show-options", "-qv", "-t", session, ACK)
+        ack = self.pane_option(pane, ACK).get(group, 0)
         records[source] = {
             "state": state,
             "event": event,
             "at": at,
             "pid": pid,
-            "unread": state in ("finished", "needs-input") and at > float(ack or 0),
+            "group": group,
+            "unread": state in ("finished", "needs-input") and at > ack,
         }
         self.save(pane, records)
         self.refresh()
 
-    def acknowledge(self, session, at):
-        previous = self.tmux("show-options", "-qv", "-t", session, ACK)
-        at = max(at, float(previous or 0))
-        self.tmux("set-option", "-t", session, ACK, str(at))
-        seen = set()
-        for target, pane, records in self.panes():
-            if target != session or pane in seen:
+    def acknowledge(self, pane, at, group=None):
+        # Ungrouped adapters acknowledge by pane. OpenCode opts into groups and
+        # reports only its displayed conversation, not all background ones.
+        groups = (
+            {group}
+            if group is not None
+            else {"", *self.pane_option(pane, VIEWS).values()}
+        )
+        ack = self.pane_option(pane, ACK)
+        for key in groups:
+            ack[key] = max(at, ack.get(key, 0))
+        self.save_option(pane, ACK, ack)
+        for _, target, records in self.panes():
+            if target != pane:
                 continue
-            seen.add(pane)
             for record in records.values():
-                if record["at"] <= at:
+                key = record.get("group", "")
+                if key in groups and record["at"] <= ack[key]:
                     record["unread"] = False
             self.save(pane, records)
+            break
         self.refresh()
+
+    def view(self, pane, source, group, at):
+        views = self.pane_option(pane, VIEWS)
+        if group:
+            views[source] = group
+        else:
+            views.pop(source, None)
+        self.save_option(pane, VIEWS, views)
+        if group and self.visible(pane):
+            self.acknowledge(pane, at, group)
 
     def remove(self, pane, source):
         for _, target, records in self.panes():
@@ -199,6 +246,7 @@ def main():
     state.add_argument("--pane", default=os.environ.get("TMUX_PANE"), required=False)
     state.add_argument("--source", required=True)
     state.add_argument("--event", default="")
+    state.add_argument("--group", default="", help="conversation acknowledgement group")
     state.add_argument(
         "--at", type=float, default=None, help="event time in Unix milliseconds"
     )
@@ -209,9 +257,19 @@ def main():
         help="local agent process, for stale-state cleanup",
     )
     ack = commands.add_parser(
-        "acknowledge", help="acknowledge a session's existing notifications"
+        "acknowledge", help="acknowledge a pane's displayed notifications"
     )
-    ack.add_argument("session")
+    ack.add_argument("pane")
+    ack.add_argument("--if-visible", action="store_true")
+    view = commands.add_parser(
+        "view", help="report the conversation displayed in a pane"
+    )
+    view.add_argument("--pane", default=os.environ.get("TMUX_PANE"))
+    view.add_argument("--source", required=True, help="client owning the view")
+    view.add_argument(
+        "--group", default="", help="empty when no conversation is displayed"
+    )
+    view.add_argument("--at", type=float, default=None)
     remove = commands.add_parser("remove", help="unregister one agent")
     remove.add_argument("--pane", default=os.environ.get("TMUX_PANE"))
     remove.add_argument("--source", required=True)
@@ -225,11 +283,16 @@ def main():
     args = parser.parse_args()
     if not args.socket:
         parser.error("run inside tmux or supply --socket")
-    if args.command in ("state", "remove"):
-        if not args.pane or not re.fullmatch(r"%\d+", args.pane):
-            parser.error("a valid tmux pane ID is required")
-        if len(args.source) > 200 or not args.source:
-            parser.error("source must contain 1–200 characters")
+    if args.command in ("state", "remove", "view", "acknowledge") and (
+        not args.pane or not re.fullmatch(r"%\d+", args.pane)
+    ):
+        parser.error("a valid tmux pane ID is required")
+    if args.command in ("state", "remove", "view") and (
+        len(args.source) > 200 or not args.source
+    ):
+        parser.error("source must contain 1–200 characters")
+    if args.command in ("state", "view") and len(args.group) > 200:
+        parser.error("group must contain at most 200 characters")
     if args.command == "state" and args.pid is not None and args.pid <= 0:
         parser.error("pid must be positive")
     # Capture time before waiting for the lock so a delayed acknowledgement
@@ -246,9 +309,18 @@ def main():
                     args.event,
                     args.at if args.at is not None else at,
                     args.pid,
+                    args.group,
                 )
             elif args.command == "acknowledge":
-                tracker.acknowledge(args.session, at)
+                if not args.if_visible or tracker.visible(args.pane):
+                    tracker.acknowledge(args.pane, at)
+            elif args.command == "view":
+                tracker.view(
+                    args.pane,
+                    args.source,
+                    args.group,
+                    args.at if args.at is not None else at,
+                )
             elif args.command == "remove":
                 tracker.remove(args.pane, args.source)
             elif args.command == "picker":

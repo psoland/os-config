@@ -83,6 +83,11 @@ class TrackerTests(unittest.TestCase):
             "state", value, "--pane", pane or self.pane, "--source", source, *extra
         )
 
+    def view(self, group="", pane=None, source="client"):
+        self.helper(
+            "view", "--pane", pane or self.pane, "--source", source, "--group", group
+        )
+
     def status(self, session=None):
         return self.tmux("show-options", "-qv", "-t", session or self.a, agent.STATUS)
 
@@ -157,7 +162,7 @@ class TrackerTests(unittest.TestCase):
         self.assertEqual(self.status(), "needs-input")
         self.helper("remove", "--pane", self.pane, "--source", "third")
         self.assertEqual(self.status(), "finished")
-        self.helper("acknowledge", self.a)
+        self.helper("acknowledge", self.pane)
         self.assertEqual(self.status(), "running")
         self.assertEqual(self.records()["second"]["state"], "finished")
         self.assertFalse(self.records()["second"]["unread"])
@@ -172,7 +177,7 @@ class TrackerTests(unittest.TestCase):
         self.assertEqual(self.running_count(), "2")
         self.assertEqual(self.running_count(self.b), "1")
         self.state("needs-input", "two", split)
-        self.helper("acknowledge", self.a)
+        self.helper("acknowledge", self.pane)
         self.assertEqual(self.running_count(), "1")
         self.state("finished", "one")
         self.assertEqual(self.running_count(), "0")
@@ -229,7 +234,7 @@ class TrackerTests(unittest.TestCase):
         self.assertIn("bg=#a6e3a1]●", bar())
         self.state("needs-input", "three")
         self.assertIn("bg=#89b4fa]●", bar())
-        self.helper("acknowledge", self.a)
+        self.helper("acknowledge", self.pane)
         self.assertIn("agents: 1", bar())
         self.assertIn("bg=#a6e3a1]●", bar())
 
@@ -263,28 +268,31 @@ class TrackerTests(unittest.TestCase):
     def test_acknowledgement_is_scoped_and_new_events_reappear(self):
         self.state("finished", "one")
         self.state("needs-input", "two", self.other)
-        self.helper("acknowledge", self.a)
+        self.helper("acknowledge", self.pane)
         self.assertEqual(self.status(), "")
         self.assertEqual(self.status(self.b), "needs-input")
         self.state("needs-input", "one", self.pane, "--event", "new-request")
         self.assertEqual(self.status(), "needs-input")
 
-    def test_multiple_panes_contribute_and_visit_acknowledges_all(self):
+    def test_multiple_panes_contribute_and_visit_acknowledges_only_one(self):
         split = self.tmux(
             "split-window", "-d", "-t", self.pane, "-P", "-F", "#{pane_id}", "sleep 300"
         )
         self.state("finished", "first")
         self.state("needs-input", "second", split)
         self.assertEqual(self.status(), "needs-input")
-        self.helper("acknowledge", self.a)
-        self.assertEqual(self.status(), "")
+        self.helper("acknowledge", self.pane)
+        self.assertEqual(self.status(), "needs-input")
         self.assertFalse(self.records()["first"]["unread"])
+        self.assertTrue(self.records(split)["second"]["unread"])
+        self.helper("acknowledge", split)
+        self.assertEqual(self.status(), "")
         self.assertFalse(self.records(split)["second"]["unread"])
         self.assertEqual(self.records(split)["second"]["state"], "needs-input")
 
     def test_replayed_and_delayed_events_do_not_reassert_attention(self):
         self.state("finished", "one", self.pane, "--event", "done")
-        self.helper("acknowledge", self.a)
+        self.helper("acknowledge", self.pane)
         self.state("finished", "one", self.pane, "--event", "done")
         self.assertEqual(self.status(), "")
         self.state("needs-input", "another", self.pane, "--at", "1")
@@ -340,11 +348,148 @@ class TrackerTests(unittest.TestCase):
         self.tmux("switch-client", "-t", self.b)
         self.wait(lambda: self.status(self.b) == "")
 
+    def test_actual_hooks_keep_other_windows_and_panes_unread_until_selected(self):
+        split = self.tmux(
+            "split-window", "-d", "-t", self.pane, "-P", "-F", "#{pane_id}", "sleep 300"
+        )
+        window = self.tmux(
+            "new-window", "-d", "-t", self.a, "-P", "-F", "#{pane_id}", "sleep 300"
+        )
+        self.configure()
+        self.state("finished", "active")
+        self.state("finished", "split", split)
+        self.state("finished", "window", window)
+        self.attach()
+        self.wait(lambda: not self.records()["active"]["unread"])
+        self.assertEqual(self.status(), "finished")
+        self.assertTrue(self.records(split)["split"]["unread"])
+        self.assertTrue(self.records(window)["window"]["unread"])
+        self.tmux("select-pane", "-t", split)
+        self.wait(lambda: not self.records(split)["split"]["unread"])
+        self.assertEqual(self.status(), "finished")
+        # next-window covers navigation beyond explicit select-window commands.
+        self.tmux("next-window", "-t", self.a)
+        self.wait(lambda: self.status() == "")
+        self.assertFalse(self.records(window)["window"]["unread"])
+
+    def test_hidden_window_selection_is_not_a_visit(self):
+        self.configure()
+        self.attach()
+        self.state("finished", "hidden", self.other)
+        split = self.tmux(
+            "split-window",
+            "-d",
+            "-t",
+            self.other,
+            "-P",
+            "-F",
+            "#{pane_id}",
+            "sleep 300",
+        )
+        self.state("finished", "hidden-split", split)
+        self.tmux("select-pane", "-t", split)
+        self.helper("acknowledge", "--if-visible", split)
+        self.assertTrue(self.records(split)["hidden-split"]["unread"])
+        self.tmux("switch-client", "-t", self.b)
+        self.wait(lambda: not self.records(split)["hidden-split"]["unread"])
+        self.assertTrue(self.records(self.other)["hidden"]["unread"])
+        self.assertEqual(self.status(self.b), "finished")
+
+    def test_conversation_view_and_pane_visits_acknowledge_only_displayed_group(self):
+        self.configure()
+        self.attach(self.b)
+        self.state("finished", "first", self.pane, "--group", "client:first")
+        self.state("finished", "second", self.pane, "--group", "client:second")
+        self.view("client:first")
+        self.assertTrue(self.records()["first"]["unread"])
+        self.tmux("switch-client", "-t", self.a)
+        self.wait(lambda: not self.records()["first"]["unread"])
+        self.assertTrue(self.records()["second"]["unread"])
+        self.assertEqual(self.status(), "finished")
+        self.view("client:second")
+        self.assertEqual(self.status(), "")
+        self.assertFalse(self.records()["second"]["unread"])
+        self.state("finished", "first", self.pane, "--group", "client:first")
+        self.helper("acknowledge", self.pane)
+        self.assertEqual(self.status(), "finished")
+        # Leaving the conversation for OpenCode's home screen displays none.
+        self.view()
+        self.helper("acknowledge", self.pane)
+        self.assertTrue(self.records()["first"]["unread"])
+
+    def test_detached_conversation_view_does_not_acknowledge(self):
+        self.state("finished", "first", self.pane, "--group", "client:first")
+        self.view("client:first")
+        self.assertTrue(self.records()["first"]["unread"])
+        self.helper("acknowledge", "--if-visible", self.pane)
+        self.assertTrue(self.records()["first"]["unread"])
+
+    def test_conversation_view_does_not_acknowledge_picker_previews(self):
+        self.configure()
+        self.attach()
+        self.state("finished", "first", self.pane, "--group", "client:first")
+        self.helper("picker", self.pane)
+        self.view("client:first")
+        self.helper("acknowledge", "--if-visible", self.pane)
+        self.assertTrue(self.records()["first"]["unread"])
+
+    def test_group_acknowledgement_is_scoped_and_preserves_newer_events(self):
+        self.state(
+            "finished", "first", self.pane, "--group", "client:first", "--at", "100"
+        )
+        self.state(
+            "finished", "second", self.pane, "--group", "client:second", "--at", "100"
+        )
+        tracker = agent.Tracker(self.socket)
+        # Direct calls let us control the event/visit order without wall-clock races.
+        tracker.acknowledge(self.pane, 150, "client:first")
+        self.assertFalse(self.records()["first"]["unread"])
+        self.assertTrue(self.records()["second"]["unread"])
+        self.state(
+            "needs-input", "late", self.pane, "--group", "client:first", "--at", "120"
+        )
+        self.assertFalse(self.records()["late"]["unread"])
+        self.state(
+            "finished", "first", self.pane, "--group", "client:first", "--at", "200"
+        )
+        tracker.acknowledge(self.pane, 175, "client:first")
+        self.assertTrue(self.records()["first"]["unread"])
+        # Reading one pane must not suppress delayed events in a different pane.
+        self.state(
+            "finished", "other", self.other, "--group", "client:first", "--at", "120"
+        )
+        self.assertTrue(self.records(self.other)["other"]["unread"])
+
+    def test_moving_window_preserves_conversation_view_and_acknowledgement(self):
+        self.state(
+            "finished", "read", self.pane, "--group", "client:first", "--at", "100"
+        )
+        self.state(
+            "finished", "unread", self.pane, "--group", "client:second", "--at", "100"
+        )
+        self.view("client:first")
+        agent.Tracker(self.socket).acknowledge(self.pane, 150, "client:first")
+        self.tmux("move-window", "-s", f"{self.a}:0", "-t", self.b)
+        self.helper("acknowledge", self.pane)
+        self.assertFalse(self.records()["read"]["unread"])
+        self.assertTrue(self.records()["unread"]["unread"])
+        self.assertEqual(self.status(self.b), "finished")
+
+    def test_visiting_copy_mode_pane_counts_as_reading(self):
+        self.configure()
+        self.attach(self.b)
+        self.state("finished", "first", self.pane, "--group", "client:first")
+        self.view("client:first")
+        self.tmux("copy-mode", "-t", self.pane)
+        self.tmux("switch-client", "-t", self.a)
+        self.wait(lambda: self.status() == "")
+        self.assertFalse(self.records()["first"]["unread"])
+
     def test_picker_alignment_colors_and_no_acknowledgement_on_open(self):
         self.configure()
         self.attach()
         self.wait(
-            lambda: bool(self.tmux("show-options", "-qv", "-t", self.a, agent.ACK))
+            lambda: bool(self.tmux("show-options", "-pqv", "-t", self.pane, agent.ACK))
         )
         self.state("finished")
         self.state("needs-input", "other-agent", self.other)

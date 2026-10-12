@@ -9,14 +9,19 @@ terminal. Tagging a row with `t` adds tmux's own `*`, shifting that row one cell
 | Dot | Meaning |
 | --- | --- |
 | Amber | At least one agent is running |
-| Green | An agent finished a turn and you have not visited the session yet |
-| Blue | An agent needs input/approval, or failed, and you have not visited yet |
+| Green | An agent finished a turn and you have not visited its pane/conversation yet |
+| Blue | An agent needs input/approval, or failed, and you have not visited its pane/conversation yet |
 | Blank | No running agents or unread notifications |
 
 Unread input takes priority over unread completion, which takes priority over
 running. Each agent/conversation/input request has independent state. Entering
-the session acknowledges **all** of its existing notifications, even those in
-other windows. Highlighting a row or opening the picker does not acknowledge it.
+a session acknowledges only the active pane's displayed conversation(s). Other
+windows, panes, and background OpenCode conversations stay unread until visited,
+so the session dot remains until all their notifications are acknowledged.
+Switching windows or selecting a pane counts as a visit; switching conversations
+inside OpenCode counts only while that pane is active in an attached tmux client.
+"Read" means visited, not that you have scrolled through the response.
+Highlighting a row or opening the picker does not acknowledge it.
 Running remains visible until the agent stops. An acknowledged input request
 stays hidden until a new attention event arrives; it does not repeatedly reappear.
 
@@ -45,6 +50,9 @@ choice declarative for new tmux servers.
 `config/opencode/plugins/tmux-agent` is enabled in `cli.json`. It observes the
 conversations displayed by each CLI, including those left running after switching
 to another conversation. It filters out other conversations on the shared server.
+Each CLI reports its currently displayed conversation, so visiting its pane does
+not acknowledge the CLI's background conversations. Returning to a conversation
+acknowledges its existing notifications; new attention events can light the dot again.
 Subagent input requests contribute to their parent's attention; subagent completion
 alone does not count as parent completion. An idle conversation at startup does
 not create a green notification.
@@ -79,6 +87,23 @@ repeated reports of that event; do not use a constant event ID for every turn.
 `idle` clears a source's state without reporting completion. `--pid` can identify
 the local agent process for dead-client cleanup. `--at` accepts local Unix
 milliseconds so delayed events do not re-notify after acknowledgement.
+
+Adapters without conversation groups acknowledge all sources in the visited pane,
+never the whole session. An adapter that switches conversations in one pane can
+opt in with `--group <conversation>` on state events and report its current view:
+
+```sh
+tmux-agent state finished --source agent-turn --group conversation-123
+tmux-agent view --source my-client --group conversation-123
+tmux-agent view --source my-client # No conversation displayed; also use on exit.
+```
+
+Use a group unique to the client/conversation and a stable view source per client.
+All input-request sources belonging to that conversation use the same group.
+`tmux-agent acknowledge <pane-id>` manually acknowledges only that pane's
+ungrouped sources and displayed groups; `--if-visible` requires an attached client
+with that pane active and outside tmux's picker. View reports also accept
+`--at` for their original timestamp, preserving newer events during delayed delivery.
 
 ## Tests
 

@@ -9,6 +9,7 @@ local M = {}
 
 M.namespace = vim.api.nvim_create_namespace("document-comments")
 M.sign_namespace = vim.api.nvim_create_namespace("document-comments-signs")
+M.preview_namespace = vim.api.nvim_create_namespace("document-comments-preview")
 local buffers = {}
 
 local function notify_error(message)
@@ -63,6 +64,9 @@ function M.apply(bufnr, ctx, comments)
     return
   end
   vim.api.nvim_buf_clear_namespace(bufnr, M.sign_namespace, 0, -1)
+  -- Previews are transient. A live sidebar will recreate only its valid selection
+  -- after rendering; old previews must not outlive deleted annotations or reloads.
+  vim.api.nvim_buf_clear_namespace(bufnr, M.preview_namespace, 0, -1)
   local state = buffers[bufnr] or { attached = false, marks = {} }
   local previous_marks = state.marks
   local ids_by_comment = {}
@@ -122,7 +126,11 @@ function M.apply(bufnr, ctx, comments)
       state.marks[id] = comment.id
     end
   end
-  for mark_id in pairs(previous_marks) do
+  -- Neovim namespaces outlive Lua module state. Sweep the actual namespace, not
+  -- just the cached IDs, so orphaned/duplicate marks from reloads are removed too.
+  -- Keep live IDs intact to preserve unsaved ranges and their undo history.
+  for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(bufnr, M.namespace, 0, -1, {})) do
+    local mark_id = mark[1]
     if not state.marks[mark_id] then
       vim.api.nvim_buf_del_extmark(bufnr, M.namespace, mark_id)
     end

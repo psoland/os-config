@@ -1358,5 +1358,138 @@ test("sidebar has a compact header and read-only help that closes without changi
   eq(window_count, #vim.api.nvim_list_wins())
 end)
 
+test("deleting each annotation type clears its source highlight, sign, and sidebar preview", function()
+  local sidebar = require("document_comments.ui.sidebar")
+  local extmarks = require("document_comments.extmarks")
+  sidebar.close()
+  for _, kind in ipairs({ "comment", "delete", "looks_good" }) do
+    storage._reset()
+    local project = tempdir()
+    local document = vim.fs.joinpath(project, "delete-highlight.md")
+    write(document, "æ😊 suffix")
+    vim.cmd.edit(vim.fn.fnameescape(document))
+    vim.bo.filetype = "markdown"
+    local buffer = vim.api.nvim_get_current_buf()
+    local ctx = assert(root.for_buffer(buffer))
+    local comment = sample_comment(kind == "comment" and "Feedback" or "")
+    comment.kind, comment.source.path = kind, "delete-highlight.md"
+    assert(storage.mutate(ctx, function(store)
+      store.comments = { comment }
+    end))
+    extmarks.refresh(buffer)
+    sidebar.toggle()
+    local panel_window = vim.api.nvim_get_current_win()
+    for _, namespace in ipairs({ extmarks.namespace, extmarks.sign_namespace, extmarks.preview_namespace }) do
+      eq(1, #vim.api.nvim_buf_get_extmarks(buffer, namespace, 0, -1, {}))
+    end
+    local original_select = vim.ui.select
+    vim.ui.select = function(items, _, callback)
+      eq({ "Cancel", "Delete" }, items)
+      callback("Delete")
+    end
+    vim.fn.maparg("d", "n", false, true).callback()
+    vim.ui.select = original_select
+    eq(0, #assert(storage.load(ctx)).comments)
+    for _, namespace in ipairs({ extmarks.namespace, extmarks.sign_namespace, extmarks.preview_namespace }) do
+      eq(0, #vim.api.nvim_buf_get_extmarks(buffer, namespace, 0, -1, {}))
+    end
+    assert(vim.api.nvim_win_is_valid(panel_window))
+    eq("æ😊 suffix", read(document))
+    sidebar.close()
+  end
+end)
+
+test("deleting one overlapping annotation preserves only the other annotation's highlight", function()
+  storage._reset()
+  local project = tempdir()
+  local document = vim.fs.joinpath(project, "overlap.md")
+  write(document, "æ😊 suffix")
+  vim.cmd.edit(vim.fn.fnameescape(document))
+  vim.bo.filetype = "markdown"
+  local buffer = vim.api.nvim_get_current_buf()
+  local ctx = assert(root.for_buffer(buffer))
+  local first, second = sample_comment("First feedback"), sample_comment("Second feedback")
+  first.source.path, second.source.path = "overlap.md", "overlap.md"
+  for _, snapshot in ipairs({ second.anchor.original, second.anchor.current }) do
+    snapshot.position.start.byte_column = 2
+    snapshot.quote.exact, snapshot.quote.prefix = "😊", "æ"
+  end
+  assert(storage.mutate(ctx, function(store)
+    store.comments = { first, second }
+  end))
+  local extmarks = require("document_comments.extmarks")
+  extmarks.refresh(buffer)
+  eq(2, #vim.api.nvim_buf_get_extmarks(buffer, extmarks.namespace, 0, -1, {}))
+  local remaining_id
+  for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(buffer, extmarks.namespace, 0, -1, {})) do
+    if mark[3] == 2 then
+      remaining_id = mark[1]
+    end
+  end
+  assert(remaining_id)
+  local original_select = vim.ui.select
+  vim.ui.select = function(_, _, callback)
+    callback("Delete")
+  end
+  require("document_comments.commands").perform("delete", first, ctx, buffer)
+  vim.ui.select = original_select
+  local marks = vim.api.nvim_buf_get_extmarks(buffer, extmarks.namespace, 0, -1, {})
+  eq(1, #marks)
+  eq(remaining_id, marks[1][1])
+  assert(not extmarks.comment_position(buffer, first))
+  assert(extmarks.comment_position(buffer, second))
+end)
+
+test("rendering reconciles stale marks across module reloads and deletion clears untracked previews", function()
+  storage._reset()
+  local project = tempdir()
+  local document = vim.fs.joinpath(project, "reloaded.md")
+  write(document, "æ😊 suffix")
+  vim.cmd.edit(vim.fn.fnameescape(document))
+  vim.bo.filetype = "markdown"
+  local buffer = vim.api.nvim_get_current_buf()
+  local ctx = assert(root.for_buffer(buffer))
+  local comment = sample_comment("Feedback before reload")
+  comment.source.path = "reloaded.md"
+  assert(storage.mutate(ctx, function(store)
+    store.comments = { comment }
+  end))
+  local extmarks = require("document_comments.extmarks")
+  extmarks.refresh(buffer)
+  eq(1, #vim.api.nvim_buf_get_extmarks(buffer, extmarks.namespace, 0, -1, {}))
+  package.loaded["document_comments.extmarks"] = nil
+  package.loaded["document_comments.commands"] = nil
+  extmarks = require("document_comments.extmarks")
+  extmarks.refresh(buffer)
+  eq(1, #vim.api.nvim_buf_get_extmarks(buffer, extmarks.namespace, 0, -1, {}))
+  vim.api.nvim_buf_set_extmark(buffer, extmarks.namespace, 0, 0, {
+    end_row = 0,
+    end_col = 6,
+    hl_group = "DocumentCommentOpen",
+  })
+  vim.api.nvim_buf_set_extmark(buffer, extmarks.preview_namespace, 0, 0, {
+    end_row = 0,
+    end_col = 6,
+    hl_group = "Search",
+  })
+  local unrelated = vim.api.nvim_create_namespace("unrelated-highlight-test")
+  vim.api.nvim_buf_set_extmark(buffer, unrelated, 0, 0, {
+    end_row = 0,
+    end_col = 6,
+    hl_group = "Visual",
+  })
+  local original_select = vim.ui.select
+  vim.ui.select = function(_, _, callback)
+    callback("Delete")
+  end
+  require("document_comments.commands").delete()
+  vim.ui.select = original_select
+  eq(0, #assert(storage.load(ctx)).comments)
+  for _, namespace in ipairs({ extmarks.namespace, extmarks.sign_namespace, extmarks.preview_namespace }) do
+    eq(0, #vim.api.nvim_buf_get_extmarks(buffer, namespace, 0, -1, {}))
+  end
+  eq(1, #vim.api.nvim_buf_get_extmarks(buffer, unrelated, 0, -1, {}))
+end)
+
 print(("document-comments: %d tests passed"):format(passed))
 vim.cmd("qa!")

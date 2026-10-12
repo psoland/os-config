@@ -8,7 +8,7 @@ local storage = require("document_comments.storage")
 local M = {}
 local state
 local namespace = vim.api.nvim_create_namespace("document-comments-sidebar")
-local preview_namespace = vim.api.nvim_create_namespace("document-comments-preview")
+local preview_namespace = require("document_comments.extmarks").preview_namespace
 local filters = { "open", "resolved", "review", "new", "all" }
 local window_options = { "winfixwidth", "wrap", "linebreak", "number", "relativenumber", "signcolumn", "foldcolumn" }
 
@@ -62,6 +62,7 @@ local function preview()
     hl_group = "Search",
     priority = config.options.highlight_priority + 10,
     strict = false,
+    undo_restore = false,
   })
   state.preview_buffer = buffer
 end

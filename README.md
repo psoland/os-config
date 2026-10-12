@@ -219,6 +219,28 @@ which nvim tmux starship git
 
 3. If dotfiles were moved, review backups in `~/.dotfiles-backup/<timestamp>/`.
 
+#### Mindmeld (work Mac)
+
+The work Mac profile provides `mindmeld-install`, which uses your authenticated
+GitHub CLI to run the installer from `Knowit-Objectnet/mindmeld`:
+
+```bash
+gh auth login # if you are not already signed in with access to the repository
+mindmeld-install
+```
+
+It installs the latest release in `/Applications/Mindmeld.app` and opens it.
+Mindmeld then updates itself. Run the command again to reinstall the latest
+release, or pass a different existing destination, e.g. `mindmeld-install ~/Applications`.
+
+You can also install directly from this checkout before applying the profile:
+
+```bash
+bash ~/.dotfiles/hosts/mac/install-mindmeld.sh
+```
+
+#### Reapplying the configuration
+
 Home Manager is already applied by bootstrap. Re-run manually only if needed:
 
 ```bash

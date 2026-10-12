@@ -126,11 +126,7 @@ function M.refresh(ctx)
   end)
   local lines = {
     "Document annotations — " .. vim.fs.basename(state.ctx.root),
-    ("%s · %s · %d shown · %d new/edited"):format(state.scope, state.filter, #comments, pending),
-    "Enter jump · e edit · r resolve/reopen · t type",
-    "a reattach · d permanently delete · y copy ID",
-    "f filter · p file/project · x export new · X all",
-    "B export batches · ] refs · [ backlinks · q close",
+    ("%s · %s · %d shown · %d new/edited · ? help"):format(state.scope, state.filter, #comments, pending),
     "",
   }
   local entries = {}
@@ -329,6 +325,86 @@ function M.batches(ctx)
   end)
 end
 
+function M.help()
+  if not state or not vim.api.nvim_win_is_valid(state.window) then
+    return
+  end
+  if state.help_window and vim.api.nvim_win_is_valid(state.help_window) then
+    vim.api.nvim_set_current_win(state.help_window)
+    return
+  end
+  local lines = {
+    "Navigation",
+    "  j / k       Next / previous annotation",
+    "  Arrow keys  Move within long notes",
+    "  Enter       Jump to source",
+    "",
+    "Annotation actions",
+    "  e           Edit note",
+    "  r           Resolve / reopen",
+    "  t           Change annotation type",
+    "  a           Choose annotation for reattachment",
+    "              Select replacement text, then <leader>aR",
+    "  d           Permanently delete (with confirmation)",
+    "  y           Copy stable ID",
+    "  ] / [       Open references / backlinks",
+    "",
+    "Views and exports",
+    "  f           Filter: open, resolved, review, new, all",
+    "  p           Toggle file / project scope",
+    "  x / X       Export new/edited / all open annotations",
+    "  B           Browse export batches",
+    "  q           Close sidebar",
+    "",
+    "Exported does not mean sent or resolved.",
+    "? / q / Esc close this help popup.",
+  }
+  local buffer = vim.api.nvim_create_buf(false, true)
+  vim.bo[buffer].bufhidden = "wipe"
+  vim.bo[buffer].filetype = "document_comments_help"
+  vim.api.nvim_buf_set_lines(buffer, 0, -1, false, lines)
+  vim.bo[buffer].modifiable = false
+  vim.bo[buffer].modified = false
+  local width = 1
+  for _, line in ipairs(lines) do
+    width = math.max(width, vim.fn.strdisplaywidth(line))
+  end
+  width = math.max(1, math.min(width, vim.o.columns - 4))
+  local height = math.max(1, math.min(#lines, vim.o.lines - 4))
+  local window = vim.api.nvim_open_win(buffer, true, {
+    relative = "editor",
+    style = "minimal",
+    border = "rounded",
+    title = " Annotation sidebar help ",
+    title_pos = "center",
+    footer = " ? / q / Esc close ",
+    footer_pos = "center",
+    width = width,
+    height = height,
+    row = math.max(0, math.floor((vim.o.lines - height) / 2) - 1),
+    col = math.max(0, math.floor((vim.o.columns - width) / 2)),
+  })
+  state.help_window = window
+  vim.wo[window].wrap = true
+  vim.wo[window].linebreak = true
+  for _, key in ipairs({ "?", "q", "<Esc>" }) do
+    vim.keymap.set("n", key, function()
+      if vim.api.nvim_win_is_valid(window) then
+        vim.api.nvim_win_close(window, true)
+      end
+    end, { buffer = buffer, nowait = true, desc = "Close annotation help" })
+  end
+  vim.api.nvim_create_autocmd("BufWipeout", {
+    buffer = buffer,
+    once = true,
+    callback = function()
+      if state and state.help_window == window then
+        state.help_window = nil
+      end
+    end,
+  })
+end
+
 function M.close()
   if not state then
     return
@@ -337,7 +413,11 @@ function M.close()
   local window = state.window
   local source_buffer = state.source_buffer
   local options = state.source_options
+  local help_window = state.help_window
   state = nil
+  if help_window and vim.api.nvim_win_is_valid(help_window) then
+    vim.api.nvim_win_close(help_window, true)
+  end
   if vim.api.nvim_win_is_valid(window) then
     if #vim.api.nvim_tabpage_list_wins(vim.api.nvim_win_get_tabpage(window)) == 1 then
       -- The source window may have been closed. Never try to close the last window.
@@ -395,6 +475,7 @@ function M.toggle()
     vim.keymap.set("n", key, callback, { buffer = buffer, desc = desc, nowait = true })
   end
   map("q", M.close, "Close annotation sidebar")
+  map("?", M.help, "Annotation sidebar help")
   map("j", function()
     navigate(1)
   end, "Next annotation")
@@ -449,7 +530,11 @@ function M.toggle()
     callback = function()
       if state and state.buffer == buffer then
         clear_preview()
+        local help_window = state.help_window
         state = nil
+        if help_window and vim.api.nvim_win_is_valid(help_window) then
+          vim.api.nvim_win_close(help_window, true)
+        end
       end
     end,
   })

@@ -79,9 +79,13 @@ The sidebar shows full comment bodies, selected text, type, and export coverage.
 Selecting an attached annotation highlights its live range in the source window,
 including through unsaved edits. It stays open and refreshes after changes.
 It follows other Markdown files in the same project; project mode shows all files.
+The header only shows the project, current scope/filter, counts, and a `? help`
+hint. Press `?` for the shortcut guide in a read-only popup; `?`, `q`, or `Esc`
+closes the popup and returns to the sidebar.
 
 | Key | Sidebar action |
 | --- | --- |
+| `?` | Open shortcut help popup |
 | `j` / `k` | Next / previous annotation (arrow keys move within long bodies) |
 | `Enter` | Jump to source |
 | `e` | Edit note |

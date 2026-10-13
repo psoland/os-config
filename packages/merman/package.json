@@ -1,0 +1,10 @@
+{
+  "name": "merman-nvim",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "entities": "7.0.1",
+    "string-width": "8.1.0"
+  }
+}

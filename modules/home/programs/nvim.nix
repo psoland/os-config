@@ -4,9 +4,9 @@
   home.packages = with pkgs; [
     neovim
 
-    # Snacks inline images and Mermaid diagrams.
+    # Snacks images; Mermaid previews use Merman's browser-free text renderer.
     imagemagick
-    mermaid-cli
+    (pkgs.callPackage ../../../packages/merman.nix { })
 
     unzip
     wget

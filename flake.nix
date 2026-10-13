@@ -263,6 +263,7 @@
         in
         {
           knowit-pdf = pkgs.callPackage ./packages/knowit-pdf.nix { };
+          merman-nvim = pkgs.callPackage ./packages/merman.nix { };
           pdf = markdown-pdf;
           inherit markdown-pdf;
         }

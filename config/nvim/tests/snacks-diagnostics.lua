@@ -96,6 +96,7 @@ test("Snacks configuration installs the guard and preserves inherited options", 
   assert(opts.picker.sources.explorer.hidden and opts.picker.sources.explorer.ignored)
   assert(opts.notifier.enabled)
   assert(opts.scroll.enabled == false)
+  assert(opts.image.enabled)
   assert(diagnostics.update == fix.update)
 end)
 

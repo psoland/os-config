@@ -5,6 +5,7 @@ return {
       require("config.snacks-diagnostics").setup()
       return vim.tbl_deep_extend("force", opts, {
         scroll = { enabled = false },
+        image = { enabled = true },
         lazygit = {
           config = {
             os = {

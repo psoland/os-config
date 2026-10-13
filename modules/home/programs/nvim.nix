@@ -4,6 +4,10 @@
   home.packages = with pkgs; [
     neovim
 
+    # Snacks inline images and Mermaid diagrams.
+    imagemagick
+    mermaid-cli
+
     unzip
     wget
     statix

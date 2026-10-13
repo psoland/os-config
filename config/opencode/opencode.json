@@ -67,7 +67,7 @@
     },
     "luna": {
       "description": "Primary development agent with max reasoning. For delegated execution, use luna-worker instead.",
-      "mode": "primary",
+      "mode": "all",
       "model": "openai/gpt-6-luna",
       "variant": "max",
       "permission": "allow"

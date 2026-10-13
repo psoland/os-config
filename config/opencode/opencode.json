@@ -32,6 +32,35 @@
   //},
   "default_agent": "sol",
   "providers": {
+    "openai": {
+      "models": {
+        // Explicit limits override the smaller ChatGPT/Codex defaults.
+        "gpt-6.1-sol": {
+          "limit": { "context": 1050000, "input": 922000, "output": 128000 }
+        },
+        "gpt-6.1-sol-fast": {
+          "limit": { "context": 1050000, "input": 922000, "output": 128000 }
+        },
+        "gpt-6.1-sol-ultrafast": {
+          "limit": { "context": 1050000, "input": 922000, "output": 128000 }
+        },
+        "gpt-6-astra": {
+          "limit": { "context": 1050000, "input": 922000, "output": 128000 }
+        },
+        "gpt-6-astra-fast": {
+          "limit": { "context": 1050000, "input": 922000, "output": 128000 }
+        },
+        "gpt-6-astra-ultrafast": {
+          "limit": { "context": 1050000, "input": 922000, "output": 128000 }
+        },
+        "gpt-6-luna": {
+          "limit": { "context": 1050000, "input": 922000, "output": 128000 }
+        },
+        "gpt-6-luna-fast": {
+          "limit": { "context": 1050000, "input": 922000, "output": 128000 }
+        }
+      }
+    },
     "knowit-ai-gateway": {
       "name": "Knowit AI Gateway",
       "env": ["AGW_API_KEY"],

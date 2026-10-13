@@ -5,17 +5,17 @@
 }:
 
 let
-  version = "2.0.26";
+  version = "2.0.28";
   platform =
     if stdenvNoCC.hostPlatform.isAarch64 then
       {
         name = "linux-arm64";
-        hash = "sha256-HXEX27MZaEVviVN7Vi+14g5I2envAyX8iEWr3abvSEI=";
+        hash = "sha256-V1xwSeXZTmEGjJ53tm8ceSdz+5ofOVDGvMdYpdmxHYg=";
       }
     else if stdenvNoCC.hostPlatform.isx86_64 then
       {
         name = "linux-x64-baseline";
-        hash = "sha256-3OMCsw4K2bmGttNq56SD200WNSuqbOwzLI0MfI4Zvxk=";
+        hash = "sha256-QyXzTqiOCR+w34GDwhIMDRPvt0PCt/kLfK6usUfqmGI=";
       }
     else
       throw "opencode2 is unsupported on ${stdenvNoCC.hostPlatform.system}";

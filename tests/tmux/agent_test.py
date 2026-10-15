@@ -424,6 +424,47 @@ class TrackerTests(unittest.TestCase):
         self.helper("acknowledge", "--if-visible", self.pane)
         self.assertTrue(self.records()["first"]["unread"])
 
+    def test_current_conversation_notifications_are_read_without_navigation(self):
+        self.attach()
+        self.view("client:first")
+        self.state("finished", "background", self.pane, "--group", "client:second")
+        self.state("running", "current", self.pane, "--group", "client:first")
+        self.state("finished", "current", self.pane, "--group", "client:first")
+        self.assertFalse(self.records()["current"]["unread"])
+        self.assertTrue(self.records()["background"]["unread"])
+        self.assertEqual(self.status(), "finished")
+        self.view("client:second")
+        self.assertEqual(self.status(), "")
+        self.state("needs-input", "prompt", self.pane, "--group", "client:second")
+        self.assertFalse(self.records()["prompt"]["unread"])
+        self.assertEqual(self.status(), "")
+
+    def test_displayed_conversation_finishing_in_hidden_panes_stays_unread(self):
+        split = self.tmux(
+            "split-window", "-d", "-t", self.pane, "-P", "-F", "#{pane_id}", "sleep 300"
+        )
+        window = self.tmux(
+            "new-window", "-d", "-t", self.a, "-P", "-F", "#{pane_id}", "sleep 300"
+        )
+        self.attach()
+        for pane in (split, window, self.other):
+            with self.subTest(pane=pane):
+                self.view("client:first", pane)
+                self.state("finished", "hidden", pane, "--group", "client:first")
+                self.assertTrue(self.records(pane)["hidden"]["unread"])
+
+    def test_displayed_conversation_finishing_while_detached_stays_unread(self):
+        self.view("client:first")
+        self.state("finished", "first", self.pane, "--group", "client:first")
+        self.assertTrue(self.records()["first"]["unread"])
+
+    def test_displayed_conversation_finishing_under_picker_stays_unread(self):
+        self.attach()
+        self.view("client:first")
+        self.helper("picker", self.pane)
+        self.state("finished", "first", self.pane, "--group", "client:first")
+        self.assertTrue(self.records()["first"]["unread"])
+
     def test_conversation_view_does_not_acknowledge_picker_previews(self):
         self.configure()
         self.attach()

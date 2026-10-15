@@ -20,6 +20,8 @@ windows, panes, and background OpenCode conversations stay unread until visited,
 so the session dot remains until all their notifications are acknowledged.
 Switching windows or selecting a pane counts as a visit; switching conversations
 inside OpenCode counts only while that pane is active in an attached tmux client.
+New notifications for the conversation already displayed in that active pane also
+count as read, without navigating away and back. Hidden conversations stay unread.
 "Read" means visited, not that you have scrolled through the response.
 Highlighting a row or opening the picker does not acknowledge it.
 Running remains visible until the agent stops. An acknowledged input request
@@ -52,7 +54,8 @@ conversations displayed by each CLI, including those left running after switchin
 to another conversation. It filters out other conversations on the shared server.
 Each CLI reports its currently displayed conversation, so visiting its pane does
 not acknowledge the CLI's background conversations. Returning to a conversation
-acknowledges its existing notifications; new attention events can light the dot again.
+acknowledges its existing notifications; new attention events light the dot again
+only when that conversation is no longer displayed in an active tmux pane.
 Subagent input requests contribute to their parent's attention; subagent completion
 alone does not count as parent completion. An idle conversation at startup does
 not create a green notification.

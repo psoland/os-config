@@ -181,7 +181,18 @@ class Tracker:
             "unread": state in ("finished", "needs-input") and at > ack,
         }
         self.save(pane, records)
-        self.refresh()
+        # A conversation already on screen is read without another navigation
+        # event. Scope this to its reported view: background conversations in
+        # the same CLI and panes hidden by the picker must remain unread.
+        if (
+            records[source]["unread"]
+            and group
+            and group in self.pane_option(pane, VIEWS).values()
+            and self.visible(pane)
+        ):
+            self.acknowledge(pane, at, group)
+        else:
+            self.refresh()
 
     def acknowledge(self, pane, at, group=None):
         # Ungrouped adapters acknowledge by pane. OpenCode opts into groups and

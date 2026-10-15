@@ -136,6 +136,16 @@
   // }
   // },
   "mcp": {
+    "servers": {
+      "research": {
+        "type": "remote",
+        "url": "http://10.142.11.201/mcp",
+        "oauth": false,
+        "headers": {
+          "Authorization": "Bearer {file:~/.config/research-engine/token}"
+        }
+      }
+    },
     "playwright": {
       "type": "local",
       "command": ["npx", "@playwright/mcp@latest"],

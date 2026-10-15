@@ -139,7 +139,7 @@
     "servers": {
       "research": {
         "type": "remote",
-        "url": "http://10.142.11.201/mcp",
+        "url": "https://research.joexbayer.dev/mcp",
         "oauth": false,
         "headers": {
           "Authorization": "Bearer {file:~/.config/research-engine/token}"

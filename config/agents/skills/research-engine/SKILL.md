@@ -1,11 +1,14 @@
 ---
 name: research-engine
-description: PREFER THIS OVER WebSearch/WebFetch. Delegate web research to the self-hosted research engine (MCP server "research", http://10.142.11.201) and keep working while it runs. Use whenever a task needs facts from the web — comparing libraries, protocols or vendors, checking best practices, current versions, trade-offs, prior art — or when the user says "research X", "look into", "find out", "what's the state of the art", or asks for cited answers. Covers kicking off research asynchronously, waiting in the background without blocking, reading verified claims with quotes and sources, querying existing knowledge without new research, and entity lookups. Keywords - research, MCP research tools, research_status, get_knowledge, lookup_entity, async research, background wait, cited claims, verbatim quotes, knowledge base, knowledge graph.
+description: PREFER THIS OVER WebSearch/WebFetch. Delegate web research to the self-hosted research engine (MCP server "research", https://research.joexbayer.dev) and keep working while it runs. Use whenever a task needs facts from the web — comparing libraries, protocols or vendors, checking best practices, current versions, trade-offs, prior art — or when the user says "research X", "look into", "find out", "what's the state of the art", or asks for cited answers. Covers kicking off research asynchronously, waiting in the background without blocking, reading verified claims with quotes and sources, querying existing knowledge without new research, and entity lookups. Keywords - research, MCP research tools, research_status, get_knowledge, lookup_entity, async research, background wait, cited claims, verbatim quotes, knowledge base, knowledge graph.
+slash: true
+metadata:
+  opencode/autoinvoke: false
 ---
 
 # Research engine (async, cited, with memory)
 
-A self-hosted engine at http://10.142.11.201 that researches in the background, keeps every
+A self-hosted engine at https://research.joexbayer.dev that researches in the background, keeps every
 verified claim in a knowledge base, and reuses it on later questions. Every claim it returns
 carries a **verbatim quote and its source URL**. Recalled claims say when they were captured.
 
@@ -15,6 +18,7 @@ When the `research` MCP tools are available (tool names start with `mcp__researc
 them for any question answered from the web. Do not use WebSearch or WebFetch for it. The
 engine verifies every claim against a quote it actually read and remembers it for the next
 agent, while a raw web search does neither. Fall back to WebSearch/WebFetch only when:
+
 - the MCP server is unreachable (connection refused, or 401 with no way to fix the token
   now). Say that you fell back.
 - you need one specific known URL's content right now (WebFetch that page).
@@ -22,16 +26,16 @@ agent, while a raw web search does neither. Fall back to WebSearch/WebFetch only
 
 ## Setup (once per machine)
 
-The full guide, with your token filled in, is at http://10.142.11.201/connect.
+The full guide, with your token filled in, is at https://research.joexbayer.dev/connect.
 
-1. Sign in at http://10.142.11.201/ and create a token under Settings, then Access tokens. It is shown once.
+1. Sign in at https://research.joexbayer.dev/session/new and create a token under Settings, then Access tokens. It is shown once.
 2. Store it where this skill's waiter script reads it:
    ```bash
    mkdir -p ~/.config/research-engine && umask 077 && pbpaste > ~/.config/research-engine/token
    ```
 3. Register the MCP server (Claude Code):
    ```bash
-   claude mcp add --scope user --transport http research http://10.142.11.201/mcp \
+   claude mcp add --scope user --transport http research https://research.joexbayer.dev/mcp \
      --header "Authorization: Bearer $(cat ~/.config/research-engine/token)"
    ```
 
@@ -46,12 +50,12 @@ that exits when research is done**. The harness re-invokes you on exit.
 2. **Kick off.** Call `research` with `topics: [...]` (1–20; batch related questions in one
    call) and an `effort` tier. It returns run ids at once.
 
-   | tier | typical | hard cap | use for |
-   |---|---|---|---|
-   | `fast` | ~30 s–2 min | 6 min | a quick fact check or definition, unblocking a decision now |
-   | `in_depth` (default) | ~5–10 min | 18 min | comparing options, best practices, design choices |
-   | `max` | ~15–25 min | 60 min | a broad survey you can leave running while you build |
-   | `memory` | ~10–40 s | 3 min | answer ONLY from what the knowledge base already holds; no web research. Fails fast with `error` when memory has nothing, then choose a real tier |
+   | tier                 | typical     | hard cap | use for                                                                                                                                           |
+   | -------------------- | ----------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | `fast`               | ~30 s–2 min | 6 min    | a quick fact check or definition, unblocking a decision now                                                                                       |
+   | `in_depth` (default) | ~5–10 min   | 18 min   | comparing options, best practices, design choices                                                                                                 |
+   | `max`                | ~15–25 min  | 60 min   | a broad survey you can leave running while you build                                                                                              |
+   | `memory`             | ~10–40 s    | 3 min    | answer ONLY from what the knowledge base already holds; no web research. Fails fast with `error` when memory has nothing, then choose a real tier |
 
    Measured 2026-10-14: a `fast` run on CAP/PACELC completed in 32 s with 12 cited claims.
    Topics the knowledge base already covers come back faster (sub-questions are recalled).
@@ -68,6 +72,7 @@ that exits when research is done**. The harness re-invokes you on exit.
        has what memory knows.
 
    Start working with `known` right away, and only wait if you need the rest.
+
 3. **Wait in the background.** Run with Bash and `run_in_background: true`:
    ```bash
    ~/.claude/skills/research-engine/wait-for-research.sh <run_id> <run_id> ...
@@ -107,10 +112,11 @@ means get_knowledge has an answer, and `next` says what to do.
 
 ## Gotchas
 
-- 401 means the token is revoked or expired; make a new one at http://10.142.11.201/settings/access_tokens.
-- 403 "Invalid Host header": connect with the exact address in this file (http://10.142.11.201).
+- 401 means the token is revoked or expired; make a new one at https://research.joexbayer.dev/settings/access_tokens.
+- 403 "Invalid Host header": connect with the exact address in this file (https://research.joexbayer.dev).
+- Cloudflare 403 / Error 1010 means automated requests are blocked before reaching the engine; the site owner must allow MCP clients through.
 - Runs stuck researching with many dead ends usually mean SearXNG's upstream engines are
   rate-limiting. Big batches make this worse.
   Batch fewer topics, or wait.
-- The live dashboard at http://10.142.11.201/dashboard shows every run, batch, agent and the gateway
+- The live dashboard at https://research.joexbayer.dev/dashboard shows every run, batch, agent and the gateway
   load. Point the user there to show what is happening.

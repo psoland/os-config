@@ -5,14 +5,14 @@
 #
 #   wait-for-research.sh <run_id> [<run_id> ...]
 #
-# Env:   RESEARCH_ENGINE_URL   (default http://10.142.11.201/mcp)
+# Env:   RESEARCH_ENGINE_URL   (default https://research.joexbayer.dev/mcp)
 #        RESEARCH_POLL_SECONDS (default 30; only used when the server cannot hold a long-poll)
 #        RESEARCH_MAX_MINUTES  (default 150; the deep effort's deadline is 2h)
 # Token: ~/.config/research-engine/token (chmod 600), or RESEARCH_ENGINE_TOKEN.
 set -euo pipefail
 
 [ "$#" -ge 1 ] || { echo "usage: $0 <run_id> [<run_id> ...]" >&2; exit 2; }
-url="${RESEARCH_ENGINE_URL:-http://10.142.11.201/mcp}"
+url="${RESEARCH_ENGINE_URL:-https://research.joexbayer.dev/mcp}"
 poll="${RESEARCH_POLL_SECONDS:-30}"
 max_minutes="${RESEARCH_MAX_MINUTES:-150}"
 token="${RESEARCH_ENGINE_TOKEN:-$(cat "$HOME/.config/research-engine/token" 2>/dev/null || true)}"

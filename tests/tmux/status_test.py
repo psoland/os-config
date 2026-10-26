@@ -238,5 +238,5 @@ class StatusIntegrationTests(unittest.TestCase):
             self.tmux(
                 "display-message", "-p", "-t", pane, "#{E:@catppuccin_directory_text}"
             ),
-            "parent ' spaces/leaf $(no-shell)",
+            " parent ' spaces/leaf $(no-shell)",
         )

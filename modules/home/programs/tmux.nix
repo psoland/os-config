@@ -166,7 +166,7 @@ in
       set -ogq @status_cpu_text ' --.-%'
       set -g @status_cpu_fg '#{?#{e|>=|f|0:#{@status_cpu_usage},80},#{E:@thm_crust},#{E:@thm_fg}}'
       set -g @status_cpu_bg '#{?#{e|>=|f|0:#{@status_cpu_usage},80},#{E:@thm_red},#{E:@catppuccin_status_module_text_bg}}'
-      set -g @catppuccin_directory_text '#{s|.*/([^/]+/[^/]+)$|\1|:pane_current_path}'
+      set -g @catppuccin_directory_text ' #{s|.*/([^/]+/[^/]+)$|\1|:pane_current_path}'
 
       # Session-local running count: green normally, blue for unread input.
       set -g @agent_bar_color '#{?#{==:#{@agent_status},needs-input},#{@agent_input_color},#{@agent_finished_color}}'

@@ -110,16 +110,16 @@
   // }
   // },
   "mcp": {
-    "servers": {
-      "research": {
-        "type": "remote",
-        "url": "https://research.joexbayer.dev/mcp",
-        "oauth": false,
-        "headers": {
-          "Authorization": "Bearer {file:~/.config/research-engine/token}"
-        }
-      }
-    },
+    // "servers": {
+    //   "research": {
+    //     "type": "remote",
+    //     "url": "https://research.joexbayer.dev/mcp",
+    //     "oauth": false,
+    //     "headers": {
+    //       "Authorization": "Bearer {file:~/.config/research-engine/token}"
+    //     }
+    //   }
+    // },
     "playwright": {
       "type": "local",
       "command": ["npx", "@playwright/mcp@latest"],

@@ -113,8 +113,13 @@ class TrackerTests(unittest.TestCase):
         module = (ROOT / "modules/home/programs/tmux.nix").read_text()
         config = module.split("extraConfig = ''", 1)[1].split("'';", 1)[0]
         config = config.replace("${agentHelper}", str(self.path))
+        # Status worker lifecycle is covered separately; do not start a worker
+        # while testing agent events and tmux styles.
+        config = "\n".join(
+            line for line in config.splitlines() if "${statusHelper}" not in line
+        )
         if status_bar:
-            for plugin in ("catppuccin", "cpu"):
+            for plugin in ("catppuccin",):
                 config += (
                     module.split(f"plugin = {plugin};", 1)[1]
                     .split("extraConfig = ''", 1)[1]

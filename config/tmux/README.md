@@ -47,6 +47,31 @@ tmux set -g @agent_input_color '#89b4fa'
 Reloading tmux preserves live overrides. Edit the module's defaults to make a
 choice declarative for new tmux servers.
 
+## Status bar performance
+
+The right-hand bar uses native tmux formats and cached CPU options, with no
+`#(shell commands)` in its rendering path. Directory shortening is a native
+substitution. CPU text has a fixed width, and text/colours use the same sample.
+
+`config/tmux/status.py` runs once per server, launched by the `tmux-status`
+wrapper when the configuration loads. Every 10 seconds it runs tmux-cpu's
+portable percentage sampler and publishes the reading to `@status_cpu_usage`
+and `@status_cpu_text`. A failed sample shows `--.-%` rather than stale data.
+An OS lock prevents duplicate workers on reload, and the worker exits when its
+server disappears or is replaced. It cannot start a tmux server itself.
+
+The worker also checks Continuum's existing 15-minute autosave schedule and
+calls its save script only when due. Continuum still supplies the save policy,
+locking and quiet Resurrect save; its status-line shell hook is removed after
+plugins load. A missing Continuum timestamp leaves autosaving disabled, preserving
+its secondary-server protection. Automatic restore remains off.
+
+Session snapshots live in `~/.tmux/resurrect`. Save manually with `Ctrl+s`, then
+`Shift+s`; restore with `Ctrl+s`, then `Ctrl+r`. Snapshots restore layouts,
+directories and supported programs, **not live processes or unsaved work**.
+The custom OpenCode/Claude clients are not on Resurrect's default restore list.
+Do not restart the server until important work has been saved and stopped.
+
 ## OpenCode V2
 
 `config/opencode/plugins/tmux-agent` is enabled in `cli.json`. It observes the

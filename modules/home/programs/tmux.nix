@@ -11,6 +11,26 @@ let
       exec python3 ${../../../config/tmux/agent.py} "$@"
     '';
   };
+  statusHelper = pkgs.writeShellApplication {
+    name = "tmux-status";
+    runtimeInputs = [
+      pkgs.python3
+      pkgs.tmux
+      pkgs.coreutils
+      pkgs.gnugrep
+      pkgs.gnused
+      pkgs.gawk
+    ]
+    ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+      pkgs.procps
+      pkgs.sysstat
+    ];
+    text = ''
+      exec python3 ${../../../config/tmux/status.py} \
+        --cpu-script ${pkgs.tmuxPlugins.cpu}/share/tmux-plugins/cpu/scripts/cpu_percentage.sh \
+        --continuum-script ${pkgs.tmuxPlugins.continuum}/share/tmux-plugins/continuum/scripts/continuum_save.sh "$@"
+    '';
+  };
   tmux-floax = pkgs.tmuxPlugins.mkTmuxPlugin {
     pluginName = "floax";
     version = "unstable-2024-01-01";
@@ -23,7 +43,10 @@ let
   };
 in
 {
-  home.packages = [ agentHelper ];
+  home.packages = [
+    agentHelper
+    statusHelper
+  ];
 
   programs.tmux = {
     enable = true;
@@ -132,6 +155,25 @@ in
       bind-key -r -T prefix S-Right resize-pane -R
       bind-key -r -T prefix S-Up resize-pane -U
       bind-key -r -T prefix S-Down resize-pane -D
+
+      # --- Cached status bar ---
+      # Home Manager loads plugins first. Replace Continuum's #() autosave hook
+      # here: sampling/saving runs in one small worker, never during rendering.
+      set -g status-right-length 200
+      set -g status-left-length 100
+      set -g status-left ""
+      set -ogq @status_cpu_usage '0'
+      set -ogq @status_cpu_text ' --.-%'
+      set -g @status_cpu_fg '#{?#{e|>=|f|0:#{@status_cpu_usage},80},#{E:@thm_crust},#{E:@thm_fg}}'
+      set -g @status_cpu_bg '#{?#{e|>=|f|0:#{@status_cpu_usage},80},#{E:@thm_red},#{E:@catppuccin_status_module_text_bg}}'
+      set -g @catppuccin_directory_text '#{s|.*/([^/]+/[^/]+)$|\1|:pane_current_path}'
+
+      # Session-local running count: green normally, blue for unread input.
+      set -g @agent_bar_color '#{?#{==:#{@agent_status},needs-input},#{@agent_input_color},#{@agent_finished_color}}'
+      set -g @catppuccin_status_agents '#[fg=#{E:@agent_bar_color}]#{E:@catppuccin_status_left_separator}#[fg=#{@thm_crust},bg=#{E:@agent_bar_color}]● #[fg=#{@thm_fg},bg=#{E:@catppuccin_status_module_text_bg}] agents: #{?@agent_running_count,#{@agent_running_count},0}#[fg=#{E:@catppuccin_status_module_text_bg}]#{E:@catppuccin_status_right_separator}#[default]'
+
+      set -g status-right "#{E:@catppuccin_status_agents}#{E:@catppuccin_status_cpu}#{E:@catppuccin_status_directory}#{E:@catppuccin_status_session}#{E:@catppuccin_status_host}"
+      run-shell -b '${statusHelper}/bin/tmux-status --socket #{q:socket_path} --server-pid #{pid}'
     '';
 
     plugins = with pkgs.tmuxPlugins; [
@@ -155,28 +197,10 @@ in
           set -g @catppuccin_session_color '#{?client_prefix,#{E:@thm_red},#{E:@thm_lavender}}'
           # Catppuccin caches this separately; override it on config reload too.
           set -g @catppuccin_status_session_icon_bg '#{E:@catppuccin_session_color}'
-        '';
-      }
-      {
-        plugin = cpu;
-        extraConfig = ''
-          # Make the status line pretty
-          set -g status-right-length 200
-          set -g status-left-length 100
-          set -g status-left ""
-
-          set -g @catppuccin_directory_text '#(echo "#{pane_current_path}" | sed -E "s|.*/([^/]+/[^/]+)$|\1|")'
-
-          # Session-local running count: green normally, blue for unread input
-          # requests. The session picker keeps its more detailed state colours.
-          set -g @agent_bar_color '#{?#{==:#{@agent_status},needs-input},#{@agent_input_color},#{@agent_finished_color}}'
-          set -g @catppuccin_status_agents '#[fg=#{E:@agent_bar_color}]#{E:@catppuccin_status_left_separator}#[fg=#{@thm_crust},bg=#{E:@agent_bar_color}]● #[fg=#{@thm_fg},bg=#{E:@catppuccin_status_module_text_bg}] agents: #{?@agent_running_count,#{@agent_running_count},0}#[fg=#{E:@catppuccin_status_module_text_bg}]#{E:@catppuccin_status_right_separator}#[default]'
-
-          set -g status-right "#{E:@catppuccin_status_agents}"
-          set -agF status-right "#{E:@catppuccin_status_cpu}"
-          set -ag status-right "#{E:@catppuccin_status_directory}"
-          set -ag status-right "#{E:@catppuccin_status_session}"
-          set -ag status-right "#{E:@catppuccin_status_host}"
+          # Keep CPU text/colours dynamic without tmux-cpu's three shell jobs.
+          set -g @catppuccin_cpu_text ' #{@status_cpu_text}'
+          set -g @catppuccin_status_cpu_text_fg '#{E:@status_cpu_fg}'
+          set -g @catppuccin_status_cpu_text_bg '#{E:@status_cpu_bg}'
         '';
       }
       {
@@ -191,7 +215,7 @@ in
         '';
       }
       {
-        # Continuum appends its autosave hook to status-right, so it must load last.
+        # Keep Continuum's save policy; extraConfig removes its rendering hook.
         plugin = continuum;
         extraConfig = ''
           set -g @continuum-save-interval '15'

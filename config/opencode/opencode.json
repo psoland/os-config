@@ -9,6 +9,9 @@
     "openai": {
       "models": {
         // Explicit limits override the smaller ChatGPT/Codex defaults.
+        "gpt-6.1-terra": {
+          "limit": { "context": 1050000, "input": 922000, "output": 128000 }
+        },
         "gpt-6.1-sol": {
           "limit": { "context": 1050000, "input": 922000, "output": 128000 }
         },
@@ -53,6 +56,16 @@
       "*.env.schema": "allow"
     },
     "external_directory": "allow"
+  },
+  "agents": {
+    "terra": {
+      "description": "Fast, efficient agent for routine tasks, visual analysis, computer use, and drafting or revising text. Use luna-worker for mechanical coding tasks; escalate complex debugging or implementation decisions to Sol.",
+      "mode": "all",
+      "model": "openai/gpt-6.1-terra#medium",
+      "permissions": [
+        { "action": "*", "resource": "*", "effect": "allow" }
+      ]
+    }
   },
   "agent": {
     "build": {

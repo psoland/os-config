@@ -39,11 +39,20 @@
       }
     },
     "knowit-ai-gateway": {
-      "name": "Knowit AI Gateway",
+      "name": "Knowit AI Services",
       "env": ["AGW_API_KEY"],
       "package": "@opencode/ai/providers/openai-compatible",
       "settings": {
-        "baseURL": "https://ai.aiservices.knowit.no/v1"
+        "baseURL": "https://api.ai.knowit.no/v1"
+      },
+      "models": {
+        "qwen3-coder-30b": {
+          "name": "Qwen3 Coder 30B",
+          "limit": {
+            "context": 204800,
+            "output": 32000
+          }
+        }
       }
     }
   },

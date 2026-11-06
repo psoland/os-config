@@ -11,6 +11,7 @@ inspiration/
 
 # Ignore generated JavaScript dependencies, caches, and Alchemy runtime state
 node_modules/
+__pycache__/
 .alchemy/
 pnpm-debug.log*
 

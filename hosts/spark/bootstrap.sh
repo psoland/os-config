@@ -64,7 +64,15 @@ fi
 echo "$HOME_MANAGER_FLAKE" >"$DOTFILES_DIR/.hm-flake"
 chown "$USERNAME":"$USERNAME" "$DOTFILES_DIR/.hm-flake"
 
-# 7. Install Nix
+# 7. Limit GPU clocks on the personal Spark (0 skips installation).
+SPARK_GPU_CLOCK_MAX_MHZ="${SPARK_GPU_CLOCK_MAX_MHZ:-2200}"
+if [ "$SPARK_GPU_CLOCK_MAX_MHZ" != 0 ]; then
+  bash "$DOTFILES_DIR/hosts/spark/gpu-clock-limit.sh" install "$SPARK_GPU_CLOCK_MAX_MHZ"
+else
+  echo "Skipping GPU clock cap installation (existing settings left unchanged)."
+fi
+
+# 8. Install Nix
 if ! command -v nix &>/dev/null; then
   echo "Installing Nix.."
   curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix |
@@ -73,7 +81,7 @@ else
   echo "Nix is already installed"
 fi
 
-# 8. Apply Home Manager configuration for the created user (pinned by flake.lock)
+# 9. Apply Home Manager configuration for the created user (pinned by flake.lock)
 echo "Applying Home Manager config '$HOME_MANAGER_FLAKE' for '$USERNAME'.."
 su - "$USERNAME" -c "HOME_MANAGER_FLAKE=\"$HOME_MANAGER_FLAKE\" DOTFILES_DIR=\"$DOTFILES_DIR\" bash -lc '. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh 2>/dev/null || true; . /etc/profile.d/nix.sh 2>/dev/null || true; export PATH=/nix/var/nix/profiles/default/bin:\$PATH; cd \"\$DOTFILES_DIR\"; nix build .#homeConfigurations.\$HOME_MANAGER_FLAKE.activationPackage; ./result/activate'"
 

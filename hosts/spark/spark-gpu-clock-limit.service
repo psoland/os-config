@@ -1,0 +1,17 @@
+[Unit]
+Description=Limit personal Spark GPU clock to @MAX_MHZ@ MHz
+After=nvidia-persistenced.service
+Wants=nvidia-persistenced.service
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/nvidia-smi -lgc 0,@MAX_MHZ@
+ExecStop=/usr/bin/nvidia-smi -rgc
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

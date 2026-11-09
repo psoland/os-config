@@ -24,6 +24,8 @@ os-config/
 │   │   └── default.nix           # Host-specific HM module wiring
 │   ├── spark/
 │   │   ├── bootstrap.sh          # Spark DGX bootstrap (runs as root)
+│   │   ├── gpu-clock-limit.sh    # Personal Spark system GPU clock cap installer/remover
+│   │   ├── spark-gpu-clock-limit.service # System service template (not Home Manager)
 │   │   ├── personal.nix          # Personal Spark services and desktop apps
 │   │   ├── work.nix              # Company Spark common profile only
 │   │   └── services/             # Spark-only services
@@ -123,6 +125,45 @@ curl -fsSL https://raw.githubusercontent.com/psoland/os-config/main/hosts/spark/
 
 The bootstrap above is for the personal Spark. Do not run it on the company
 Spark, whose system and `aiservices` account are managed separately.
+
+#### Personal Spark GPU clock cap
+
+The personal Spark bootstrap installs a **2200 MHz maximum GPU clock** using
+`nvidia-smi -lgc 0,2200` and enables `spark-gpu-clock-limit.service` to reapply it
+at boot. This is a root-owned system service, independent of Home Manager; it
+does not change the company Spark configuration or discover other machines.
+The installer requires a working GB10 GPU and tests the cap before writing the
+service. Lower clocks can reduce heat/power but may slow compute-heavy workloads.
+
+On an existing personal Spark, install it without rerunning the bootstrap:
+
+```bash
+cd ~/.dotfiles
+sudo bash hosts/spark/gpu-clock-limit.sh install
+# Optional custom maximum (MHz):
+sudo bash hosts/spark/gpu-clock-limit.sh install 2000
+```
+
+Inspect the service and current GPU clocks under load:
+
+```bash
+systemctl status spark-gpu-clock-limit.service
+nvidia-smi --query-gpu=name,clocks.gr,temperature.gpu,power.draw --format=csv
+```
+
+Remove the persistent cap and restore NVIDIA default clocks (not previous custom
+clock settings):
+
+```bash
+sudo bash hosts/spark/gpu-clock-limit.sh remove
+```
+
+For a local bootstrap run, use
+`sudo env SPARK_GPU_CLOCK_MAX_MHZ=2000 bash hosts/spark/bootstrap.sh` to select a
+different maximum, or set it to `0` to skip installation. Skipping does not remove
+an existing cap. Stopping/restarting the service resets GPU clocks to defaults
+before a subsequent start reapplies the cap. Home Manager switches do not update
+this service; rerun the standalone installer after changing its template.
 
 ### Personal account on the company Spark
 

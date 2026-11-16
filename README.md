@@ -126,6 +126,41 @@ curl -fsSL https://raw.githubusercontent.com/psoland/os-config/main/hosts/spark/
 The bootstrap above is for the personal Spark. Do not run it on the company
 Spark, whose system and `aiservices` account are managed separately.
 
+#### Browse (personal Spark)
+
+The personal `spark` profile installs a pinned ARM64 [Browse](https://github.com/anomalyco/browse)
+CLI and registers its local MCP server in OpenCode. Other hosts are unchanged.
+The relay starts on demand and defaults to loopback (`127.0.0.1`); no service,
+firewall changes, or remote connection is needed when Chrome runs on Spark too.
+
+After applying the profile:
+
+1. Install Chrome if needed (`install-spark-desktop-apps` installs Chrome and ChatGPT).
+2. Add the [Browse extension](https://chromewebstore.google.com/detail/mfnicocicmmlkpjnaffgihfjhdgjkdjg)
+   to Chrome on Spark.
+3. Run `browse pair`. In the extension's options, expand **advanced**, enter the
+   printed pairing code, and connect to the local relay (normally `localhost:19988`;
+   use the port printed by Browse if it selects another).
+4. Run `browse status` to verify the browser connection. Check `/mcps` in OpenCode
+   for the `browse` server.
+
+Do not run the upstream installer or `browse install` to configure OpenCode:
+Home Manager owns its config. Pairing keys and other runtime state stay in
+Browse's private XDG directories, outside this repository. Browse controls your
+signed-in browser, so enable it only for agents you trust.
+
+The wrapper disables CLI self-updates, including for the on-demand relay. Update
+the version and source hash in `packages/browse.nix`, then reapply Home Manager;
+the Chrome Web Store updates the extension separately. After a CLI upgrade, when
+no agent is using the browser, run `browse relay restart` and reconnect Browse
+in `/mcps` if needed. FFmpeg is included on Browse's PATH for recording tools.
+
+Validate the package, generated config, and host isolation without activating:
+
+```bash
+nix build --impure --no-link --file tests/spark/browse.nix
+```
+
 #### Personal Spark GPU clock cap
 
 The personal Spark bootstrap installs a **2200 MHz maximum GPU clock** using

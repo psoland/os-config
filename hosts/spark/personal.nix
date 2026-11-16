@@ -3,6 +3,7 @@
 {
   imports = [
     ../../profiles/home/common.nix
+    ../../modules/home/programs/browse.nix
     ../../modules/home/programs/ghostty.nix
     ./desktop.nix
     ./desktop-apps.nix

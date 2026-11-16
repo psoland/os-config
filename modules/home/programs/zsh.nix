@@ -120,11 +120,12 @@
       # Ctrl+D: accept zsh-autosuggestions instead of EOF/listing
       bindkey '^D' autosuggest-accept
 
-      if command -v tmux >/dev/null 2>&1; then
-        if [[ -n "$SSH_CONNECTION" && -z "$TMUX" && -z "$VSCODE_IPC_HOOK_CLI" ]]; then
-          tmux attach || tmux new
-        fi
-      fi
+      # Temporarily disable SSH auto-attach while testing herdr.
+      # if command -v tmux >/dev/null 2>&1; then
+      #   if [[ -n "$SSH_CONNECTION" && -z "$TMUX" && -z "$VSCODE_IPC_HOOK_CLI" ]]; then
+      #     tmux attach || tmux new
+      #   fi
+      # fi
     '';
 
     profileExtra = ''

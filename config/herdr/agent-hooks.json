@@ -1,0 +1,29 @@
+{
+  "claude": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash {script} session",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "codex": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash {script} session",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

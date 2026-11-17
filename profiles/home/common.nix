@@ -30,6 +30,7 @@ in
     ../../modules/home/programs/starship.nix
     ../../modules/home/programs/nvim.nix
     ../../modules/home/programs/opencode2.nix
+    ../../modules/home/programs/herdr.nix
     ../../modules/home/services/taildrop.nix
     inputs.hunk.homeManagerModules.default
   ];
@@ -55,7 +56,6 @@ in
       lazydocker
       lazysql
       pgcli
-      opencode
       codex
       claude-code
       pi-coding-agent
@@ -71,7 +71,6 @@ in
       bitwarden-cli
       varlock
       nodejs
-      inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.herdr
     ]
     # Linux-only: use Apple clang from Xcode CLT on macOS.
     ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [

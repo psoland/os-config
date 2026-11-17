@@ -48,7 +48,7 @@
       # Zsh
       zs = "source ~/.zshrc";
 
-      oc-serve = "opencode --port 4091";
+      oc-serve = "opencode serve --port 4091";
       oc = "opencode";
 
       zombiehunt = "ps -eo pid,ppid,stat,cmd,user | awk '\$3~\"Z\"' | awk '\$5~\"$USER\"'";
@@ -96,7 +96,7 @@
       # In zsh, IGNOREEOF env var is ignored; use shell option instead
       setopt IGNORE_EOF
 
-      # Let tmux use Ctrl+S as prefix (disable XON/XOFF flow control)
+      # Let tmux/Herdr use Ctrl+S as prefix (disable XON/XOFF flow control)
       stty -ixon
 
       # Word navigation: opt+arrow (works locally and over SSH)
@@ -122,7 +122,7 @@
 
       # Temporarily disable SSH auto-attach while testing herdr.
       # if command -v tmux >/dev/null 2>&1; then
-      #   if [[ -n "$SSH_CONNECTION" && -z "$TMUX" && -z "$VSCODE_IPC_HOOK_CLI" ]]; then
+      #   if [[ -n "$SSH_CONNECTION" && -z "$TMUX" && -z "$VSCODE_IPC_HOOK_CLI" && "''${HERDR_ENV:-}" != 1 ]]; then
       #     tmux attach || tmux new
       #   fi
       # fi

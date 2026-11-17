@@ -1,0 +1,11 @@
+# Balanced: keep Herdr's defaults except for familiar tmux navigation.
+# Edit this file and apply Home Manager; do not use Herdr's config installer.
+onboarding = false
+
+[keys]
+prefix = "ctrl+s"
+previous_tab = ["prefix+p", "prefix+ctrl+p"]
+next_tab = ["prefix+n", "prefix+ctrl+n"]
+
+[ui]
+prompt_new_tab_name = false

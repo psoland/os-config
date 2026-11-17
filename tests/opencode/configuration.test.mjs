@@ -15,7 +15,7 @@ test("V2 preferences use native key IDs and load the worktree picker as a CLI pl
     "session.list": "none",
     "input.newline": "shift+return,ctrl+return,alt+return",
   })
-  assert.deepEqual(cli.plugins, ["./plugins/worktree-session-picker", "./plugins/tmux-agent"])
+  assert.deepEqual(cli.plugins, ["./plugins/worktree-session-picker", "./plugins/tmux-agent", "./plugins/herdr-agent"])
   assert.equal(pickerPackage.exports["./tui"], "./tui.js")
   assert.match(await readFile(new URL("plugins/worktree-session-picker/tui.js", root), "utf8"), /@opencode\/plugin\/tui/)
   assert.equal(cli.theme.name, "catppuccin")

@@ -18,7 +18,7 @@
     "scrollbar": true,
     "thinking": "show"
   },
-  "plugins": ["./plugins/worktree-session-picker", "./plugins/tmux-agent"],
+  "plugins": ["./plugins/worktree-session-picker", "./plugins/tmux-agent", "./plugins/herdr-agent"],
   "animations": true,
   "tabs": {
     "mode": "off"

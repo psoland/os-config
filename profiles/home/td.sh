@@ -25,7 +25,7 @@ pct_right_split=50
 
 map_cmd() {
   case "${1:-}" in
-  c) printf '%s' "opencode --port" ;;
+  c) printf '%s' "opencode" ;;
   cx) printf '%s' "claude --dangerously-skip-permissions" ;;
   p) printf '%s' "pi" ;;
   "") printf '%s' "" ;;

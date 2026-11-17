@@ -13,6 +13,15 @@ Declarative machine setup with:
 Tmux's session picker also supports unobtrusive, aligned
 [agent-state indicators](config/tmux/README.md), initially integrated with OpenCode V2.
 
+Herdr's [Balanced profile and agent integrations](config/herdr/README.md) are
+also managed through Home Manager, including an OpenCode V2 terminal bridge.
+
+OpenCode V2 is pinned for Linux and Apple Silicon macOS. Both `opencode` and
+`opencode2` run V2; the V1 package is no longer installed. Existing credentials,
+configuration, and session data are retained.
+Check the package and all host profiles with
+`nix build --impure --no-link --file tests/opencode/package.nix`.
+
 ## Repository Layout
 
 ```

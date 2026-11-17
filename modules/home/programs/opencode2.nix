@@ -6,9 +6,9 @@
 }:
 
 {
-  # The pinned native package currently supports Linux only. Keep V1 available
-  # everywhere; its launchers and server config can migrate independently.
-  home.packages = lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+  # V2 is the canonical `opencode` on Linux and Apple Silicon macOS.
+  # `opencode2` remains an executable compatibility link, including for Herdr.
+  home.packages = [
     (pkgs.callPackage ../../../packages/opencode2.nix { })
   ];
 
@@ -28,7 +28,7 @@
     run mv -f ${lib.escapeShellArg "${config.xdg.configHome}/opencode/cli.json.hm-tmp"} ${lib.escapeShellArg "${config.xdg.configHome}/opencode/cli.json"}
   '';
 
-  programs.zsh.shellAliases = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+  programs.zsh.shellAliases = {
     oc2 = "opencode2";
     oc2-start = "opencode2 service start";
     oc2-stop = "opencode2 service stop";

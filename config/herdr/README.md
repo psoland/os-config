@@ -1,5 +1,9 @@
 # Herdr: Balanced profile
 
+This page covers **Herdr TUI**. The separately installed
+[Herdr Core and mobile app](core.md) use another runtime; that guide explains
+how to view a core-owned agent from a TUI pane using `hc attach`.
+
 `modules/home/programs/herdr.nix` installs Herdr and its integrations through Home
 Manager. Edit dotfiles and apply them instead of running `herdr integration
 install`, `herdr integration uninstall`, or using the integration installer in

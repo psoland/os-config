@@ -16,6 +16,9 @@ Tmux's session picker also supports unobtrusive, aligned
 Herdr's [Balanced profile and agent integrations](config/herdr/README.md) are
 also managed through Home Manager, including an OpenCode V2 terminal bridge.
 
+[Herdr Core](config/herdr/core.md) is installed alongside TUI for the native
+mobile app, with SSH-discoverable launchers and a shared-agent terminal workflow.
+
 OpenCode V2 is pinned for Linux and Apple Silicon macOS. Both `opencode` and
 `opencode2` run V2; the V1 package is no longer installed. Existing credentials,
 configuration, and session data are retained.

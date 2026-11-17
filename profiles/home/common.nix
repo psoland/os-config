@@ -31,6 +31,7 @@ in
     ../../modules/home/programs/nvim.nix
     ../../modules/home/programs/opencode2.nix
     ../../modules/home/programs/herdr.nix
+    ../../modules/home/programs/herdr-core.nix
     ../../modules/home/services/taildrop.nix
     inputs.hunk.homeManagerModules.default
   ];

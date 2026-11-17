@@ -22,7 +22,7 @@ in
 assert lib.all onlyV2 homes;
 assert mac.meta.mainProgram == "opencode";
 assert
-  mac.src.url == "https://registry.npmjs.org/@opencode/cli-darwin-arm64/-/cli-darwin-arm64-2.1.4.tgz";
+  mac.src.url == "https://registry.npmjs.org/@opencode/cli-darwin-arm64/-/cli-darwin-arm64-2.3.0.tgz";
 assert lib.elem "aarch64-darwin" package.meta.platforms;
 pkgs.runCommand "opencode-v2-package-check"
   {

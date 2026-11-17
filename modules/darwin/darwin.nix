@@ -26,6 +26,7 @@
       "logi-options+"
       "codex-app"
       "claude"
+      "herdr-app"
       "raspberry-pi-imager"
       "tailscale-app"
       #"visual-studio-code"

@@ -9,11 +9,11 @@
 
 stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "browse";
-  version = "0.0.17";
+  version = "0.1.2";
 
   src = fetchurl {
     url = "https://registry.npmjs.org/@opencode/browse-linux-arm64/-/browse-linux-arm64-${finalAttrs.version}.tgz";
-    hash = "sha256-ky9vusUBERSW331siQW3nrdf50GNAYZfYFa81ri/k+c=";
+    hash = "sha256-nxcSCg0dekKrTdwqoZ+7m2u/I1e8jXwXUs8Oe5CtIo8=";
   };
 
   sourceRoot = "package";
@@ -22,7 +22,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     makeWrapper
   ];
   dontBuild = true;
-  # Keep the JavaScript embedded in the standalone Bun executable intact.
+  # Preserve the official native executable.
   dontStrip = true;
 
   installPhase = ''

@@ -5,6 +5,7 @@
     ../../profiles/home/common.nix
     ../../modules/home/programs/browse.nix
     ../../modules/home/programs/ghostty.nix
+    ../../modules/home/programs/rex.nix
     ./desktop.nix
     ./desktop-apps.nix
     ../../modules/home/services/syncthing.nix

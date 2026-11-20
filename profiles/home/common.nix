@@ -40,6 +40,8 @@ in
   # Ghostty.app bundle ships its own terminfo, so we only need this on Linux.
   home.file.".terminfo" = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     source = "${pkgs.ghostty.terminfo}/share/terminfo";
+    # Link per file so other modules (e.g. Rex) can add entries alongside.
+    recursive = true;
   };
 
   # Packages that should be installed in all systems

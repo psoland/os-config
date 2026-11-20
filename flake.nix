@@ -32,6 +32,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Rex terminal multiplexer (prebuilt, unfree). Stable has no releases yet;
+    # switch to stable.tar.gz once it does. Update with: nix flake update rex
+    rex = {
+      url = "https://pkgs.superlogical.com/rex/nix/preview.tar.gz";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Plugin-based agent harness from DeepSeek AI.
     deepseek-harness = {
       # Pin releases because the Nix dependency hash must match pnpm-lock.yaml.

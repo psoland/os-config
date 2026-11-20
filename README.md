@@ -308,6 +308,49 @@ which nvim tmux starship git
 
 3. If dotfiles were moved, review backups in `~/.dotfiles-backup/<timestamp>/`.
 
+#### Rangr (both Macs)
+
+Both Mac profiles provide `rangr-install`. Applying the dotfiles only installs
+this helper; it does not download, launch, or update Rangr.
+
+```bash
+gh auth login # use an account with access to the private joexbayer/rangr repository
+rangr-install                       # latest release
+rangr-install v0.1.11-b6dea635de      # a specific release
+```
+
+The helper resolves the release once, downloads its installer into a temporary
+directory, and runs it with that same tag. This explicitly executes code from
+the release, so run it only while you trust that repository. The upstream
+installer verifies the app archive's SHA-256 and expected Apple Developer ID
+signature, installs `/Applications/Rangr.app`, and links `~/.local/bin/rangr`
+(on PATH through Home Manager). It preserves an existing `nexus.app` installation
+for Rangr's own rename/migration.
+
+The app remains writable and outside the Nix store so its built-in updater works;
+GitHub credentials stay in `gh`. Nix manages the helper, not the app version,
+removal, or rollback. An update that changes Rangr's server can restart panes:
+prefer its in-app updater and confirmation when sessions are running. Selecting
+a release tag here does not disable later in-app updates.
+
+Settings at `~/.config/nexus/config.toml`, workspaces, runtime state, and Keychain
+pairings remain unmanaged. Do not commit them or replace them with read-only
+Home Manager symlinks. Remote access and pairing remain explicit actions in Rangr.
+
+You can also install directly from this checkout before applying the profile:
+
+```bash
+bash ~/.dotfiles/hosts/mac/install-rangr.sh
+```
+
+The upstream `NEXUS_INSTALL_DIR` and `NEXUS_NO_CLI` overrides are passed through.
+Apple Silicon macOS is required; Linux profiles do not include this helper.
+Run the isolated wrapper tests without downloading or installing Rangr:
+
+```bash
+python3 tests/mac/rangr_install_test.py
+```
+
 #### Mindmeld (work Mac)
 
 The work Mac profile provides `mindmeld-install`, which uses your authenticated

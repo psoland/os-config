@@ -647,9 +647,12 @@ whole tailnet.
 
 ### One-time setup
 
-1. **DNS:** in Cloudflare, create an `A` record for `*` in `mujo.no` pointing to
-   `100.127.53.67`, with the proxy **off** (DNS only). Explicit records, such as
-   names published with Cloudflare Tunnel, still take precedence over the wildcard.
+1. **DNS:** in the Cloudflare dashboard for `mujo.no`, under **DNS → Records**,
+   add an `A` record named `*` with IPv4 address `100.127.53.67`, proxy status
+   **DNS only** (grey cloud), and TTL Auto. This record is managed by hand; if the
+   Spark's Tailscale address changes, update it here and in
+   `config/tailnet/spark.json`. Explicit records, such as names published with
+   Cloudflare Tunnel, still take precedence over the wildcard.
 2. **Certificate token:** create a Cloudflare API token limited to `mujo.no` with
    **Zone / DNS / Edit** and **Zone / Zone / Read**. Store it without putting it
    on the command line:

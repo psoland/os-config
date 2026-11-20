@@ -266,6 +266,12 @@
           merman-nvim = pkgs.callPackage ./packages/merman.nix { };
           pdf = markdown-pdf;
           inherit markdown-pdf;
+          caddy-cloudflare = pkgs.callPackage ./packages/caddy-cloudflare.nix { };
+        }
+        // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+          tailnet-proxy = pkgs.callPackage ./packages/tailnet-proxy.nix {
+            caddy-cloudflare = self.packages.${system}.caddy-cloudflare;
+          };
         }
       );
 

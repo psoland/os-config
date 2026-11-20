@@ -12,6 +12,7 @@
     ../../modules/home/services/cloudflared.nix
     ../../modules/home/services/nix-disk-cleanup.nix
     ./services/model-serving
+    ./services/tailnet
   ];
 
   home.stateVersion = "25.11";

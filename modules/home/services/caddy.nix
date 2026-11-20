@@ -10,10 +10,16 @@ let
 in
 {
   options.dotfiles.caddy = {
+    adminAddress = lib.mkOption {
+      type = lib.types.str;
+      default = "127.0.0.1:2020";
+      description = "Private admin listener, separate from the aiservices proxy on port 2019.";
+    };
     configText = lib.mkOption {
       type = lib.types.lines;
       default = ''
-        :8000 {
+        http://:18000 {
+          bind 127.0.0.1
           respond "caddy is running" 200
         }
       '';
@@ -24,7 +30,12 @@ in
   config = {
     home.packages = [ pkgs.caddy ];
 
-    xdg.configFile."caddy/Caddyfile".text = cfg.configText;
+    xdg.configFile."caddy/Caddyfile".text = ''
+      {
+        admin ${cfg.adminAddress}
+      }
+    ''
+    + cfg.configText;
 
     programs.zsh.shellAliases = {
       caddy-reload = "systemctl --user reload caddy";

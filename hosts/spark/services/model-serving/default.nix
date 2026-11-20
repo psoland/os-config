@@ -179,7 +179,8 @@ in
   xdg.configFile."vllm/defaults.json".text = vllmDefaultsJson + "\n";
 
   dotfiles.caddy.configText = ''
-    :8000 {
+    http://:18000 {
+      bind 127.0.0.1
       import ${vllmRoutesGlob}
 
       handle {

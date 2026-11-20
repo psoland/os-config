@@ -195,7 +195,8 @@ EOF
   done < <(jq -r '.models[] | [.matcher, .route, .port] | @tsv' "$work/registry.json")
 
   cat > "$validation_config" <<EOF
-:8000 {
+http://:18000 {
+  bind 127.0.0.1
   import ${candidate_routes}
 
   handle {

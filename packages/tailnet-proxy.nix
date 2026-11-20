@@ -4,6 +4,7 @@
   writeText,
   writeShellScript,
   coreutils,
+  gnugrep,
   cacert,
   caddy-cloudflare,
 }:
@@ -47,15 +48,25 @@ let
 
   runner = writeShellScript "mujo-tailnet-caddy" ''
     set -eu
+    case "$1" in
+      run) ;;
+      # Reload only sends the new config to the running server over its admin
+      # socket; the server already holds the token, so don't read it here.
+      reload) exec ${caddy-cloudflare}/bin/caddy reload --config ${config} --adapter caddyfile ;;
+      *) exit 2 ;;
+    esac
     # Read only at runtime. Never use --environ or shell tracing here.
     CF_API_TOKEN="$(${coreutils}/bin/cat "$CREDENTIALS_DIRECTORY/cloudflare-token")"
     test -n "$CF_API_TOKEN" || { echo "Missing Cloudflare credential" >&2; exit 1; }
+    # Check the format here: the Cloudflare plugin prints rejected tokens in full.
+    if ! printf '%s' "$CF_API_TOKEN" \
+      | ${gnugrep}/bin/grep -Eqx 'cf(ut|at)_[A-Za-z0-9_-]{32,256}|[A-Za-z0-9_-]{35,50}'; then
+      echo "Cloudflare token has an unexpected format (quotes, spaces or extra lines?)" >&2
+      exit 1
+    fi
     export CF_API_TOKEN
     export SSL_CERT_FILE=${cacert}/etc/ssl/certs/ca-bundle.crt
-    case "$1" in
-      run|reload) exec ${caddy-cloudflare}/bin/caddy "$1" --config ${config} --adapter caddyfile ;;
-      *) exit 2 ;;
-    esac
+    exec ${caddy-cloudflare}/bin/caddy run --config ${config} --adapter caddyfile
   '';
 
   unit = writeText "mujo-tailnet-caddy.service" ''

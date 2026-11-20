@@ -1,6 +1,6 @@
 { caddy }:
 
 caddy.withPlugins {
-  plugins = [ "github.com/caddy-dns/cloudflare@v0.2.3" ];
-  hash = "sha256-OIQoJ+Q7rfJkoy/H01L2lEDysOlYzl63s6pOrSj9LlQ=";
+  plugins = [ "github.com/caddy-dns/cloudflare@v0.2.4" ];
+  hash = "sha256-QSiwKqKvSxhksWBF4/MlBOpyXba5xOQ2sRwA0R7399E=";
 }

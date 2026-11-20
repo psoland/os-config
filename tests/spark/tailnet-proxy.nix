@@ -9,6 +9,7 @@ let
   personalConfig = spark.xdg.configFile."caddy/Caddyfile".text;
   tailnetctl = lib.findFirst (p: (p.name or "") == "tailnetctl") null spark.home.packages;
   settings = lib.importJSON ../../config/tailnet/spark.json;
+  zone = builtins.head settings.zones;
 in
 assert lib.hasInfix "admin 127.0.0.1:2020" personalConfig;
 assert lib.hasInfix "http://:18000" personalConfig;
@@ -24,7 +25,7 @@ pkgs.runCommand "tailnet-proxy-check" { nativeBuildInputs = [ pkgs.python3 ]; } 
 
   # The production config must load with no routes and with a tailnetctl route.
   ${bundle}/caddy adapt --config ${bundle}/Caddyfile --adapter caddyfile > empty.json
-  printf '%s\n' '@demo host demo.${settings.zone}' 'handle @demo {' \
+  printf '%s\n' '@demo_${zone} host demo.${zone}' 'handle @demo_${zone} {' \
     '	reverse_proxy 127.0.0.1:3001' '}' > routes/demo.caddy
   sed "s|${settings.routesDir}|$PWD/routes|" ${bundle}/Caddyfile > Caddyfile
   ${bundle}/caddy adapt --config Caddyfile --adapter caddyfile > routed.json
@@ -45,14 +46,16 @@ pkgs.runCommand "tailnet-proxy-check" { nativeBuildInputs = [ pkgs.python3 ]; } 
       assert server['protocols'] == ['h1', 'h2']
       assert server['automatic_https']['disable_redirects'] is True
       [site] = server['routes']
-      assert site['match'] == [{'host': ['*.${settings.zone}']}]
+      assert site['match'] == [{'host': [${
+        lib.concatMapStringsSep ", " (z: "'*.${z}'") settings.zones
+      }]}]
       return [r for r in site['handle'][0]['routes']]
 
   [fallback] = server('empty.json')
   assert fallback['handle'][0]['handler'] == 'subroute'
   routes = server('routed.json')
   assert len(routes) == 2
-  assert routes[0]['match'] == [{'host': ['demo.${settings.zone}']}]
+  assert routes[0]['match'] == [{'host': ['demo.${zone}']}]
   assert 'match' not in routes[-1], 'fallback must be ordered last'
   unit = Path('${bundle}/mujo-tailnet-caddy.service').read_text()
   for required in [

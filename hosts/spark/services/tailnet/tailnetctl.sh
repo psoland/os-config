@@ -2,7 +2,9 @@
 # Manage private https://<name>.<zone> routes on the tailnet proxy.
 set -euo pipefail
 
-zone="${TAILNET_ZONE:?TAILNET_ZONE is not set}"
+read -r -a zones <<<"${TAILNET_ZONES:?TAILNET_ZONES is not set}"
+[ "${#zones[@]}" -gt 0 ] || { echo "tailnetctl: TAILNET_ZONES is empty" >&2; exit 1; }
+default_zone="${zones[0]}"
 routes="${TAILNET_ROUTES_DIR:?TAILNET_ROUTES_DIR is not set}"
 unit="${TAILNET_UNIT:-mujo-tailnet-caddy.service}"
 
@@ -11,10 +13,13 @@ usage() {
 Usage: tailnetctl <command> [args]
 
 Commands:
-  add <name> <port>   Serve https://<name>.$zone from 127.0.0.1:<port>
-  rm <name>           Remove a service route
-  ls                  List service routes and whether their port is listening
-  status              Show the proxy's systemd status
+  add <name|host> <port>   Serve https://<host> from 127.0.0.1:<port>
+  rm <name|host>           Remove a service route
+  ls                       List service routes and whether their port is listening
+  status                   Show the proxy's systemd status
+
+A bare <name> uses $default_zone (agents -> agents.$default_zone).
+A full <host> must be one label under a configured domain: ${zones[*]}
 
 Changes are validated, written to $routes with sudo, and reloaded live.
 EOF
@@ -30,9 +35,24 @@ require_installed() {
   [ -d "$routes" ] || die "$routes does not exist; install the proxy first (README: Private tailnet services)."
 }
 
-check_name() {
-  [[ "$1" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]] \
-    || die "invalid name '$1': use lowercase letters, digits and inner hyphens (max 63)."
+# Print the full hostname for a bare name or a <label>.<configured zone>.
+resolve_host() {
+  local input="$1" label zone candidate
+  if [[ "$input" == *.* ]]; then
+    label="${input%%.*}"
+    zone="${input#*.}"
+    for candidate in "${zones[@]}"; do
+      [ "$zone" = "$candidate" ] && break
+      candidate=""
+    done
+    [ -n "$candidate" ] || die "'$input' is not under a configured domain (${zones[*]})."
+  else
+    label="$input"
+    zone="$default_zone"
+  fi
+  [[ "$label" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]] \
+    || die "invalid name '$label': use lowercase letters, digits and inner hyphens (max 63)."
+  echo "$label.$zone"
 }
 
 check_port() {
@@ -44,24 +64,28 @@ listening() {
 }
 
 render() {
+  local host="$1" port="$2" matcher="${1//./_}"
   cat <<EOF
 # Managed by tailnetctl
-@$1 host $1.$zone
-handle @$1 {
-	reverse_proxy 127.0.0.1:$2
+@$matcher host $host
+handle @$matcher {
+	reverse_proxy 127.0.0.1:$port
 }
 EOF
 }
 
 # Validate the candidate set of route files exactly as the proxy imports them.
 validate() {
-  local dir="$1"
+  local dir="$1" sites="" zone
+  for zone in "${zones[@]}"; do
+    sites+="${sites:+, }http://*.$zone"
+  done
   cat >"$dir/Caddyfile" <<EOF
 {
 	admin off
 }
 
-http://*.$zone {
+$sites {
 	import $dir/routes/*.caddy
 
 	handle {
@@ -85,7 +109,7 @@ reload() {
 
 # Apply one route change (a file to install, or "" to delete), rolling back on reload failure.
 apply() {
-  local name="$1" source="$2" target="$routes/$1.caddy" backup=""
+  local host="$1" source="$2" target="$routes/$1.caddy" backup=""
   if [ -f "$target" ]; then
     backup="$work/previous.caddy"
     cp -- "$target" "$backup"
@@ -102,7 +126,7 @@ apply() {
       sudo rm -f -- "$target"
     fi
     reload || true
-    die "reload failed; restored the previous route for '$name'."
+    die "reload failed; restored the previous route for '$host'."
   fi
 }
 
@@ -114,50 +138,50 @@ new_workdir() {
 
 cmd_add() {
   [ "$#" -eq 2 ] || usage
-  local name="$1" port="$2" file
-  check_name "$name"
+  local host port="$2" file
+  host="$(resolve_host "$1")"
   check_port "$port"
   require_installed
   new_workdir
 
   shopt -s nullglob
   for file in "$routes"/*.caddy; do
-    [ "$(basename -- "$file")" = "$name.caddy" ] || cp -- "$file" "$work/routes/"
+    [ "$(basename -- "$file")" = "$host.caddy" ] || cp -- "$file" "$work/routes/"
   done
-  render "$name" "$port" >"$work/routes/$name.caddy"
+  render "$host" "$port" >"$work/routes/$host.caddy"
   validate "$work"
 
-  if [ -f "$routes/$name.caddy" ] && cmp -s "$work/routes/$name.caddy" "$routes/$name.caddy"; then
-    echo "https://$name.$zone already routes to 127.0.0.1:$port"
+  if [ -f "$routes/$host.caddy" ] && cmp -s "$work/routes/$host.caddy" "$routes/$host.caddy"; then
+    echo "https://$host already routes to 127.0.0.1:$port"
   else
-    apply "$name" "$work/routes/$name.caddy"
-    echo "https://$name.$zone -> 127.0.0.1:$port"
+    apply "$host" "$work/routes/$host.caddy"
+    echo "https://$host -> 127.0.0.1:$port"
   fi
   listening "$port" || echo "tailnetctl: warning: nothing is listening on port $port yet." >&2
 }
 
 cmd_rm() {
   [ "$#" -eq 1 ] || usage
-  local name="$1"
-  check_name "$name"
+  local host
+  host="$(resolve_host "$1")"
   require_installed
-  [ -f "$routes/$name.caddy" ] || die "no route named '$name'."
+  [ -f "$routes/$host.caddy" ] || die "no route for '$host'."
   new_workdir
-  apply "$name" ""
-  echo "Removed https://$name.$zone"
+  apply "$host" ""
+  echo "Removed https://$host"
 }
 
 cmd_ls() {
   [ "$#" -eq 0 ] || usage
   require_installed
-  local file name port state found=0
+  local file host port state found=0
   shopt -s nullglob
   for file in "$routes"/*.caddy; do
     found=1
-    name="$(basename -- "$file" .caddy)"
+    host="$(basename -- "$file" .caddy)"
     port="$(sed -n 's/^[[:space:]]*reverse_proxy 127\.0\.0\.1:\([0-9]*\)$/\1/p' "$file")"
     if [ -n "$port" ] && listening "$port"; then state=up; else state=down; fi
-    printf '%-40s 127.0.0.1:%-6s %s\n' "https://$name.$zone" "${port:-?}" "$state"
+    printf '%-40s 127.0.0.1:%-6s %s\n' "https://$host" "${port:-?}" "$state"
   done
   [ "$found" -eq 1 ] || echo "No services. Add one with: tailnetctl add <name> <port>"
 }

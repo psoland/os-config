@@ -15,7 +15,8 @@ let
       pkgs.iproute2
     ];
     runtimeEnv = {
-      TAILNET_ZONE = settings.zone;
+      # Space-separated; the first zone is the default for bare names.
+      TAILNET_ZONES = builtins.concatStringsSep " " settings.zones;
       TAILNET_ROUTES_DIR = settings.routesDir;
     };
     text = builtins.readFile ./tailnetctl.sh;

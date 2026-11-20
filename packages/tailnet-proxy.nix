@@ -8,11 +8,15 @@
   caddy-cloudflare,
 }:
 
-# System Caddy that serves https://<name>.<zone> on the Tailscale address only.
+# System Caddy that serves https://<name>.<zone> for each configured zone, on the
+# Tailscale address only.
 # Routes live in mutable snippets under `routesDir`, managed by `tailnetctl`.
 let
   settings = builtins.fromJSON (builtins.readFile ../config/tailnet/spark.json);
-  inherit (settings) zone tailscaleIPv4 routesDir;
+  inherit (settings) zones tailscaleIPv4 routesDir;
+  validZone =
+    zone:
+    builtins.match "[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+" zone != null;
 
   ipNumbers = map lib.toInt (lib.splitString "." tailscaleIPv4);
   validIP =
@@ -32,7 +36,7 @@ let
     	acme_dns cloudflare {env.CF_API_TOKEN}
     }
 
-    *.${zone} {
+    ${lib.concatMapStringsSep ", " (zone: "*.${zone}") zones} {
     	import ${routesDir}/*.caddy
 
     	handle {
@@ -57,7 +61,7 @@ let
   unit = writeText "mujo-tailnet-caddy.service" ''
     # Managed by dotfiles/packages/tailnet-proxy.nix
     [Unit]
-    Description=Private *.${zone} HTTPS proxy on Tailscale
+    Description=Private tailnet HTTPS proxy (${lib.concatStringsSep ", " zones})
     Wants=network-online.target tailscaled.service
     After=network-online.target tailscaled.service
     StartLimitIntervalSec=0
@@ -101,8 +105,8 @@ in
 assert lib.assertMsg stdenvNoCC.hostPlatform.isLinux "The tailnet proxy requires Linux/systemd.";
 assert lib.assertMsg validIP "tailscaleIPv4 must be in Tailscale's 100.64.0.0/10 range.";
 assert lib.assertMsg (
-  builtins.match "[a-z0-9.-]+" zone != null
-) "zone must be a plain lowercase domain.";
+  zones != [ ] && lib.all validZone zones && lib.unique zones == zones
+) "zones must be a non-empty list of distinct lowercase domains.";
 assert lib.assertMsg (
   builtins.match "/[A-Za-z0-9/_.-]+" routesDir != null
 ) "routesDir must be an absolute path.";

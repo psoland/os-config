@@ -1,5 +1,5 @@
 {
-  "zone": "mujo.no",
+  "zones": ["mujo.no"],
   "tailscaleIPv4": "100.127.53.67",
   "routesDir": "/etc/mujo-tailnet/routes"
 }

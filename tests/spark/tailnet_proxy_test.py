@@ -193,7 +193,7 @@ class TailnetctlTests(Sandbox):
         self.routes = self.path / "routes"
         self.routes.mkdir()
         self.script = ROOT / "hosts/spark/services/tailnet/tailnetctl.sh"
-        self.env.update(TAILNET_ZONE="mujo.no", TAILNET_ROUTES_DIR=str(self.routes))
+        self.env.update(TAILNET_ZONES="mujo.no example.com", TAILNET_ROUTES_DIR=str(self.routes))
         # sudo runs the command unprivileged so writes land in the sandbox.
         self.stub("sudo", 'echo "sudo $*" >> "$COMMAND_LOG"\nexec "$@"')
         self.stub("ss", '[ "${TEST_LISTENING:-0}" = 0 ] || echo LISTEN')
@@ -208,8 +208,8 @@ if [ "$1" = reload ]; then exit "${TEST_RELOAD_FAILURE:-0}"; fi
         result = self.run_script("add", "agents", "3000")
         self.assertIn("https://agents.mujo.no -> 127.0.0.1:3000", result.stdout)
         self.assertIn("nothing is listening on port 3000", result.stderr)
-        route = (self.routes / "agents.caddy").read_text()
-        self.assertIn("@agents host agents.mujo.no", route)
+        route = (self.routes / "agents.mujo.no.caddy").read_text()
+        self.assertIn("@agents_mujo_no host agents.mujo.no", route)
         self.assertIn("reverse_proxy 127.0.0.1:3000", route)
         self.assertIn("sudo systemctl reload mujo-tailnet-caddy.service", self.log.read_text())
 
@@ -220,8 +220,8 @@ if [ "$1" = reload ]; then exit "${TEST_RELOAD_FAILURE:-0}"; fi
         self.assertRegex(listing, r"benchmark\.mujo\.no\s+127\.0\.0\.1:3001\s+up")
 
         self.run_script("rm", "agents")
-        self.assertFalse((self.routes / "agents.caddy").exists())
-        self.assertTrue((self.routes / "benchmark.caddy").exists())
+        self.assertFalse((self.routes / "agents.mujo.no.caddy").exists())
+        self.assertTrue((self.routes / "benchmark.mujo.no.caddy").exists())
 
     def test_readding_same_route_is_a_noop(self):
         self.run_script("add", "agents", "3000")
@@ -233,11 +233,24 @@ if [ "$1" = reload ]; then exit "${TEST_RELOAD_FAILURE:-0}"; fi
     def test_changing_port_replaces_route(self):
         self.run_script("add", "agents", "3000")
         self.run_script("add", "agents", "4000")
-        self.assertIn("127.0.0.1:4000", (self.routes / "agents.caddy").read_text())
+        self.assertIn("127.0.0.1:4000", (self.routes / "agents.mujo.no.caddy").read_text())
+
+    def test_other_configured_domain(self):
+        result = self.run_script("add", "agents.example.com", "3002")
+        self.assertIn("https://agents.example.com -> 127.0.0.1:3002", result.stdout)
+        self.run_script("add", "agents", "3000")
+        self.assertTrue((self.routes / "agents.example.com.caddy").exists())
+        self.assertTrue((self.routes / "agents.mujo.no.caddy").exists())
+        self.assertIn("https://agents.example.com", self.run_script("ls").stdout)
+        self.run_script("rm", "agents.example.com")
+        self.assertFalse((self.routes / "agents.example.com.caddy").exists())
+        self.assertTrue((self.routes / "agents.mujo.no.caddy").exists())
 
     def test_rejects_bad_input_without_changes(self):
         for args in [
             ("add", "Agents", "3000"), ("add", "a.b", "3000"), ("add", "-x", "3000"),
+            ("add", "x.other.org", "3000"), ("add", "a.b.mujo.no", "3000"),
+            ("add", "mujo.no", "3000"), ("add", ".mujo.no", "3000"),
             ("add", "x" * 64, "3000"), ("add", "ok", "0"), ("add", "ok", "65536"),
             ("add", "ok", "80; respond"), ("add", "ok"), ("rm", "missing"), ("bogus",),
         ]:
@@ -248,22 +261,22 @@ if [ "$1" = reload ]; then exit "${TEST_RELOAD_FAILURE:-0}"; fi
     def test_invalid_existing_route_blocks_changes(self):
         (self.routes / "broken.caddy").write_text("not_a_directive 1\n")
         self.run_script("add", "agents", "3000", success=False)
-        self.assertFalse((self.routes / "agents.caddy").exists())
+        self.assertFalse((self.routes / "agents.mujo.no.caddy").exists())
 
     def test_failed_reload_restores_previous_route(self):
         self.run_script("add", "agents", "3000")
-        previous = (self.routes / "agents.caddy").read_text()
+        previous = (self.routes / "agents.mujo.no.caddy").read_text()
         self.env["TEST_RELOAD_FAILURE"] = "1"
         self.run_script("add", "agents", "4000", success=False)
-        self.assertEqual((self.routes / "agents.caddy").read_text(), previous)
+        self.assertEqual((self.routes / "agents.mujo.no.caddy").read_text(), previous)
         self.run_script("add", "new", "5000", success=False)
-        self.assertFalse((self.routes / "new.caddy").exists())
+        self.assertFalse((self.routes / "new.mujo.no.caddy").exists())
 
     def test_inactive_proxy_still_records_route(self):
         self.env["TEST_INACTIVE"] = "3"
         result = self.run_script("add", "agents", "3000")
         self.assertIn("not running", result.stderr)
-        self.assertTrue((self.routes / "agents.caddy").exists())
+        self.assertTrue((self.routes / "agents.mujo.no.caddy").exists())
 
     def test_requires_installed_routes_dir(self):
         self.routes.rmdir()
